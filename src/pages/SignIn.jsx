@@ -1,13 +1,61 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Logo from "../icons/Logo";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { ArrowRight } from "lucide-react";
+import { getCollection } from "../data/store";
+import { setSession } from "../auth/session";
+import { useState } from "react";
 
 const inputClasses =
   "mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-sm outline-none ring-offset-2 focus:ring-2 focus:ring-slate-900/20";
 
 function SignIn() {
+  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get("email")?.toString().trim();
+    const password = formData.get("password")?.toString();
+
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const users = await getCollection("users");
+      const user = users.find(
+        (item) =>
+          item.email?.toLowerCase() === email.toLowerCase() &&
+          item.password === password
+      );
+
+      console.log("Found user:", user);
+
+      if (!user) {
+        setError("Invalid email or password.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { password: _password, ...safeUser } = user;
+      setSession(safeUser);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      console.error("Sign in failed:", err);
+      setError("Unable to sign in right now. Please try again.");
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <main className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       <section className="relative flex min-h-[45vh] items-center justify-center overflow-hidden bg-[#0D0F16] px-8 py-16 text-white">
@@ -35,7 +83,7 @@ function SignIn() {
             </h2>
           </header>
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <Label className="text-sm font-medium text-slate-700">
                 Email
@@ -63,10 +111,14 @@ function SignIn() {
             <button
               className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
               type="submit"
+              disabled={isSubmitting}
             >
-              Sign in
+              {isSubmitting ? "Signing in..." : "Sign in"}
             </button>
           </form>
+          {error ? (
+            <p className="text-sm font-medium text-rose-600">{error}</p>
+          ) : null}
 
           <p className="text-center text-sm text-slate-500">
             New to Oxifleet?{" "}

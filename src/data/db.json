@@ -1,0 +1,13 @@
+{
+  "users": [
+    {
+      "id": "8aad",
+      "name": "John Doe",
+      "email": "startup7@work.com",
+      "password": "09897867665"
+    }
+  ],
+  "fleets": [],
+  "vehicles": [],
+  "shipments": []
+}
