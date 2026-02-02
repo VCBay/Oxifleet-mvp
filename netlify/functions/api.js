@@ -1,15 +1,6 @@
 import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const dbPath = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "src",
-  "data",
-  "db.json"
-);
+const dbUrl = new URL("./db.json", import.meta.url);
 
 const json = (data) => ({
   statusCode: 200,
@@ -24,7 +15,7 @@ export const handler = async (event) => {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const raw = await fs.readFile(dbPath, "utf-8");
+  const raw = await fs.readFile(dbUrl, "utf-8");
   const db = JSON.parse(raw);
 
   const prefix = "/.netlify/functions/api";

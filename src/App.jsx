@@ -18,7 +18,8 @@ function App() {
       <Route path="/signup" element={<SignUp />} />
       <Route
         path="/dashboard"
-        element={isAuthed ? <Dashboard /> : <Navigate to="/signin" replace />}
+        // element={isAuthed ? <Dashboard /> : <Navigate to="/signin" replace />}
+        element={<Dashboard />}
       />
     </Routes>
   );

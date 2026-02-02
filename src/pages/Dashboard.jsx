@@ -84,7 +84,7 @@ function Dashboard() {
                 Fleet user dashboard
               </p>
               <h1 className="text-3xl font-semibold text-slate-900">
-                Welcome{user?.name ? `, ${user.name}` : ""}.
+                Welcome{user?.name ? `, ${user.name}` : " John Doe"}
               </h1>
             </div>
             <button
