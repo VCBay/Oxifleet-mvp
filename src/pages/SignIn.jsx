@@ -3,7 +3,7 @@ import Logo from "../icons/Logo";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { ArrowRight } from "lucide-react";
-import { getCollection } from "../data/store";
+import { findUserByCredentials } from "../data/userStore";
 import { setSession } from "../auth/session";
 import { useState } from "react";
 
@@ -31,12 +31,7 @@ function SignIn() {
     }
 
     try {
-      const users = await getCollection("users");
-      const user = users.find(
-        (item) =>
-          item.email?.toLowerCase() === email.toLowerCase() &&
-          item.password === password
-      );
+      const user = findUserByCredentials(email, password);
 
       console.log("Found user:", user);
 

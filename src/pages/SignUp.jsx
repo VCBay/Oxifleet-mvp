@@ -1,12 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Logo from "../icons/Logo";
-import { createItem } from "../data/store";
+import { registerUser } from "../data/userStore";
 import { ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 
 const inputClasses =
   "mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-sm outline-none ring-offset-2 focus:ring-2 focus:ring-slate-900/20";
 
 function SignUp() {
+  const navigate = useNavigate();
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -19,10 +22,16 @@ function SignUp() {
     }
 
     try {
-      await createItem("users", { name, email, password });
-      event.currentTarget.reset();
+      registerUser({ name, email, password });
+      toast.success("Account created. Please sign in.");
+      navigate("/signin", { replace: true });
     } catch (error) {
       console.error("Sign up failed:", error);
+      toast.error(
+        error?.message === "Email already exists"
+          ? "Email already exists."
+          : "Sign up failed. Please try again."
+      );
     }
   };
 
