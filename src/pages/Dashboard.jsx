@@ -76,6 +76,8 @@ function Dashboard() {
     vehicleState.baseVehicleCount + vehicleState.vehicles.length;
   const totalDrivers = driverState.baseDriverCount + driverState.drivers.length;
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
+  const [vehicleDetailsOpen, setVehicleDetailsOpen] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [vehicleForm, setVehicleForm] = useState({
     id: "",
     model: "",
@@ -205,6 +207,93 @@ function Dashboard() {
     setDriverDialogOpen(false);
   };
 
+  const handleVehicleDetailsOpenChange = (open) => {
+    setVehicleDetailsOpen(open);
+    if (!open) {
+      setSelectedVehicle(null);
+    }
+  };
+
+  const handleVehicleCardClick = (vehicle, serviceStage) => () => {
+    setSelectedVehicle({ ...vehicle, serviceStage });
+    setVehicleDetailsOpen(true);
+  };
+
+  const selectedVehicleFromStore = selectedVehicle
+    ? vehicleState.vehicles.find((vehicle) => vehicle.id === selectedVehicle.id)
+    : null;
+
+  const selectedVehicleModel =
+    selectedVehicleFromStore?.model || selectedVehicle?.model || "Vehicle";
+
+  const selectedVehicleIdNumber = selectedVehicle?.id
+    ? Number(selectedVehicle.id.replace(/\D/g, "")) || 0
+    : 0;
+
+  const vehicleDetails = selectedVehicle
+    ? {
+        id: selectedVehicle.id,
+        model: selectedVehicleModel,
+        plate:
+          selectedVehicleFromStore?.plate || `TX-${9800 + selectedVehicleIdNumber}`,
+        type: selectedVehicleFromStore?.type || "Truck",
+        status: selectedVehicleFromStore?.status || "Active",
+        vin: `1FUJGLDR${String(100000 + selectedVehicleIdNumber).slice(-6)}5`,
+        year: 2020 + (selectedVehicleIdNumber % 6),
+        color: ["White", "Black", "Silver", "Blue"][selectedVehicleIdNumber % 4],
+        odometer: `${(120_000 + selectedVehicleIdNumber * 37).toLocaleString()} mi`,
+        engineHours: `${(3_200 + selectedVehicleIdNumber * 3).toLocaleString()} hrs`,
+        fuelLevel: `${55 + (selectedVehicleIdNumber % 40)}%`,
+        lastKnownLocation: [
+          "Dallas, TX",
+          "Austin, TX",
+          "Houston, TX",
+          "San Antonio, TX",
+        ][selectedVehicleIdNumber % 4],
+        route: ["I-35 Corridor", "Gulf Loop", "Metro Express", "Westline"][
+          selectedVehicleIdNumber % 4
+        ],
+        driver: ["Jamie Stewart", "Avery Chen", "Morgan Patel", "Taylor Reed"][
+          selectedVehicleIdNumber % 4
+        ],
+        driverId: `DR-${300 + (selectedVehicleIdNumber % 80)}`,
+        depot: ["North Yard", "Central Yard", "South Yard"][
+          selectedVehicleIdNumber % 3
+        ],
+        serviceStage: selectedVehicle.serviceStage || "-",
+        serviceDate: selectedVehicle.date || "-",
+        nextServiceDue: ["Mar 6, 2026", "Mar 14, 2026", "Mar 22, 2026"][
+          selectedVehicleIdNumber % 3
+        ],
+        serviceCenter: [
+          "Metro Service Hub",
+          "Northern Fleet Works",
+          "Westline Tire Care",
+        ][selectedVehicleIdNumber % 3],
+        invoiceId: `INV-${2040 + (selectedVehicleIdNumber % 40)}`,
+        estimatedCost: `$${(1800 + (selectedVehicleIdNumber % 9) * 420).toLocaleString()}`,
+        issues: [
+          "Oil + filter change",
+          "Brake inspection",
+          "Tire rotation",
+          "Coolant top-up",
+        ].slice(0, 2 + (selectedVehicleIdNumber % 2)),
+        inspectionDue: ["Apr 15, 2026", "May 2, 2026", "May 18, 2026"][
+          selectedVehicleIdNumber % 3
+        ],
+        registrationExpiry: ["Jun 30, 2026", "Jul 15, 2026", "Aug 1, 2026"][
+          selectedVehicleIdNumber % 3
+        ],
+        insuranceExpiry: ["Sep 10, 2026", "Oct 1, 2026", "Oct 20, 2026"][
+          selectedVehicleIdNumber % 3
+        ],
+        notes:
+          selectedVehicleFromStore?.notes ||
+          "No additional notes. Vehicle is assigned to a standard regional route and follows the regular maintenance cycle.",
+        createdAt: selectedVehicleFromStore?.createdAt || null,
+      }
+    : null;
+
   return (
     <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)]">
       <div className="flex h-full w-full">
@@ -298,6 +387,291 @@ function Dashboard() {
         </aside>
 
         <section className="ml-72 flex-1 space-y-6 overflow-y-auto p-8">
+          <Dialog
+            open={vehicleDetailsOpen}
+            onOpenChange={handleVehicleDetailsOpenChange}
+          >
+            <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle>{selectedVehicleModel}</DialogTitle>
+                <DialogDescription>
+                  {selectedVehicle?.id ? `Vehicle ID: ${selectedVehicle.id}` : ""}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid flex-1 gap-4 overflow-y-auto pr-1 text-sm">
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Overview
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {selectedVehicleModel}
+                      </p>
+                    </div>
+                    {vehicleDetails?.serviceStage && vehicleDetails.serviceStage !== "-" ? (
+                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+                        {vehicleDetails.serviceStage}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Vehicle ID
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.id || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Service date
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.serviceDate || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Plate
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.plate || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Type
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.type || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Status
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.status || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Added
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.createdAt
+                          ? new Date(
+                              vehicleDetails.createdAt
+                            ).toLocaleString()
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Assignment
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Driver
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.driver || "—"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {vehicleDetails?.driverId || ""}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Depot
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.depot || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Route
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.route || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Last known location
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.lastKnownLocation || "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Specs
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">VIN</p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.vin || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Year / color
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails
+                          ? `${vehicleDetails.year} • ${vehicleDetails.color}`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Odometer
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.odometer || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Engine hours
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.engineHours || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Fuel level
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.fuelLevel || "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Service & costs
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Service center
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.serviceCenter || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Invoice
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.invoiceId || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Estimated cost
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.estimatedCost || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Next service due
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.nextServiceDue || "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold text-slate-500">
+                      Work items
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(vehicleDetails?.issues || []).map((issue) => (
+                        <span
+                          key={issue}
+                          className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700"
+                        >
+                          {issue}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Compliance
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Inspection due
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.inspectionDue || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Registration expiry
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.registrationExpiry || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Insurance expiry
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {vehicleDetails?.insuranceExpiry || "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Notes
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                    {vehicleDetails?.notes || "—"}
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">
+                    Close
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <header className="flex flex-col gap-4 rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-lg">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -705,9 +1079,11 @@ function Dashboard() {
                 </div>
                 <div className="mt-4 space-y-3">
                   {servicedVehicles.map((vehicle) => (
-                    <div
+                    <button
                       key={vehicle.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm"
+                      className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-left text-sm transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+                      onClick={handleVehicleCardClick(vehicle, "Serviced")}
+                      type="button"
                     >
                       <div>
                         <p className="font-semibold text-slate-900">
@@ -718,7 +1094,7 @@ function Dashboard() {
                       <p className="font-semibold text-slate-700">
                         {vehicle.date}
                       </p>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -734,9 +1110,11 @@ function Dashboard() {
                 </div>
                 <div className="mt-4 space-y-3">
                   {pendingVehicles.map((vehicle) => (
-                    <div
+                    <button
                       key={vehicle.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-100/80 bg-amber-50 px-4 py-3 text-sm"
+                      className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-100/80 bg-amber-50 px-4 py-3 text-left text-sm transition hover:bg-amber-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2"
+                      onClick={handleVehicleCardClick(vehicle, "Pending service")}
+                      type="button"
                     >
                       <div>
                         <p className="font-semibold text-slate-900">
@@ -747,7 +1125,7 @@ function Dashboard() {
                       <p className="font-semibold text-slate-700">
                         {vehicle.date}
                       </p>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
