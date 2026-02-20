@@ -13,11 +13,9 @@ import {
 import {
   Bell,
   FileUp,
-  FolderPlus,
   HelpCircle,
   LayoutGrid,
   LogOut,
-  Mail,
   Plus,
   Search,
   Settings,
@@ -27,6 +25,7 @@ import {
 } from "lucide-react";
 import { clearSession, getSession } from "../auth/session";
 import Logo from "../icons/Logo";
+import VehicleManagement from "../components/VehicleManagement";
 import { Button } from "../components/ui/button";
 import {
   Dialog,
@@ -56,7 +55,9 @@ import {
 import {
   addDriver,
   getDriverState,
+  removeDriver,
   subscribeDrivers,
+  updateDriver,
 } from "../data/driverStore";
 
 function Dashboard() {
@@ -87,6 +88,8 @@ function Dashboard() {
     notes: "",
   });
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState("dashboard");
+  const [driverSearchQuery, setDriverSearchQuery] = useState("");
   const [driverForm, setDriverForm] = useState({
     id: "",
     name: "",
@@ -155,6 +158,41 @@ function Dashboard() {
     { day: "Sun", rate: 71 },
   ];
 
+  const assignmentVehicles =
+    vehicleState.vehicles.length > 0
+      ? vehicleState.vehicles.map((vehicle) => ({
+          id: vehicle.id,
+          model: vehicle.model,
+        }))
+      : [...servicedVehicles, ...pendingVehicles].map((vehicle) => ({
+          id: vehicle.id,
+          model: vehicle.model,
+        }));
+
+  const filteredDrivers = driverState.drivers.filter((driver) => {
+    if (!driverSearchQuery.trim()) {
+      return true;
+    }
+    const assignedVehicle = assignmentVehicles.find(
+      (vehicle) => vehicle.id === driver.assignedVehicleId
+    );
+    const searchBlob = [
+      driver.id,
+      driver.name,
+      driver.email,
+      driver.phone,
+      driver.license,
+      driver.status,
+      driver.activityStatus,
+      assignedVehicle?.id || "",
+      assignedVehicle?.model || "",
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return searchBlob.includes(driverSearchQuery.trim().toLowerCase());
+  });
+
   const handleSignOut = () => {
     clearSession();
     navigate("/signin", { replace: true });
@@ -205,6 +243,53 @@ function Dashboard() {
       notes: "",
     });
     setDriverDialogOpen(false);
+  };
+
+  const handleDriverAssignmentChange = (driverId) => (vehicleId) => {
+    updateDriver(driverId, {
+      assignedVehicleId: vehicleId === "unassigned" ? "" : vehicleId,
+    });
+  };
+
+  const handleDriverActivityChange = (driverId) => (activityStatus) => {
+    updateDriver(driverId, {
+      activityStatus,
+      status: activityStatus,
+    });
+  };
+
+  const handleDriverAccessChange = (driverId) => (accessLevel) => {
+    updateDriver(driverId, { accessLevel });
+  };
+
+  const handleRemoveDriver = (driverId) => () => {
+    removeDriver(driverId);
+  };
+
+  const getActivityClassName = (activityStatus) => {
+    if (activityStatus === "Driving") {
+      return "bg-emerald-100 text-emerald-700";
+    }
+    if (activityStatus === "Idle") {
+      return "bg-amber-100 text-amber-700";
+    }
+    if (activityStatus === "On leave") {
+      return "bg-slate-200 text-slate-700";
+    }
+    if (activityStatus === "Inactive") {
+      return "bg-rose-100 text-rose-700";
+    }
+    return "bg-sky-100 text-sky-700";
+  };
+
+  const getComplianceClassName = (score) => {
+    if (score >= 90) {
+      return "bg-emerald-100 text-emerald-700";
+    }
+    if (score >= 75) {
+      return "bg-amber-100 text-amber-700";
+    }
+    return "bg-rose-100 text-rose-700";
   };
 
   const handleVehicleDetailsOpenChange = (open) => {
@@ -310,28 +395,58 @@ function Dashboard() {
                 </p>
                 <nav className="space-y-2 text-sm">
                   <button
-                    className="flex w-full items-center gap-3 rounded-2xl bg-white/10 px-3 py-2 text-left font-semibold text-white"
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "dashboard"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("dashboard")}
                     type="button"
                   >
                     <LayoutGrid size={18} />
                     Dashboard
                   </button>
                   <button
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white"
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "vehicles"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("vehicles")}
                     type="button"
                   >
                     <Van size={18} />
                     Vehicles
                   </button>
                   <button
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white"
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "drivers"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("drivers")}
                     type="button"
                   >
                     <User size={18} />
                     Drivers
                   </button>
+
+                  <button
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "vehicle_policy"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("vehicle_policy")}
+                    type="button"
+                  >
+                    <User size={18} />
+                    Vehicle Policy
+                  </button>
+
                   <button
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white"
+                    onClick={() => setActiveMenu("dashboard")}
                     type="button"
                   >
                     <Users size={18} />
@@ -912,7 +1027,228 @@ function Dashboard() {
             </div>
           </header>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {activeMenu === "vehicles" ? (
+            <VehicleManagement vehicles={vehicleState.vehicles} />
+          ) : null}
+
+          {activeMenu === "drivers" ? (
+            <section className="space-y-6">
+              <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900">
+                      Driver list & search
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Assign/unassign vehicles, track activity, review service history,
+                      monitor compliance score, and manage access control.
+                    </p>
+                  </div>
+                  <div className="relative w-full lg:w-96">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      size={16}
+                    />
+                    <Input
+                      className="pl-9"
+                      value={driverSearchQuery}
+                      onChange={(event) => setDriverSearchQuery(event.target.value)}
+                      placeholder="Search by driver, ID, email, license, or vehicle"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  {filteredDrivers.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+                      No drivers found. Add a driver or adjust search filters.
+                    </div>
+                  ) : (
+                    filteredDrivers.map((driver) => {
+                      const activityStatus =
+                        driver.activityStatus || driver.status || "Active";
+                      const complianceScore =
+                        Number(driver.complianceScore) || 0;
+                      const assignedVehicle = assignmentVehicles.find(
+                        (vehicle) => vehicle.id === driver.assignedVehicleId
+                      );
+                      const history = Array.isArray(driver.serviceHistory)
+                        ? driver.serviceHistory.slice(0, 3)
+                        : [];
+                      const complianceBarClassName =
+                        complianceScore >= 90
+                          ? "bg-emerald-500"
+                          : complianceScore >= 75
+                          ? "bg-amber-500"
+                          : "bg-rose-500";
+
+                      return (
+                        <article
+                          key={driver.id}
+                          className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-slate-900">
+                                {driver.name}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {driver.id} - {driver.email}
+                              </p>
+                            </div>
+                            <Button
+                              onClick={handleRemoveDriver(driver.id)}
+                              type="button"
+                              variant="destructive"
+                            >
+                              Remove driver
+                            </Button>
+                          </div>
+
+                          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                            <div className="grid gap-2">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Assign/unassign vehicle
+                              </p>
+                              <Select
+                                value={driver.assignedVehicleId || "unassigned"}
+                                onValueChange={handleDriverAssignmentChange(
+                                  driver.id
+                                )}
+                              >
+                                <SelectTrigger className="w-full bg-white">
+                                  <SelectValue placeholder="Select vehicle" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unassigned">
+                                    Unassigned
+                                  </SelectItem>
+                                  {assignmentVehicles.map((vehicle) => (
+                                    <SelectItem key={vehicle.id} value={vehicle.id}>
+                                      {vehicle.id} - {vehicle.model}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-slate-500">
+                                {assignedVehicle
+                                  ? `Current: ${assignedVehicle.id}`
+                                  : "Current: Unassigned"}
+                              </p>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Driver activity status
+                              </p>
+                              <Select
+                                value={activityStatus}
+                                onValueChange={handleDriverActivityChange(driver.id)}
+                              >
+                                <SelectTrigger className="w-full bg-white">
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Active">Active</SelectItem>
+                                  <SelectItem value="Driving">Driving</SelectItem>
+                                  <SelectItem value="Idle">Idle</SelectItem>
+                                  <SelectItem value="On leave">On leave</SelectItem>
+                                  <SelectItem value="Inactive">Inactive</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <span
+                                className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${getActivityClassName(
+                                  activityStatus
+                                )}`}
+                              >
+                                {activityStatus}
+                              </span>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Driver compliance score
+                              </p>
+                              <span
+                                className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${getComplianceClassName(
+                                  complianceScore
+                                )}`}
+                              >
+                                {complianceScore}%
+                              </span>
+                              <div className="h-2 rounded-full bg-slate-200">
+                                <div
+                                  className={`h-full rounded-full ${complianceBarClassName}`}
+                                  style={{
+                                    width: `${Math.max(
+                                      0,
+                                      Math.min(100, complianceScore)
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Driver access control
+                              </p>
+                              <Select
+                                value={driver.accessLevel || "Standard"}
+                                onValueChange={handleDriverAccessChange(driver.id)}
+                              >
+                                <SelectTrigger className="w-full bg-white">
+                                  <SelectValue placeholder="Select access level" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Full">Full</SelectItem>
+                                  <SelectItem value="Standard">Standard</SelectItem>
+                                  <SelectItem value="Read only">Read only</SelectItem>
+                                  <SelectItem value="Suspended">Suspended</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Driver service history
+                            </p>
+                            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                              {history.length > 0 ? (
+                                history.map((entry, index) => (
+                                  <div
+                                    key={`${driver.id}-${entry.date}-${index}`}
+                                    className="rounded-xl border border-slate-200/70 bg-white p-3 text-xs text-slate-600"
+                                  >
+                                    <p className="font-semibold text-slate-800">
+                                      {entry.event}
+                                    </p>
+                                    <p className="mt-1">
+                                      {entry.date}
+                                      {entry.vehicleId ? ` - ${entry.vehicleId}` : ""}
+                                    </p>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-xs text-slate-500">
+                                  No service history available.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {activeMenu === "dashboard" ? (
+            <>
+              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {[
               {
                 title: "Total vehicles",
@@ -1221,7 +1557,9 @@ function Dashboard() {
                 </button>
               </div>
             </div>
-          </section>
+              </section>
+            </>
+          ) : null}
         </section>
       </div>
     </main>

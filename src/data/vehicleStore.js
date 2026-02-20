@@ -28,9 +28,121 @@ const writeStorage = (value) => {
 const createVehicleId = () =>
   `VH-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
 
+const clampNumber = (value, min, max, fallback) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.max(min, Math.min(max, Math.round(parsed)));
+};
+
+const defaultTyreSpec = (vehicleId) => {
+  const numericId = Number(String(vehicleId || "").replace(/\D/g, "")) || 0;
+  return {
+    brand: ["Goodyear", "Michelin", "Bridgestone", "Continental"][
+      numericId % 4
+    ],
+    size: ["295/75R22.5", "11R22.5", "275/80R22.5", "255/70R22.5"][
+      numericId % 4
+    ],
+    frontPsi: 100 + (numericId % 8),
+    rearPsi: 95 + (numericId % 8),
+  };
+};
+
+const defaultServiceHistory = (vehicleId) => {
+  const numericId = Number(String(vehicleId || "").replace(/\D/g, "")) || 0;
+  return [
+    {
+      date: "2026-02-08",
+      event: "Oil and filter change",
+      cost: `$${(480 + (numericId % 9) * 35).toLocaleString()}`,
+    },
+    {
+      date: "2026-01-25",
+      event: "Tyre pressure calibration",
+      cost: `$${(220 + (numericId % 7) * 22).toLocaleString()}`,
+    },
+  ];
+};
+
+const toIsoDate = (value) => {
+  const raw = value?.trim?.() || "";
+  if (!raw) {
+    return "";
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  return parsed.toISOString().slice(0, 10);
+};
+
+const getWarrantyStatus = (expiryDate) => {
+  const normalizedDate = toIsoDate(expiryDate);
+  if (!normalizedDate) {
+    return "Unknown";
+  }
+  const now = new Date();
+  const expiry = new Date(`${normalizedDate}T23:59:59`);
+  const msDiff = expiry.getTime() - now.getTime();
+  const dayDiff = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
+
+  if (dayDiff < 0) {
+    return "Expired";
+  }
+  if (dayDiff <= 60) {
+    return "Expiring soon";
+  }
+  return "Active";
+};
+
+const normalizeServiceEntry = (entry) => ({
+  date: toIsoDate(entry?.date) || new Date().toISOString().slice(0, 10),
+  event: entry?.event?.trim() || "Service update",
+  cost: entry?.cost?.trim() || "N/A",
+});
+
+const normalizeVehicle = (vehicle = {}) => {
+  const id = vehicle.id?.trim() || createVehicleId();
+  const status = vehicle.status?.trim() || "Active";
+  const normalizedWarrantyDate = toIsoDate(vehicle.warrantyExpiryDate);
+  const tyreSpecs = {
+    ...defaultTyreSpec(id),
+    ...(vehicle.tyreSpecs || {}),
+  };
+  const history = Array.isArray(vehicle.serviceHistory)
+    ? vehicle.serviceHistory.map(normalizeServiceEntry)
+    : defaultServiceHistory(id);
+
+  return {
+    id,
+    model: vehicle.model?.trim() || "Unknown model",
+    plate: vehicle.plate?.trim() || "N/A",
+    type: vehicle.type?.trim() || "Truck",
+    status,
+    notes: vehicle.notes?.trim() || "",
+    tyreSpecs: {
+      brand: tyreSpecs.brand?.trim() || "N/A",
+      size: tyreSpecs.size?.trim() || "N/A",
+      frontPsi: clampNumber(tyreSpecs.frontPsi, 60, 140, 100),
+      rearPsi: clampNumber(tyreSpecs.rearPsi, 60, 140, 95),
+    },
+    serviceHistory: history.slice(0, 10),
+    warrantyProvider: vehicle.warrantyProvider?.trim() || "OEM",
+    warrantyExpiryDate: normalizedWarrantyDate || "",
+    warrantyStatus:
+      vehicle.warrantyStatus?.trim() ||
+      getWarrantyStatus(normalizedWarrantyDate || ""),
+    replacementVehicleId: vehicle.replacementVehicleId?.trim() || "",
+    replacementNotes: vehicle.replacementNotes?.trim() || "",
+    createdAt: vehicle.createdAt || new Date().toISOString(),
+  };
+};
+
 let state = {
   baseVehicleCount: BASE_VEHICLE_COUNT,
-  vehicles: readStorage(),
+  vehicles: readStorage().map(normalizeVehicle),
 };
 
 const listeners = new Set();
@@ -42,24 +154,7 @@ const emit = () => {
 export const getVehicleState = () => state;
 
 export const addVehicle = (vehicle) => {
-  const trimmed = {
-    id: vehicle.id?.trim(),
-    model: vehicle.model?.trim(),
-    plate: vehicle.plate?.trim(),
-    type: vehicle.type?.trim(),
-    status: vehicle.status?.trim() || "Active",
-    notes: vehicle.notes?.trim(),
-  };
-
-  const nextVehicle = {
-    id: trimmed.id || createVehicleId(),
-    model: trimmed.model || "Unknown model",
-    plate: trimmed.plate || "N/A",
-    type: trimmed.type || "Truck",
-    status: trimmed.status,
-    notes: trimmed.notes || "",
-    createdAt: new Date().toISOString(),
-  };
+  const nextVehicle = normalizeVehicle(vehicle);
 
   const nextVehicles = [...state.vehicles, nextVehicle];
   state = {
@@ -69,6 +164,82 @@ export const addVehicle = (vehicle) => {
   writeStorage(nextVehicles);
   emit();
   return nextVehicle;
+};
+
+export const updateVehicle = (vehicleId, updates = {}) => {
+  const targetId = vehicleId?.trim();
+  if (!targetId) {
+    return null;
+  }
+
+  let updatedVehicle = null;
+  const nextVehicles = state.vehicles.map((vehicle) => {
+    if (vehicle.id !== targetId) {
+      return vehicle;
+    }
+    updatedVehicle = normalizeVehicle({
+      ...vehicle,
+      ...updates,
+      id: vehicle.id,
+      createdAt: vehicle.createdAt,
+    });
+    return updatedVehicle;
+  });
+
+  if (!updatedVehicle) {
+    return null;
+  }
+
+  state = {
+    ...state,
+    vehicles: nextVehicles,
+  };
+  writeStorage(nextVehicles);
+  emit();
+  return updatedVehicle;
+};
+
+export const upsertVehicles = (vehicles = []) => {
+  const incoming = Array.isArray(vehicles) ? vehicles : [vehicles];
+  if (incoming.length === 0) {
+    return { inserted: 0, updated: 0, total: state.vehicles.length };
+  }
+
+  const map = new Map(state.vehicles.map((vehicle) => [vehicle.id, vehicle]));
+  let inserted = 0;
+  let updated = 0;
+
+  incoming.forEach((item) => {
+    const incomingId = item?.id?.trim();
+    const existing = incomingId ? map.get(incomingId) : null;
+    const normalized = normalizeVehicle({
+      ...(existing || {}),
+      ...item,
+      id: incomingId || existing?.id,
+      createdAt: existing?.createdAt || item?.createdAt,
+    });
+
+    if (existing) {
+      updated += 1;
+    } else {
+      inserted += 1;
+    }
+    map.set(normalized.id, normalized);
+  });
+
+  const nextVehicles = Array.from(map.values());
+  state = {
+    ...state,
+    vehicles: nextVehicles,
+  };
+  writeStorage(nextVehicles);
+  emit();
+
+  return {
+    inserted,
+    updated,
+    total: nextVehicles.length,
+  };
 };
 
 export const subscribeVehicles = (listener) => {
