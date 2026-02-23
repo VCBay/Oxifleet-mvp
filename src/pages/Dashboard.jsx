@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import {
   Bell,
+  CircleDollarSign,
   FileUp,
   HelpCircle,
   LayoutGrid,
@@ -26,6 +27,13 @@ import {
 import { clearSession, getSession } from "../auth/session";
 import Logo from "../icons/Logo";
 import VehicleManagement from "../components/VehicleManagement";
+import VehiclePolicyManagement from "../components/VehiclePolicyManagement";
+import ServiceOrderControl from "../components/ServiceOrderControl";
+import BillingFinanceControl from "../components/BillingFinanceControl";
+import ReportingAnalyticsControl from "../components/ReportingAnalyticsControl";
+import CommunicationControl from "../components/CommunicationControl";
+import TeamAccessControl from "../components/TeamAccessControl";
+import SettingsProfileControl from "../components/SettingsProfileControl";
 import { Button } from "../components/ui/button";
 import {
   Dialog,
@@ -445,13 +453,82 @@ function Dashboard() {
                   </button>
 
                   <button
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white"
-                    onClick={() => setActiveMenu("dashboard")}
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "service_order_control"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("service_order_control")}
+                    type="button"
+                  >
+                    <FileUp size={18} />
+                    Service &amp; Order Control
+                  </button>
+
+                  <button
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "billing_finance"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("billing_finance")}
+                    type="button"
+                  >
+                    <CircleDollarSign size={18} />
+                    Billing &amp; Finance
+                  </button>
+
+                  <button
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "reporting_analytics"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("reporting_analytics")}
+                    type="button"
+                  >
+                    <Search size={18} />
+                    Reporting &amp; Analytics
+                  </button>
+
+                  <button
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "communication"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("communication")}
+                    type="button"
+                  >
+                    <Bell size={18} />
+                    Communication
+                  </button>
+
+                  {/* <button
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "team_access_control"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("team_access_control")}
                     type="button"
                   >
                     <Users size={18} />
-                    Team
+                    Team &amp; Access Control
                   </button>
+
+                  <button
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "settings_profile"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("settings_profile")}
+                    type="button"
+                  >
+                    <Settings size={18} />
+                    Settings &amp; Profile
+                  </button> */}
                 </nav>
               </div>
 
@@ -1030,6 +1107,28 @@ function Dashboard() {
           {activeMenu === "vehicles" ? (
             <VehicleManagement vehicles={vehicleState.vehicles} />
           ) : null}
+
+          {activeMenu === "vehicle_policy" ? (
+            <VehiclePolicyManagement vehicles={vehicleState.vehicles} />
+          ) : null}
+
+          {activeMenu === "service_order_control" ? (
+            <ServiceOrderControl />
+          ) : null}
+
+          {activeMenu === "billing_finance" ? (
+            <BillingFinanceControl />
+          ) : null}
+
+          {activeMenu === "reporting_analytics" ? (
+            <ReportingAnalyticsControl />
+          ) : null}
+
+          {activeMenu === "communication" ? <CommunicationControl /> : null}
+
+          {activeMenu === "team_access_control" ? <TeamAccessControl /> : null}
+
+          {activeMenu === "settings_profile" ? <SettingsProfileControl /> : null}
 
           {activeMenu === "drivers" ? (
             <section className="space-y-6">

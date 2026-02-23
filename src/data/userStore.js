@@ -11,6 +11,12 @@ const users = [
     email: "asfak@vcbay.co",
     password: "1234567890",
   },
+   {
+    id: "8aaa",
+    name: "Manoj Patil",
+    email: "manoj@vcbay.co",
+    password: "1234567890",
+  },
 ];
 
 const normalizeEmail = (email) => email?.toLowerCase();
