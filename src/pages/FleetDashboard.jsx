@@ -20,6 +20,7 @@ import {
   Plus,
   Search,
   Settings,
+  Truck,
   User,
   Users,
   Van,
@@ -391,8 +392,8 @@ function Dashboard() {
     <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)]">
       <div className="flex h-full w-full">
         <aside className="fixed inset-y-0 left-0 w-72">
-          <div className="flex h-full flex-col justify-between bg-[#0D0F16] p-6 text-white shadow-xl">
-            <div className="space-y-10">
+          <div className="flex h-full flex-col bg-[#0D0F16] p-6 text-white shadow-xl">
+            <div className="sidebar-scrollbar min-h-0 flex-1 space-y-10 overflow-y-auto pr-1">
               <div className="flex items-center gap-3">
                 <Logo className="w-48 text-white" />
               </div>
@@ -537,13 +538,48 @@ function Dashboard() {
                   General
                 </p>
                 <nav className="space-y-2 text-sm">
+                  {/* <button
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white"
+                    onClick={() => navigate("/driver-dashboard")}
+                    type="button"
+                  >
+                    <Truck size={18} />
+                    Driver Dashboard
+                  </button> */}
+
+                <button
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "team_access_control"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("team_access_control")}
+                    type="button"
+                  >
+                    <Users size={18} />
+                    Team &amp; Access Control
+                  </button>
+
                   <button
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                      activeMenu === "settings_profile"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setActiveMenu("settings_profile")}
+                    type="button"
+                  >
+                    <Settings size={18} />
+                    Settings &amp; Profile
+                  </button>
+
+                  {/* <button
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white"
                     type="button"
                   >
                     <Settings size={18} />
                     Settings
-                  </button>
+                  </button> */}
                   <button
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white"
                     type="button"
@@ -563,7 +599,7 @@ function Dashboard() {
               </div>
             </div>
 
-            <div className="mt-10 rounded-2xl bg-[radial-gradient(circle_at_top,#1f2937_0%,#0b0d12_60%)] p-4 text-sm">
+            <div className="mt-6 shrink-0 rounded-2xl bg-[radial-gradient(circle_at_top,#1f2937_0%,#0b0d12_60%)] p-4 text-sm">
               <p className="font-semibold">Mobile Ops</p>
               <p className="mt-2 text-white/60">
                 Monitor vehicles and alerts on the go.

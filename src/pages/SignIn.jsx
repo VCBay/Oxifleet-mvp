@@ -4,7 +4,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { ArrowRight } from "lucide-react";
 import { findUserByCredentials } from "../data/userStore";
-import { setSession } from "../auth/session";
+import { getDefaultRouteForSession, setSession } from "../auth/session";
 import { useState } from "react";
 
 const inputClasses =
@@ -33,8 +33,6 @@ function SignIn() {
     try {
       const user = findUserByCredentials(email, password);
 
-      console.log("Found user:", user);
-
       if (!user) {
         setError("Invalid email or password.");
         setIsSubmitting(false);
@@ -43,7 +41,7 @@ function SignIn() {
 
       const { password: _password, ...safeUser } = user;
       setSession(safeUser);
-      navigate("/dashboard", { replace: true });
+      navigate(getDefaultRouteForSession(safeUser), { replace: true });
     } catch (err) {
       console.error("Sign in failed:", err);
       setError("Unable to sign in right now. Please try again.");

@@ -52,3 +52,19 @@ export const subscribeSession = (listener) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
+
+export const isDriverSession = (value) =>
+  String(value?.role || "").toLowerCase() === "driver";
+
+export const isPosSession = (value) =>
+  String(value?.role || "").toLowerCase() === "pos";
+
+export const getDefaultRouteForSession = (value) => {
+  if (isDriverSession(value)) {
+    return "/driver-dashboard";
+  }
+  if (isPosSession(value)) {
+    return "/pos-dashboard";
+  }
+  return "/dashboard";
+};

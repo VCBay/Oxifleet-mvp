@@ -343,6 +343,35 @@ export const setOrderLifecycleStage = (orderId, { stage, actor, note }) =>
     updatedAt: new Date().toISOString(),
   }));
 
+export const createServiceRequest = (request = {}) => {
+  const nextOrder = normalizeOrder({
+    ...request,
+    id: request.id || createOrderId(),
+    status: request.status || "Pending approval",
+    requestedAt: request.requestedAt || new Date().toISOString(),
+    lifecycle: [
+      {
+        stage: "Requested",
+        time: request.requestedAt || new Date().toISOString(),
+        actor: request.requestedBy || "Driver",
+        note:
+          request.orderDetails?.description ||
+          request.requestTitle ||
+          "Service request created from driver portal.",
+      },
+    ],
+    updatedAt: new Date().toISOString(),
+  });
+
+  state = {
+    ...state,
+    orders: [nextOrder, ...state.orders],
+  };
+  writeStorage(state.orders);
+  emit();
+  return nextOrder;
+};
+
 export const subscribeServiceOrders = (listener) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
