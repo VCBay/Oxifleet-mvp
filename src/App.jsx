@@ -7,6 +7,11 @@ import DriverDashboard from "./pages/DriverDashboard";
 import POSDashboard from "./pages/POSDashboard";
 import POSDashboardOverviewPage from "./pages/POSDashboardOverviewPage";
 import POSOrderManagementPage from "./pages/POSOrderManagementPage";
+import POSValidationPage from "./pages/POSValidationPage";
+import POSApprovalWorkflowPage from "./pages/POSApprovalWorkflowPage";
+import POSBillingSettlementPage from "./pages/POSBillingSettlementPage";
+import POSInventoryAvailabilityPage from "./pages/POSInventoryAvailabilityPage";
+import POSAnalyticsReportsPage from "./pages/POSAnalyticsReportsPage";
 import {
   getDefaultRouteForSession,
   getSession,
@@ -70,6 +75,11 @@ function App() {
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<POSDashboardOverviewPage />} />
           <Route path="order-management" element={<POSOrderManagementPage />} />
+          <Route path="validation" element={<POSValidationPage />} />
+          <Route path="approval-workflow" element={<POSApprovalWorkflowPage />} />
+          <Route path="billing-settlement" element={<POSBillingSettlementPage />} />
+          <Route path="inventory-availability" element={<POSInventoryAvailabilityPage />} />
+          <Route path="analytics-reports" element={<POSAnalyticsReportsPage />} />
         </Route>
       </Routes>
       <Toaster position="top-right" richColors />

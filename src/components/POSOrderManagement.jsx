@@ -260,11 +260,11 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">Create service order</h3>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-2">
+              <div className="grid min-w-0 gap-2">
                 <Label>Vehicle</Label>
                 <Select onValueChange={handleVehicleChange} value={orderForm.vehicleId || "__none__"}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select vehicle" />
+                  <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden">
+                    <SelectValue className="block truncate" placeholder="Select vehicle" />
                   </SelectTrigger>
                   <SelectContent>
                     {vehicles.length === 0 ? (

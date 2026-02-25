@@ -1,0 +1,430 @@
+import { useMemo, useState } from "react";
+import { Boxes, CheckCircle2, CircleAlert, Link2Off } from "lucide-react";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+
+const tyreInventory = [
+  {
+    id: "TY-001",
+    size: "295/75R22.5",
+    brand: "Goodyear",
+    category: "Highway",
+    manufacturer: "Goodyear",
+    onHand: 20,
+    reserved: 8,
+    etaDays: 4,
+    unitPrice: 420,
+  },
+  {
+    id: "TY-002",
+    size: "295/75R22.5",
+    brand: "Michelin",
+    category: "All-season",
+    manufacturer: "Michelin",
+    onHand: 14,
+    reserved: 6,
+    etaDays: 5,
+    unitPrice: 438,
+  },
+  {
+    id: "TY-003",
+    size: "295/75R22.5",
+    brand: "Bridgestone",
+    category: "All-season",
+    manufacturer: "Bridgestone",
+    onHand: 10,
+    reserved: 9,
+    etaDays: 6,
+    unitPrice: 410,
+  },
+  {
+    id: "TY-004",
+    size: "11R22.5",
+    brand: "Michelin",
+    category: "Winter",
+    manufacturer: "Michelin",
+    onHand: 12,
+    reserved: 4,
+    etaDays: 3,
+    unitPrice: 452,
+  },
+  {
+    id: "TY-005",
+    size: "11R22.5",
+    brand: "Goodyear",
+    category: "All-season",
+    manufacturer: "Goodyear",
+    onHand: 7,
+    reserved: 3,
+    etaDays: 5,
+    unitPrice: 430,
+  },
+  {
+    id: "TY-006",
+    size: "275/80R22.5",
+    brand: "Bridgestone",
+    category: "Highway",
+    manufacturer: "Bridgestone",
+    onHand: 16,
+    reserved: 7,
+    etaDays: 4,
+    unitPrice: 408,
+  },
+  {
+    id: "TY-007",
+    size: "275/80R22.5",
+    brand: "Pirelli",
+    category: "All-season",
+    manufacturer: "Pirelli",
+    onHand: 6,
+    reserved: 2,
+    etaDays: 7,
+    unitPrice: 396,
+  },
+  {
+    id: "TY-008",
+    size: "315/80R22.5",
+    brand: "Continental",
+    category: "Highway",
+    manufacturer: "Continental",
+    onHand: 5,
+    reserved: 4,
+    etaDays: 8,
+    unitPrice: 468,
+  },
+];
+
+const manufacturerIntegrationStatus = [
+  {
+    manufacturer: "Michelin",
+    status: "Connected",
+    lastSync: "2026-02-24T07:24:00Z",
+    syncHealth: "Realtime pricing and stock sync",
+    responseMs: 220,
+  },
+  {
+    manufacturer: "Goodyear",
+    status: "Connected",
+    lastSync: "2026-02-24T07:19:00Z",
+    syncHealth: "Realtime availability sync",
+    responseMs: 260,
+  },
+  {
+    manufacturer: "Bridgestone",
+    status: "Degraded",
+    lastSync: "2026-02-24T05:54:00Z",
+    syncHealth: "Partial SKU sync (batch mode)",
+    responseMs: 810,
+  },
+  {
+    manufacturer: "Pirelli",
+    status: "Offline",
+    lastSync: "2026-02-23T18:12:00Z",
+    syncHealth: "Fallback to cached catalog",
+    responseMs: 0,
+  },
+  {
+    manufacturer: "Continental",
+    status: "Connected",
+    lastSync: "2026-02-24T06:57:00Z",
+    syncHealth: "Realtime sync with occasional delay",
+    responseMs: 430,
+  },
+];
+
+const normalize = (value) => String(value || "").trim().toLowerCase();
+
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
+const toNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const integrationBadgeClass = (status) => {
+  if (status === "Connected") {
+    return "bg-emerald-100 text-emerald-700";
+  }
+  if (status === "Degraded") {
+    return "bg-amber-100 text-amber-700";
+  }
+  return "bg-rose-100 text-rose-700";
+};
+
+function POSInventoryAvailabilityControl({
+  vehicles = [],
+  selectedVehicle = null,
+  primaryPolicy = null,
+}) {
+  const [vehicleId, setVehicleId] = useState(
+    () => selectedVehicle?.id || vehicles[0]?.id || ""
+  );
+  const [requestedQty, setRequestedQty] = useState("4");
+  const [category, setCategory] = useState("all");
+  const [preferredBrand, setPreferredBrand] = useState(
+    () => selectedVehicle?.tyreSpecs?.brand || ""
+  );
+
+  const selected = useMemo(
+    () => vehicles.find((vehicle) => vehicle.id === vehicleId) || selectedVehicle || null,
+    [selectedVehicle, vehicleId, vehicles]
+  );
+
+  const tyreSize = selected?.tyreSpecs?.size || "";
+  const requiredQty = Math.max(1, toNumber(requestedQty) || 1);
+
+  const availableBySize = useMemo(
+    () =>
+      tyreInventory
+        .filter((item) => normalize(item.size) === normalize(tyreSize))
+        .filter((item) => category === "all" || normalize(item.category) === normalize(category))
+        .map((item) => ({
+          ...item,
+          available: Math.max(0, item.onHand - item.reserved),
+        }))
+        .sort((a, b) => b.available - a.available),
+    [category, tyreSize]
+  );
+
+  const preferredStock = useMemo(
+    () =>
+      availableBySize.find(
+        (item) => normalize(item.brand) === normalize(preferredBrand || selected?.tyreSpecs?.brand)
+      ) || null,
+    [availableBySize, preferredBrand, selected?.tyreSpecs?.brand]
+  );
+
+  const availabilityResult = useMemo(() => {
+    if (!tyreSize) {
+      return {
+        status: "No vehicle selected",
+        message: "Select a vehicle to check tyre availability.",
+        canFulfill: false,
+      };
+    }
+    if (preferredStock && preferredStock.available >= requiredQty) {
+      return {
+        status: "Available",
+        message: `${preferredStock.brand} can fulfill ${requiredQty} tyre(s) immediately.`,
+        canFulfill: true,
+      };
+    }
+    const totalAvailable = availableBySize.reduce((sum, item) => sum + item.available, 0);
+    if (totalAvailable >= requiredQty) {
+      return {
+        status: "Partially available",
+        message:
+          "Preferred brand is low. Required quantity can be fulfilled using alternative brands.",
+        canFulfill: true,
+      };
+    }
+    return {
+      status: "Insufficient stock",
+      message: "Current stock cannot fulfill required quantity. Check ETA and alternatives.",
+      canFulfill: false,
+    };
+  }, [availableBySize, preferredStock, requiredQty, tyreSize]);
+
+  const alternativeTyres = useMemo(
+    () => {
+      const allowedBrands = Array.isArray(primaryPolicy?.allowedTyreBrands)
+        ? primaryPolicy.allowedTyreBrands
+        : [];
+      return (
+      availableBySize
+        .filter((item) => normalize(item.brand) !== normalize(preferredBrand))
+        .map((item) => ({
+          ...item,
+          policyAligned:
+            allowedBrands.length === 0 ||
+            allowedBrands.some((brand) => normalize(brand) === normalize(item.brand)),
+        }))
+        .sort((a, b) => {
+          if (a.policyAligned !== b.policyAligned) {
+            return a.policyAligned ? -1 : 1;
+          }
+          return b.available - a.available;
+        })
+      );
+    },
+    [availableBySize, preferredBrand, primaryPolicy]
+  );
+
+  return (
+    <section className="space-y-6">
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+            <Boxes size={18} />
+            Tyre availability check
+          </h2>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-2">
+              <Label>Vehicle</Label>
+              <Select onValueChange={setVehicleId} value={vehicleId || "__none__"}>
+                <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden">
+                  <SelectValue className="block truncate" placeholder="Select vehicle" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicles.length === 0 ? (
+                    <SelectItem value="__none__">No vehicles</SelectItem>
+                  ) : (
+                    vehicles.map((vehicle) => (
+                      <SelectItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.plate || vehicle.id} - {vehicle.model}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Tyre size</Label>
+              <Input value={tyreSize} readOnly />
+            </div>
+            <div className="grid gap-2">
+              <Label>Preferred brand</Label>
+              <Input
+                onChange={(event) => setPreferredBrand(event.target.value)}
+                placeholder="e.g. Michelin"
+                value={preferredBrand}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Required quantity</Label>
+              <Input
+                min="1"
+                onChange={(event) => setRequestedQty(event.target.value)}
+                type="number"
+                value={requestedQty}
+              />
+            </div>
+            <div className="grid gap-2 sm:col-span-2">
+              <Label>Category filter</Label>
+              <Select onValueChange={setCategory} value={category}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  <SelectItem value="all-season">All-season</SelectItem>
+                  <SelectItem value="highway">Highway</SelectItem>
+                  <SelectItem value="winter">Winter</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-900">{availabilityResult.status}</p>
+            <p className="mt-1 text-sm text-slate-600">{availabilityResult.message}</p>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {availableBySize.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
+                No tyre stock found for selected size/category.
+              </p>
+            ) : (
+              availableBySize.map((item) => (
+                <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                  <p className="font-semibold text-slate-900">
+                    {item.brand} {item.size} ({item.category})
+                  </p>
+                  <p className="text-slate-600">
+                    Available: {item.available} | ETA restock: {item.etaDays} day(s) | Unit:{" "}
+                    {formatCurrency(item.unitPrice)}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+              <CircleAlert size={18} />
+              Suggested alternative tyres
+            </h2>
+            <div className="mt-4 space-y-2">
+              {alternativeTyres.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
+                  No alternatives found for current tyre size.
+                </p>
+              ) : (
+                alternativeTyres.slice(0, 6).map((item) => (
+                  <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-slate-900">
+                        {item.brand} ({item.category})
+                      </p>
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                          item.policyAligned
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {item.policyAligned ? "Policy aligned" : "Needs approval"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-slate-600">
+                      Available: {item.available} | ETA: {item.etaDays} day(s) | Unit:{" "}
+                      {formatCurrency(item.unitPrice)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+              <CheckCircle2 size={18} />
+              Manufacturer integration status
+            </h2>
+            <div className="mt-4 space-y-2">
+              {manufacturerIntegrationStatus.map((entry) => (
+                <div key={entry.manufacturer} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-slate-900">{entry.manufacturer}</p>
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${integrationBadgeClass(entry.status)}`}>
+                      {entry.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-slate-600">{entry.syncHealth}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Last sync: {new Date(entry.lastSync).toLocaleString("en-US")} |{" "}
+                    {entry.responseMs > 0 ? `Latency ${entry.responseMs}ms` : "API unavailable"}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-100 p-3 text-xs text-slate-600">
+              <p className="inline-flex items-center gap-1">
+                <Link2Off size={14} />
+                Offline manufacturer catalogs fallback to cached prices and stock.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  );
+}
+
+export default POSInventoryAvailabilityControl;

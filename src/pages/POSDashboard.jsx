@@ -1,6 +1,15 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ClipboardList, LayoutDashboard, LogOut } from "lucide-react";
+import {
+  BadgeDollarSign,
+  ChartColumnBig,
+  ChartNoAxesColumnIncreasing,
+  ClipboardList,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  ShieldAlert,
+} from "lucide-react";
 import Logo from "../icons/Logo";
 import {
   clearSession,
@@ -66,6 +75,36 @@ const posMenuItems = [
     to: "/pos-dashboard/order-management",
     icon: ClipboardList,
   },
+  {
+    key: "validation",
+    label: "Validation",
+    to: "/pos-dashboard/validation",
+    icon: ShieldAlert,
+  },
+  {
+    key: "approval-workflow",
+    label: "Approval Workflow",
+    to: "/pos-dashboard/approval-workflow",
+    icon: FileText,
+  },
+  {
+    key: "billing-settlement",
+    label: "Billing & Settlement",
+    to: "/pos-dashboard/billing-settlement",
+    icon: BadgeDollarSign,
+  },
+  {
+    key: "inventory-availability",
+    label: "Inventory & Availability",
+    to: "/pos-dashboard/inventory-availability",
+    icon: ChartNoAxesColumnIncreasing,
+  },
+  // {
+  //   key: "analytics-reports",
+  //   label: "Analytics & Reports",
+  //   to: "/pos-dashboard/analytics-reports",
+  //   icon: ChartColumnBig,
+  // },
 ];
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
@@ -425,6 +464,38 @@ function POSDashboard() {
   }, [spareParts]);
 
   const isOrderManagementRoute = location.pathname.includes("/order-management");
+  const isValidationRoute = location.pathname.includes("/validation");
+  const isApprovalWorkflowRoute = location.pathname.includes("/approval-workflow");
+  const isBillingSettlementRoute = location.pathname.includes("/billing-settlement");
+  const isInventoryAvailabilityRoute = location.pathname.includes("/inventory-availability");
+  const isAnalyticsReportsRoute = location.pathname.includes("/analytics-reports");
+
+  const pageTitle = isOrderManagementRoute
+    ? "POS Order Management"
+    : isAnalyticsReportsRoute
+    ? "POS Analytics & Reports"
+    : isInventoryAvailabilityRoute
+    ? "POS Inventory & Availability"
+    : isBillingSettlementRoute
+    ? "POS Billing & Settlement"
+    : isApprovalWorkflowRoute
+    ? "POS Approval Workflow"
+    : isValidationRoute
+    ? "POS Validation"
+    : "POS Dashboard";
+  const pageDescription = isOrderManagementRoute
+    ? "Create, edit, and submit service orders with draft support."
+    : isAnalyticsReportsRoute
+    ? "Track orders, revenue, rejection patterns, fleet performance, and top serviced vehicles."
+    : isInventoryAvailabilityRoute
+    ? "Check tyre stock, view alternatives, and monitor manufacturer integration sync status."
+    : isBillingSettlementRoute
+    ? "Track submitted/validated/rejected orders, credit memos, payment schedules, and settlements."
+    : isApprovalWorkflowRoute
+    ? "Send requests, track approval status, review history, and re-submit corrected orders."
+    : isValidationRoute
+    ? "Validate policy compliance, KB pricing, approval flow, and submission alerts."
+    : "Search by vehicle plate and validate service and contract controls.";
 
   const onSignOut = () => {
     clearSession();
@@ -441,6 +512,9 @@ function POSDashboard() {
             </div>
 
             <nav className="mt-8 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/40">
+                Menu
+              </p>
               {posMenuItems.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -481,13 +555,9 @@ function POSDashboard() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h1 className="text-2xl font-semibold text-slate-900">
-                  {isOrderManagementRoute ? "POS Order Management" : "POS Dashboard"}
+                  {pageTitle}
                 </h1>
-                <p className="mt-1 text-sm text-slate-500">
-                  {isOrderManagementRoute
-                    ? "Create, edit, and submit service orders with draft support."
-                    : "Search by vehicle plate and validate service and contract controls."}
-                </p>
+                <p className="mt-1 text-sm text-slate-500">{pageDescription}</p>
               </div>
               <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
                 <div className="grid size-9 place-items-center rounded-full bg-[#0D0F16] text-xs font-semibold text-white">
