@@ -12,6 +12,7 @@ import POSApprovalWorkflowPage from "./pages/POSApprovalWorkflowPage";
 import POSBillingSettlementPage from "./pages/POSBillingSettlementPage";
 import POSInventoryAvailabilityPage from "./pages/POSInventoryAvailabilityPage";
 import POSAnalyticsReportsPage from "./pages/POSAnalyticsReportsPage";
+import POSProfileSettingsPage from "./pages/POSProfileSettingsPage";
 import {
   getDefaultRouteForSession,
   getSession,
@@ -80,6 +81,7 @@ function App() {
           <Route path="billing-settlement" element={<POSBillingSettlementPage />} />
           <Route path="inventory-availability" element={<POSInventoryAvailabilityPage />} />
           <Route path="analytics-reports" element={<POSAnalyticsReportsPage />} />
+          <Route path="profile-settings" element={<POSProfileSettingsPage />} />
         </Route>
       </Routes>
       <Toaster position="top-right" richColors />

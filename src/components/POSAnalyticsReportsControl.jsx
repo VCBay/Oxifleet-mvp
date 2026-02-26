@@ -304,23 +304,6 @@ function POSAnalyticsReportsControl() {
 
   return (
     <section className="space-y-6">
-      <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Orders per period</h2>
-        <div className="mt-4 h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={ordersPerPeriod}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="month" stroke="#64748b" />
-              <YAxis stroke="#64748b" />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="total" fill="#0f172a" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="approved" fill="#10b981" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="rejected" fill="#ef4444" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -352,6 +335,24 @@ function POSAnalyticsReportsControl() {
           <p className="mt-2 text-2xl font-semibold text-slate-900">
             {formatCurrency(revenueSummary.averageInvoice)}
           </p>
+        </div>
+      </section>
+
+       <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Orders per period</h2>
+        <div className="mt-4 h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={ordersPerPeriod}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="month" stroke="#64748b" />
+              <YAxis stroke="#64748b" />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="total" fill="#0f172a" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="approved" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="rejected" fill="#ef4444" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </section>
 
