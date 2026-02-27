@@ -73,6 +73,64 @@ const getApprovalState = (status) => {
   return "In review";
 };
 
+const orderMetricMeta = {
+  total: { label: "Total Orders", color: "#0f172a" },
+  approved: { label: "Approved", color: "#10b981" },
+  rejected: { label: "Rejected", color: "#ef4444" },
+};
+
+const renderOrdersPeriodTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const rows = payload
+    .filter((item) => Number.isFinite(Number(item.value)))
+    .map((item) => {
+      const key = String(item.dataKey || "");
+      const meta = orderMetricMeta[key] || {
+        label: key || "Metric",
+        color: item.color || "#334155",
+      };
+      return {
+        key,
+        label: meta.label,
+        value: Number(item.value) || 0,
+        color: meta.color,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+
+  const totalCount = rows.reduce((sum, row) => sum + row.value, 0);
+
+  return (
+    <div className="min-w-[196px] rounded-2xl border border-slate-700/50 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">
+        Orders Period
+      </p>
+      <p className="mt-1 text-sm font-semibold">{label}</p>
+      <div className="mt-2 space-y-1.5">
+        {rows.map((row) => (
+          <div className="flex items-center justify-between gap-3" key={row.key}>
+            <div className="flex items-center gap-2 text-xs text-slate-200">
+              <span
+                className="inline-block size-2 rounded-full"
+                style={{ backgroundColor: row.color }}
+              />
+              {row.label}
+            </div>
+            <p className="text-xs font-semibold text-white">{row.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 border-t border-slate-600/70 pt-1.5 text-[11px] text-slate-300">
+        Total touchpoints:{" "}
+        <span className="font-semibold text-white">{totalCount}</span>
+      </div>
+    </div>
+  );
+};
+
 function POSAnalyticsReportsControl() {
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
@@ -346,7 +404,10 @@ function POSAnalyticsReportsControl() {
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="month" stroke="#64748b" />
               <YAxis stroke="#64748b" />
-              <Tooltip />
+              <Tooltip
+                content={renderOrdersPeriodTooltip}
+                cursor={{ fill: "rgba(15, 23, 42, 0.06)" }}
+              />
               <Legend />
               <Bar dataKey="total" fill="#0f172a" radius={[4, 4, 0, 0]} />
               <Bar dataKey="approved" fill="#10b981" radius={[4, 4, 0, 0]} />

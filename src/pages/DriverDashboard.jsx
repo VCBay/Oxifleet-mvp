@@ -1,6 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, ShieldCheck, Truck, Wrench } from "lucide-react";
+import { CalendarClock, LogOut, ShieldCheck, Truck, Wrench } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -45,7 +45,13 @@ import {
   getDriverOperationsState,
   subscribeDriverOperations,
 } from "../data/driverOperationsStore";
-import { createServiceRequest } from "../data/serviceOrderStore";
+import {
+  createServiceRequest,
+  getServiceOrderState,
+  setOrderLifecycleStage,
+  subscribeServiceOrders,
+} from "../data/serviceOrderStore";
+import DriverBookingTrackingPanel from "../components/DriverBookingTrackingPanel";
 
 const toDate = (value) => {
   const parsed = new Date(value);
@@ -211,6 +217,11 @@ function DriverDashboard() {
     subscribeDriverOperations,
     getDriverOperationsState,
     getDriverOperationsState
+  );
+  const serviceOrderState = useSyncExternalStore(
+    subscribeServiceOrders,
+    getServiceOrderState,
+    getServiceOrderState
   );
 
   const driverRecord = useMemo(() => {
@@ -642,6 +653,18 @@ function DriverDashboard() {
     setWizardFeedback("Emergency breakdown request submitted.");
   };
 
+  const handleConfirmServiceCompletion = (orderId) => {
+    const updated = setOrderLifecycleStage(orderId, {
+      stage: "Completed",
+      actor: displayName,
+      note: "Service completion confirmed by driver.",
+    });
+
+    if (!updated) {
+      return;
+    }
+  };
+
   return (
     <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
       <div className="flex h-full w-full">
@@ -674,6 +697,18 @@ function DriverDashboard() {
                 >
                   <Wrench size={18} />
                   Service Request
+                </button>
+                <button
+                  className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
+                    activeMenu === "booking_tracking"
+                      ? "bg-white/10 font-semibold text-white"
+                      : "text-white/70 transition hover:bg-white/10 hover:text-white"
+                  }`}
+                  onClick={() => setActiveMenu("booking_tracking")}
+                  type="button"
+                >
+                  <CalendarClock size={18} />
+                  Booking & Tracking
                 </button>
               </nav>
             </div>
@@ -1289,6 +1324,16 @@ function DriverDashboard() {
                 </div>
               ) : null}
             </section>
+          ) : null}
+
+          {activeMenu === "booking_tracking" ? (
+            <DriverBookingTrackingPanel
+              displayName={displayName}
+              nextServiceDate={nextService.date}
+              onConfirmCompletion={handleConfirmServiceCompletion}
+              orders={serviceOrderState.orders}
+              vehicle={vehicle}
+            />
           ) : null}
         </section>
       </div>

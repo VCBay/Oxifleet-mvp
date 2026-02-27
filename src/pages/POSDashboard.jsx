@@ -84,6 +84,12 @@ const posMenuItems = [
     to: "/pos-dashboard/validation",
     icon: ShieldAlert,
   },
+    {
+    key: "analytics-reports",
+    label: "Analytics & Reports",
+    to: "/pos-dashboard/analytics-reports",
+    icon: ChartColumnBig,
+  },
   {
     key: "approval-workflow",
     label: "Approval Workflow",
@@ -101,12 +107,6 @@ const posMenuItems = [
     label: "Inventory & Availability",
     to: "/pos-dashboard/inventory-availability",
     icon: ChartNoAxesColumnIncreasing,
-  },
-  {
-    key: "analytics-reports",
-    label: "Analytics & Reports",
-    to: "/pos-dashboard/analytics-reports",
-    icon: ChartColumnBig,
   },
   {
     key: "profile-settings",
