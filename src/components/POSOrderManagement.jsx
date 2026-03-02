@@ -1,4 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { FileText, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -26,6 +27,20 @@ const createLineId = (prefix) =>
 const normalizeNumber = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatDateTime = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "N/A";
+  }
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const createInitialForm = (selectedVehicle) => ({
@@ -59,6 +74,11 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
     name: "",
     hours: 1,
     rate: 0,
+  });
+  const [detailsModal, setDetailsModal] = useState({
+    open: false,
+    order: null,
+    source: "draft",
   });
   const [selectedDraftId, setSelectedDraftId] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -244,6 +264,52 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
     }
     setFeedback("Draft removed.");
   };
+
+  const openOrderDetails = (order, source) => () => {
+    setDetailsModal({
+      open: true,
+      order,
+      source,
+    });
+  };
+
+  const closeOrderDetails = () => {
+    setDetailsModal({
+      open: false,
+      order: null,
+      source: "draft",
+    });
+  };
+
+  const loadDraftFromModal = () => {
+    if (!detailsModal.order) {
+      return;
+    }
+    loadDraftIntoForm(detailsModal.order);
+    closeOrderDetails();
+    setFeedback(`Draft ${detailsModal.order.id} loaded in editor.`);
+  };
+
+  const duplicateFromModal = () => {
+    if (!detailsModal.order) {
+      return;
+    }
+    const duplicated = duplicateSubmittedPosOrder(detailsModal.order.id);
+    if (!duplicated) {
+      setFeedback("Unable to duplicate selected order.");
+      return;
+    }
+    loadDraftIntoForm(duplicated);
+    closeOrderDetails();
+    setFeedback(`Order duplicated as draft ${duplicated.id}.`);
+  };
+
+  const modalOrder = detailsModal.order;
+  const modalParts = Array.isArray(modalOrder?.parts) ? modalOrder.parts : [];
+  const modalLabour = Array.isArray(modalOrder?.labour) ? modalOrder.labour : [];
+  const modalAttachments = Array.isArray(modalOrder?.attachments)
+    ? modalOrder.attachments
+    : [];
 
   return (
     <section className="space-y-6">
@@ -573,6 +639,14 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
                     </p>
                     <div className="mt-2 flex gap-2">
                       <Button
+                        onClick={openOrderDetails(draft, "draft")}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        View details
+                      </Button>
+                      <Button
                         onClick={() => loadDraftIntoForm(draft)}
                         size="sm"
                         type="button"
@@ -616,7 +690,15 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
                     <p className="mt-1 text-slate-600">
                       {order.vehiclePlate || order.vehicleId || "Vehicle N/A"} | ${order.total}
                     </p>
-                    <div className="mt-2">
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        onClick={openOrderDetails(order, "submitted")}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        View details
+                      </Button>
                       <Button
                         onClick={onDuplicateSubmittedOrder(order.id)}
                         size="sm"
@@ -639,6 +721,196 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
           ) : null}
         </div>
       </div>
+
+      {detailsModal.open && modalOrder ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4"
+          onClick={closeOrderDetails}
+          role="presentation"
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Order details
+                </p>
+                <h3 className="mt-1 text-xl font-semibold text-slate-900">
+                  {modalOrder.id} - {modalOrder.serviceType}
+                </h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  {modalOrder.vehiclePlate || modalOrder.vehicleId || "Vehicle N/A"} |{" "}
+                  {detailsModal.source === "draft" ? "Draft order" : "Submitted order"}
+                </p>
+              </div>
+              <button
+                aria-label="Close details"
+                className="rounded-full border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100"
+                onClick={closeOrderDetails}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="text-slate-500">Priority</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{modalOrder.priority}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="text-slate-500">Parts total</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  ${modalOrder.partsTotal || 0}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="text-slate-500">Labour total</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  ${modalOrder.labourTotal || 0}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="text-slate-500">Order total</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">${modalOrder.total || 0}</p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-6 xl:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h4 className="text-sm font-semibold text-slate-900">Core details</h4>
+                <div className="mt-3 space-y-1.5 text-xs text-slate-700">
+                  <p>
+                    Service type:{" "}
+                    <span className="font-semibold">{modalOrder.serviceType || "N/A"}</span>
+                  </p>
+                  <p>
+                    Problem type:{" "}
+                    <span className="font-semibold">{modalOrder.problemType || "N/A"}</span>
+                  </p>
+                  <p>
+                    Created:{" "}
+                    <span className="font-semibold">{formatDateTime(modalOrder.createdAt)}</span>
+                  </p>
+                  <p>
+                    Updated:{" "}
+                    <span className="font-semibold">{formatDateTime(modalOrder.updatedAt)}</span>
+                  </p>
+                  <p>
+                    Submitted:{" "}
+                    <span className="font-semibold">{formatDateTime(modalOrder.submittedAt)}</span>
+                  </p>
+                  <p>
+                    Submitted by:{" "}
+                    <span className="font-semibold">{modalOrder.submittedBy || "N/A"}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <FileText size={14} />
+                  Description and notes
+                </h4>
+                <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                  {modalOrder.description || "No description provided."}
+                </p>
+                <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                  {modalOrder.notes || "No internal notes."}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-6 xl:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h4 className="text-sm font-semibold text-slate-900">Parts items</h4>
+                <div className="mt-3 space-y-2">
+                  {modalParts.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+                      No parts items.
+                    </p>
+                  ) : (
+                    modalParts.map((item) => (
+                      <div
+                        className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs"
+                        key={item.id}
+                      >
+                        <p className="font-semibold text-slate-900">{item.name}</p>
+                        <p className="text-slate-600">
+                          Qty {item.qty} x ${item.unitCost}
+                        </p>
+                        <p className="font-semibold text-slate-900">${item.total}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h4 className="text-sm font-semibold text-slate-900">Labour items</h4>
+                <div className="mt-3 space-y-2">
+                  {modalLabour.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+                      No labour items.
+                    </p>
+                  ) : (
+                    modalLabour.map((item) => (
+                      <div
+                        className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs"
+                        key={item.id}
+                      >
+                        <p className="font-semibold text-slate-900">{item.name}</p>
+                        <p className="text-slate-600">
+                          {item.hours} hr x ${item.rate}
+                        </p>
+                        <p className="font-semibold text-slate-900">${item.total}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+              <h4 className="text-sm font-semibold text-slate-900">Attachments</h4>
+              <div className="mt-3 space-y-2">
+                {modalAttachments.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+                    No attachments added.
+                  </p>
+                ) : (
+                  modalAttachments.map((file) => (
+                    <div
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700"
+                      key={`${file.name}-${file.size}`}
+                    >
+                      {file.name} ({Math.max(1, Math.round(Number(file.size || 0) / 1024))} KB)
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {detailsModal.source === "draft" ? (
+                <Button onClick={loadDraftFromModal} type="button">
+                  Load in editor
+                </Button>
+              ) : (
+                <Button onClick={duplicateFromModal} type="button">
+                  Duplicate as draft
+                </Button>
+              )}
+              <Button onClick={closeOrderDetails} type="button" variant="outline">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

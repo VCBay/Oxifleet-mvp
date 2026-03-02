@@ -99,10 +99,183 @@ const normalizeOrder = (order = {}, forcedStatus) => {
   };
 };
 
-const defaultOrderState = {
-  draftOrders: [],
-  submittedOrders: [],
-};
+const getDefaultOrderState = () => ({
+  draftOrders: [
+    normalizeOrder(
+      {
+        id: "POSD-5001",
+        vehicleId: "VH-884",
+        vehiclePlate: "TX-8841",
+        serviceType: "Brake service",
+        problemType: "Brake wear indicator",
+        description: "Front axle brake pad wear and vibration reported during route.",
+        priority: "High",
+        parts: [
+          { id: "PART-5001", name: "Brake pad set", qty: 1, unitCost: 780 },
+          { id: "PART-5002", name: "Brake fluid", qty: 2, unitCost: 38 },
+        ],
+        labour: [{ id: "LAB-5001", name: "Brake inspection + fitment", hours: 2.5, rate: 120 }],
+        attachments: [
+          { name: "brake-wear-photo.jpg", size: 184200, type: "image/jpeg" },
+          { name: "route-check-report.pdf", size: 312440, type: "application/pdf" },
+        ],
+        notes: "Draft created by POS advisor for manager review.",
+        createdAt: "2026-02-20T09:14:00.000Z",
+        updatedAt: "2026-02-20T09:40:00.000Z",
+      },
+      "Draft"
+    ),
+    normalizeOrder(
+      {
+        id: "POSD-5002",
+        vehicleId: "VH-241",
+        vehiclePlate: "TX-2417",
+        serviceType: "Tyre replacement",
+        problemType: "Rear axle tyre sidewall cut",
+        description: "Replace two rear tyres and perform alignment check.",
+        priority: "Emergency",
+        parts: [
+          { id: "PART-5003", name: "Tyre 11R22.5", qty: 2, unitCost: 445 },
+          { id: "PART-5004", name: "Valve stem set", qty: 2, unitCost: 12 },
+        ],
+        labour: [{ id: "LAB-5002", name: "Tyre fitment + balancing", hours: 1.8, rate: 135 }],
+        attachments: [{ name: "tyre-damage-axle2.png", size: 210320, type: "image/png" }],
+        notes: "Awaiting supplier confirmation for Michelin stock.",
+        createdAt: "2026-02-21T06:48:00.000Z",
+        updatedAt: "2026-02-21T07:05:00.000Z",
+      },
+      "Draft"
+    ),
+    normalizeOrder(
+      {
+        id: "POSD-5003",
+        vehicleId: "VH-553",
+        vehiclePlate: "TX-5532",
+        serviceType: "Engine diagnostics",
+        problemType: "Intermittent check-engine warning",
+        description: "Run fault code scan and inspect injector performance.",
+        priority: "Normal",
+        parts: [{ id: "PART-5005", name: "Diagnostic consumables", qty: 1, unitCost: 65 }],
+        labour: [{ id: "LAB-5003", name: "Diagnostic labor", hours: 2, rate: 145 }],
+        attachments: [],
+        notes: "Prepared for policy validation before submission.",
+        createdAt: "2026-02-22T12:00:00.000Z",
+        updatedAt: "2026-02-22T12:00:00.000Z",
+      },
+      "Draft"
+    ),
+  ],
+  submittedOrders: [
+    normalizeOrder(
+      {
+        id: "POSO-4001",
+        vehicleId: "VH-884",
+        vehiclePlate: "TX-8841",
+        serviceType: "Brake service",
+        problemType: "Brake performance drop",
+        description: "Front brake pad and rotor service.",
+        priority: "High",
+        parts: [
+          { id: "PART-4101", name: "Brake pad set", qty: 1, unitCost: 820 },
+          { id: "PART-4102", name: "Rotor kit", qty: 1, unitCost: 320 },
+        ],
+        labour: [{ id: "LAB-4101", name: "Brake service labor", hours: 2.4, rate: 130 }],
+        attachments: [{ name: "inspection-proof.jpg", size: 164220, type: "image/jpeg" }],
+        notes: "Submitted from POS queue.",
+        submittedBy: "POS Supervisor",
+        createdAt: "2026-01-10T09:20:00.000Z",
+        updatedAt: "2026-01-10T10:05:00.000Z",
+        submittedAt: "2026-01-10T10:05:00.000Z",
+      },
+      "Submitted"
+    ),
+    normalizeOrder(
+      {
+        id: "POSO-4002",
+        vehicleId: "VH-241",
+        vehiclePlate: "TX-2417",
+        serviceType: "Tyre replacement",
+        problemType: "Rear axle tyre failure",
+        description: "Replace rear pair and perform balancing.",
+        priority: "Emergency",
+        parts: [
+          { id: "PART-4201", name: "Tyre 11R22.5", qty: 2, unitCost: 455 },
+          { id: "PART-4202", name: "Balance weights", qty: 2, unitCost: 20 },
+        ],
+        labour: [{ id: "LAB-4201", name: "Tyre fitment labor", hours: 2.2, rate: 140 }],
+        attachments: [{ name: "axle2-cut.jpg", size: 248100, type: "image/jpeg" }],
+        notes: "Roadside emergency replacement case.",
+        submittedBy: "POS Supervisor",
+        createdAt: "2026-01-24T14:18:00.000Z",
+        updatedAt: "2026-01-24T14:56:00.000Z",
+        submittedAt: "2026-01-24T14:56:00.000Z",
+      },
+      "Submitted"
+    ),
+    normalizeOrder(
+      {
+        id: "POSO-4003",
+        vehicleId: "VH-553",
+        vehiclePlate: "TX-5532",
+        serviceType: "Engine diagnostics",
+        problemType: "Engine warning light",
+        description: "Fault code diagnostics and electrical inspection.",
+        priority: "Normal",
+        parts: [{ id: "PART-4301", name: "Diagnostic kit usage", qty: 1, unitCost: 90 }],
+        labour: [{ id: "LAB-4301", name: "Diagnostic labor", hours: 2.5, rate: 150 }],
+        attachments: [{ name: "ecu-log.txt", size: 9022, type: "text/plain" }],
+        notes: "Pending manager approval due to repeated issue.",
+        submittedBy: "POS Advisor",
+        createdAt: "2026-02-03T08:15:00.000Z",
+        updatedAt: "2026-02-03T08:42:00.000Z",
+        submittedAt: "2026-02-03T08:42:00.000Z",
+      },
+      "Submitted"
+    ),
+    normalizeOrder(
+      {
+        id: "POSO-4004",
+        vehicleId: "VH-901",
+        vehiclePlate: "TX-9014",
+        serviceType: "Oil change",
+        problemType: "Scheduled maintenance",
+        description: "Routine service with filter replacement.",
+        priority: "Normal",
+        parts: [{ id: "PART-4401", name: "Engine oil + filter", qty: 1, unitCost: 210 }],
+        labour: [{ id: "LAB-4401", name: "Routine service labor", hours: 1.3, rate: 110 }],
+        attachments: [],
+        notes: "Standard periodic maintenance order.",
+        submittedBy: "POS Advisor",
+        createdAt: "2026-02-14T11:30:00.000Z",
+        updatedAt: "2026-02-14T11:46:00.000Z",
+        submittedAt: "2026-02-14T11:46:00.000Z",
+      },
+      "Submitted"
+    ),
+    normalizeOrder(
+      {
+        id: "POSO-4005",
+        vehicleId: "VH-884",
+        vehiclePlate: "TX-8841",
+        serviceType: "Battery replacement",
+        problemType: "Low cold-start voltage",
+        description: "Replace battery bank and charging system verification.",
+        priority: "High",
+        parts: [{ id: "PART-4501", name: "24V battery set", qty: 1, unitCost: 520 }],
+        labour: [{ id: "LAB-4501", name: "Electrical labor", hours: 1.5, rate: 135 }],
+        attachments: [{ name: "voltage-readings.csv", size: 5120, type: "text/csv" }],
+        notes: "Escalated by dispatch after repeated no-start report.",
+        submittedBy: "POS Supervisor",
+        createdAt: "2026-02-20T07:10:00.000Z",
+        updatedAt: "2026-02-20T07:44:00.000Z",
+        submittedAt: "2026-02-20T07:44:00.000Z",
+      },
+      "Submitted"
+    ),
+  ],
+});
+
+const defaultOrderState = getDefaultOrderState();
 
 const normalizeState = (value = {}) => ({
   draftOrders: Array.isArray(value.draftOrders)
@@ -114,14 +287,25 @@ const normalizeState = (value = {}) => ({
 });
 
 const initializeState = () => {
+  const defaults = normalizeState(defaultOrderState);
   const stored = readStorage();
   if (stored) {
     const normalized = normalizeState(stored);
-    writeStorage(normalized);
-    return normalized;
+    const next = {
+      draftOrders:
+        normalized.draftOrders.length > 0
+          ? normalized.draftOrders
+          : defaults.draftOrders,
+      submittedOrders:
+        normalized.submittedOrders.length > 0
+          ? normalized.submittedOrders
+          : defaults.submittedOrders,
+    };
+    writeStorage(next);
+    return next;
   }
-  writeStorage(defaultOrderState);
-  return defaultOrderState;
+  writeStorage(defaults);
+  return defaults;
 };
 
 let state = initializeState();

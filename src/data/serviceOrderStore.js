@@ -90,6 +90,12 @@ const normalizeOrder = (order = {}) => {
   };
 };
 
+const hasPosOrderLink = (order = {}) => {
+  const title = String(order.requestTitle || "");
+  const notes = String(order.orderDetails?.notes || "");
+  return /POS\s+Order\s+[A-Z0-9-]+/i.test(`${title} ${notes}`);
+};
+
 const getDefaultOrders = () => {
   const now = new Date();
   const minusHours = (hours) =>
@@ -238,13 +244,162 @@ const getDefaultOrders = () => {
         },
       ],
     }),
+    normalizeOrder({
+      id: "SR-2001",
+      vehicleId: "VH-884",
+      vehicleModel: "Freightliner Cascadia",
+      serviceType: "Brake service",
+      requestTitle: "Brake service - POS Order POSO-4001",
+      requestedBy: "POS Supervisor",
+      requestedAt: minusHours(72),
+      priority: "High",
+      status: "Approved",
+      emergency: false,
+      orderDetails: {
+        description: "Approval workflow request created from POS dashboard.",
+        vendor: "POS Booking Desk",
+        estimatedCost: "$1,452",
+        location: "Dallas, TX",
+        notes: "Approval granted for POS Order POSO-4001",
+      },
+      approval: {
+        decision: "Approved",
+        approver: "Fleet Manager",
+        note: "Within contract threshold and approved vendor scope.",
+        decidedAt: minusHours(68),
+        manualOverride: false,
+      },
+      lifecycle: [
+        {
+          stage: "Requested",
+          time: minusHours(72),
+          actor: "POS Supervisor",
+          note: "Submitted for approval. POS Order POSO-4001",
+        },
+        {
+          stage: "Approved",
+          time: minusHours(68),
+          actor: "Fleet Manager",
+          note: "Approved for execution.",
+        },
+      ],
+    }),
+    normalizeOrder({
+      id: "SR-2002",
+      vehicleId: "VH-241",
+      vehicleModel: "Volvo VNL 760",
+      serviceType: "Tyre replacement",
+      requestTitle: "Tyre replacement - POS Order POSO-4002",
+      requestedBy: "POS Supervisor",
+      requestedAt: minusHours(58),
+      priority: "Emergency",
+      status: "Rejected",
+      emergency: true,
+      orderDetails: {
+        description: "Emergency tyre replacement review from POS workflow.",
+        vendor: "POS Booking Desk",
+        estimatedCost: "$1,318",
+        location: "Austin, TX",
+        notes: "Rejected decision for POS Order POSO-4002",
+      },
+      approval: {
+        decision: "Rejected",
+        approver: "Fleet Manager",
+        note: "Use policy-compliant tyre brand and resubmit.",
+        decidedAt: minusHours(54),
+        manualOverride: false,
+      },
+      lifecycle: [
+        {
+          stage: "Requested",
+          time: minusHours(58),
+          actor: "POS Supervisor",
+          note: "Submitted for emergency approval. POS Order POSO-4002",
+        },
+        {
+          stage: "Rejected",
+          time: minusHours(54),
+          actor: "Fleet Manager",
+          note: "Brand mismatch against policy.",
+        },
+      ],
+    }),
+    normalizeOrder({
+      id: "SR-2003",
+      vehicleId: "VH-553",
+      vehicleModel: "Kenworth T680",
+      serviceType: "Engine diagnostics",
+      requestTitle: "Engine diagnostics - POS Order POSO-4003",
+      requestedBy: "POS Advisor",
+      requestedAt: minusHours(36),
+      priority: "Normal",
+      status: "Pending approval",
+      emergency: false,
+      orderDetails: {
+        description: "Pending approval for repeated diagnostics request.",
+        vendor: "POS Booking Desk",
+        estimatedCost: "$465",
+        location: "Houston, TX",
+        notes: "Approval pending for POS Order POSO-4003",
+      },
+      lifecycle: [
+        {
+          stage: "Requested",
+          time: minusHours(36),
+          actor: "POS Advisor",
+          note: "Awaiting manager decision. POS Order POSO-4003",
+        },
+      ],
+    }),
+    normalizeOrder({
+      id: "SR-2004",
+      vehicleId: "VH-884",
+      vehicleModel: "Freightliner Cascadia",
+      serviceType: "Battery replacement",
+      requestTitle: "Battery replacement - POS Order POSO-4005 (Re-submission)",
+      requestedBy: "POS Supervisor",
+      requestedAt: minusHours(28),
+      priority: "High",
+      status: "Re-submitted",
+      emergency: false,
+      orderDetails: {
+        description: "Corrected re-submission with updated charging test report.",
+        vendor: "POS Booking Desk",
+        estimatedCost: "$723",
+        location: "Dallas, TX",
+        notes: "Re-submitted approval request for POS Order POSO-4005",
+      },
+      lifecycle: [
+        {
+          stage: "Requested",
+          time: minusHours(34),
+          actor: "POS Supervisor",
+          note: "Initial submission. POS Order POSO-4005",
+        },
+        {
+          stage: "Re-submitted",
+          time: minusHours(28),
+          actor: "POS Supervisor",
+          note: "Corrected electrical report attached.",
+        },
+      ],
+    }),
   ];
 };
 
 const initializeOrders = () => {
   const stored = readStorage();
   if (stored.length > 0) {
-    return stored.map(normalizeOrder);
+    const normalized = stored.map(normalizeOrder);
+    const hasLinkedPosOrders = normalized.some(hasPosOrderLink);
+    if (hasLinkedPosOrders) {
+      return normalized;
+    }
+    const defaults = getDefaultOrders();
+    const linkedPosDefaults = defaults.filter(hasPosOrderLink);
+    const merged = [...linkedPosDefaults, ...normalized];
+    writeStorage(merged);
+    return merged;
   }
   const defaults = getDefaultOrders();
   writeStorage(defaults);

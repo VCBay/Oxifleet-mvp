@@ -40,6 +40,11 @@ import {
   getServiceOrderState,
   subscribeServiceOrders,
 } from "../data/serviceOrderStore";
+import { getPosOrderState, subscribePosOrders } from "../data/posOrderStore";
+import {
+  getBillingFinanceState,
+  subscribeBillingFinance,
+} from "../data/billingFinanceStore";
 
 const fallbackVehicles = [
   {
@@ -156,6 +161,13 @@ const monthKey = (value) => {
     return null;
   }
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const extractPosOrderId = (serviceOrder) => {
+  const title = String(serviceOrder?.requestTitle || "");
+  const notes = String(serviceOrder?.orderDetails?.notes || "");
+  const match = `${title} ${notes}`.match(/POS\s+Order\s+([A-Z0-9-]+)/i);
+  return match ? String(match[1]).trim() : "";
 };
 
 const sparePartsCatalog = [
@@ -275,6 +287,16 @@ function POSDashboard() {
     subscribeServiceOrders,
     getServiceOrderState,
     getServiceOrderState
+  );
+  const posOrderState = useSyncExternalStore(
+    subscribePosOrders,
+    getPosOrderState,
+    getPosOrderState
+  );
+  const billingState = useSyncExternalStore(
+    subscribeBillingFinance,
+    getBillingFinanceState,
+    getBillingFinanceState
   );
 
   const vehicles =
@@ -501,6 +523,137 @@ function POSDashboard() {
     };
   }, [spareParts]);
 
+  const operationDetails = useMemo(() => {
+    const draftOrders = posOrderState.draftOrders.length;
+    const submittedOrders = posOrderState.submittedOrders.length;
+    const averageSubmittedValue =
+      submittedOrders > 0
+        ? Math.round(
+            posOrderState.submittedOrders.reduce(
+              (sum, order) => sum + Number(order.total || 0),
+              0
+            ) / submittedOrders
+          )
+        : 0;
+
+    const approvalLinked = serviceOrderState.orders
+      .map((order) => ({
+        ...order,
+        posOrderId: extractPosOrderId(order),
+      }))
+      .filter((order) => order.posOrderId);
+    const approvalSummary = approvalLinked.reduce(
+      (acc, order) => {
+        const status = normalize(order.status);
+        if (status.includes("rejected")) {
+          acc.rejected += 1;
+        } else if (status.includes("approved")) {
+          acc.approved += 1;
+        } else if (status.includes("re-submit") || status.includes("resubmit")) {
+          acc.resubmitted += 1;
+        } else if (status.includes("pending")) {
+          acc.pending += 1;
+        } else {
+          acc.inReview += 1;
+        }
+        return acc;
+      },
+      { pending: 0, approved: 0, rejected: 0, resubmitted: 0, inReview: 0 }
+    );
+
+    const serviceLimit = primaryPolicy?.servicePriceLimit ?? null;
+    const validationOverLimit = posOrderState.draftOrders.filter(
+      (draft) => serviceLimit != null && Number(draft.total || 0) > Number(serviceLimit)
+    ).length;
+    const validationMissingCore = posOrderState.draftOrders.filter(
+      (draft) => !String(draft.vehicleId || "").trim() || !String(draft.serviceType || "").trim()
+    ).length;
+
+    const invoices = billingState.invoices;
+    const billingSummary = invoices.reduce(
+      (acc, invoice) => {
+        const status = normalize(invoice.status);
+        if (status === "paid") {
+          acc.paid += 1;
+          acc.settledValue += Number(invoice.totalAmount || 0);
+        } else if (status === "processing") {
+          acc.processing += 1;
+          acc.inFlightValue += Number(invoice.totalAmount || 0);
+        } else if (status === "unpaid") {
+          acc.unpaid += 1;
+          acc.inFlightValue += Number(invoice.totalAmount || 0);
+        }
+        return acc;
+      },
+      { paid: 0, processing: 0, unpaid: 0, settledValue: 0, inFlightValue: 0 }
+    );
+
+    const peakMonth = [...monthlyComparison]
+      .sort((a, b) => b.total - a.total)[0]?.month || "N/A";
+    const recent = monthlyComparison[monthlyComparison.length - 1]?.estimatedCost || 0;
+    const previous = monthlyComparison[monthlyComparison.length - 2]?.estimatedCost || 0;
+    const trendDirection = recent > previous ? "up" : recent < previous ? "down" : "flat";
+
+    return {
+      orderManagement: {
+        drafts: draftOrders,
+        submitted: submittedOrders,
+        averageValue: averageSubmittedValue,
+      },
+      validation: {
+        policyMapped: Boolean(primaryPolicy),
+        overLimitDrafts: validationOverLimit,
+        missingRequired: validationMissingCore,
+      },
+      approval: {
+        total: approvalLinked.length,
+        ...approvalSummary,
+      },
+      billing: {
+        invoices: invoices.length,
+        paid: billingSummary.paid,
+        processing: billingSummary.processing,
+        unpaid: billingSummary.unpaid,
+        settledValue: Math.round(billingSummary.settledValue),
+        inFlightValue: Math.round(billingSummary.inFlightValue),
+        creditNotes: billingState.creditNotes.length,
+      },
+      inventory: {
+        availableUnits: spareSummary.totalAvailable,
+        lowStock: spareSummary.lowStockCount,
+        outOfStock: spareSummary.outOfStockCount,
+        inventoryValue: spareSummary.inventoryValue,
+      },
+      analytics: {
+        peakMonth,
+        onTimeRate: requestSummary.onTimeRate,
+        avgCycleHours: requestSummary.avgCycleHours,
+        trendDirection,
+      },
+      profile: {
+        user: session?.name || "POS User",
+        hasPolicy: Boolean(primaryPolicy),
+        activeNotifications: notifications.length,
+      },
+    };
+  }, [
+    billingState.creditNotes.length,
+    billingState.invoices,
+    monthlyComparison,
+    notifications.length,
+    posOrderState.draftOrders,
+    posOrderState.submittedOrders,
+    primaryPolicy,
+    requestSummary.avgCycleHours,
+    requestSummary.onTimeRate,
+    serviceOrderState.orders,
+    session?.name,
+    spareSummary.inventoryValue,
+    spareSummary.lowStockCount,
+    spareSummary.outOfStockCount,
+    spareSummary.totalAvailable,
+  ]);
+
   const isOrderManagementRoute = location.pathname.includes("/order-management");
   const isValidationRoute = location.pathname.includes("/validation");
   const isApprovalWorkflowRoute = location.pathname.includes("/approval-workflow");
@@ -713,6 +866,7 @@ function POSDashboard() {
               setPlateQuery,
               spareParts,
               spareSummary,
+              operationDetails,
               vehicles,
             }}
           />

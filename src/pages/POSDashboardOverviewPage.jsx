@@ -14,6 +14,7 @@ function POSDashboardOverviewPage() {
     primaryPolicy,
     spareSummary,
     spareParts,
+    operationDetails,
   } = useOutletContext();
 
   return (
@@ -29,6 +30,7 @@ function POSDashboardOverviewPage() {
       setPlateQuery={setPlateQuery}
       spareParts={spareParts}
       spareSummary={spareSummary}
+      operationDetails={operationDetails}
     />
   );
 }
