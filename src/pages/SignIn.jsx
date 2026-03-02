@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Logo from "../icons/Logo";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { findUserByCredentials } from "../data/userStore";
 import { getDefaultRouteForSession, setSession } from "../auth/session";
 import { useState } from "react";
@@ -14,6 +14,7 @@ function SignIn() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -93,13 +94,23 @@ function SignIn() {
               <Label className="text-sm font-medium text-slate-700">
                 Password
               </Label>
-              <Input
-                className={inputClasses}
-                type="password"
-                name="password"
-                autoComplete="current-password"
-                placeholder="Enter your password"
-              />
+              <div className="relative mt-2">
+                <Input
+                  className={`${inputClasses} mt-0 pr-10`}
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                />
+                <button
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 transition hover:text-slate-700"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  type="button"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <button
               className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
