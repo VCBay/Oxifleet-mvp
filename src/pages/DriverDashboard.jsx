@@ -195,6 +195,21 @@ const baseCostByProblem = {
   "General service": 390,
 };
 
+const driverSpendFallback = [
+  { spend: 420, checks: 1 },
+  { spend: 520, checks: 2 },
+  { spend: 610, checks: 2 },
+  { spend: 560, checks: 2 },
+  { spend: 700, checks: 3 },
+  { spend: 640, checks: 2 },
+  { spend: 760, checks: 3 },
+  { spend: 810, checks: 3 },
+  { spend: 780, checks: 3 },
+  { spend: 860, checks: 4 },
+  { spend: 840, checks: 3 },
+  { spend: 910, checks: 4 },
+];
+
 function DriverDashboard() {
   const navigate = useNavigate();
   const session = useSyncExternalStore(subscribeSession, getSession, getSession);
@@ -395,8 +410,8 @@ function DriverDashboard() {
         ? 68
         : 34;
 
-    const months = Array.from({ length: 6 }).map((_, index) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+    const months = Array.from({ length: 12 }).map((_, index) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (11 - index), 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       return {
         key,
@@ -422,17 +437,28 @@ function DriverDashboard() {
     });
 
     const hasHistory = months.some((month) => month.spend > 0 || month.checks > 0);
-    const spendTrend = hasHistory
-      ? months.map((month) => ({
+    const spendTrend = months.map((month, index) => {
+      const baseline = driverSpendFallback[index % driverSpendFallback.length];
+      if (!hasHistory) {
+        return {
+          label: month.label,
+          spend: baseline.spend,
+          checks: baseline.checks,
+        };
+      }
+      if (month.spend > 0 || month.checks > 0) {
+        return {
           label: month.label,
           spend: Math.round(month.spend),
           checks: month.checks,
-        }))
-      : months.map((month, index) => ({
-          label: month.label,
-          spend: 420 + index * 60,
-          checks: 1 + (index % 2),
-        }));
+        };
+      }
+      return {
+        label: month.label,
+        spend: Math.round(baseline.spend * 0.45),
+        checks: Math.max(1, Math.round(baseline.checks * 0.5)),
+      };
+    });
 
     const tyreTarget = 100;
     const frontPsi = Number(vehicle.tyreSpecs?.frontPsi) || tyreTarget;

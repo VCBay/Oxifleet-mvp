@@ -1,5 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Clock3, History, Send } from "lucide-react";
+import { Clock3, FileText, History, Send, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -50,6 +50,36 @@ const getApprovalState = (status) => {
   return "In review";
 };
 
+const formatDateTime = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "N/A";
+  }
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const statusBadgeClass = (status) => {
+  if (status === "Approved") {
+    return "bg-emerald-100 text-emerald-700";
+  }
+  if (status === "Rejected") {
+    return "bg-rose-100 text-rose-700";
+  }
+  if (status === "Pending approval") {
+    return "bg-amber-100 text-amber-700";
+  }
+  if (status === "Re-submitted") {
+    return "bg-violet-100 text-violet-700";
+  }
+  return "bg-slate-200 text-slate-700";
+};
+
 function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
@@ -66,6 +96,11 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
   const [approvalNote, setApprovalNote] = useState("");
   const [selectedApprovalRequestId, setSelectedApprovalRequestId] = useState("");
   const [correctionNote, setCorrectionNote] = useState("");
+  const [detailsModal, setDetailsModal] = useState({
+    open: false,
+    posOrderId: "",
+    requestId: "",
+  });
   const [feedback, setFeedback] = useState("");
 
   const submittedOrders = useMemo(
@@ -265,6 +300,42 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
     setFeedback(`Corrected order re-submitted as ${newRequest.id}.`);
   };
 
+  const openStatusDetails = (row) => () => {
+    if (row.requestId) {
+      setSelectedApprovalRequestId(row.requestId);
+    }
+    setDetailsModal({
+      open: true,
+      posOrderId: row.id,
+      requestId: row.requestId || "",
+    });
+  };
+
+  const closeStatusDetails = () => {
+    setDetailsModal({
+      open: false,
+      posOrderId: "",
+      requestId: "",
+    });
+  };
+
+  const modalPosOrder =
+    submittedOrders.find((order) => order.id === detailsModal.posOrderId) || null;
+  const modalRequest = useMemo(() => {
+    if (detailsModal.requestId) {
+      const direct = approvalRequests.find((request) => request.id === detailsModal.requestId);
+      if (direct) {
+        return direct;
+      }
+    }
+    if (detailsModal.posOrderId) {
+      return latestRequestByOrderId.get(detailsModal.posOrderId) || null;
+    }
+    return null;
+  }, [approvalRequests, detailsModal.posOrderId, detailsModal.requestId, latestRequestByOrderId]);
+
+  const modalStatus = modalRequest ? getApprovalState(modalRequest.status) : "Not requested";
+
   return (
     <section className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -371,11 +442,7 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
               <button
                 key={row.id}
                 className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left"
-                onClick={() => {
-                  if (row.requestId) {
-                    setSelectedApprovalRequestId(row.requestId);
-                  }
-                }}
+                onClick={openStatusDetails(row)}
                 type="button"
               >
                 <div>
@@ -386,17 +453,7 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <span
-                    className={`rounded-full px-2 py-1 font-semibold ${
-                      row.status === "Approved"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : row.status === "Rejected"
-                        ? "bg-rose-100 text-rose-700"
-                        : row.status === "Pending approval"
-                        ? "bg-amber-100 text-amber-700"
-                        : row.status === "Re-submitted"
-                        ? "bg-violet-100 text-violet-700"
-                        : "bg-slate-200 text-slate-700"
-                    }`}
+                    className={`rounded-full px-2 py-1 font-semibold ${statusBadgeClass(row.status)}`}
                   >
                     {row.status}
                   </span>
@@ -440,6 +497,193 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
           )}
         </div>
       </section>
+
+      {detailsModal.open ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4"
+          onClick={closeStatusDetails}
+          role="presentation"
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Approval details
+                </p>
+                <h3 className="mt-1 text-xl font-semibold text-slate-900">
+                  {modalPosOrder?.id || detailsModal.posOrderId || "POS Order"} -{" "}
+                  {modalPosOrder?.serviceType || "N/A"}
+                </h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  Request: {modalRequest?.id || "Not requested"} | Status: {modalStatus}
+                </p>
+              </div>
+              <button
+                aria-label="Close approval details"
+                className="rounded-full border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100"
+                onClick={closeStatusDetails}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="text-slate-500">Approval status</p>
+                <span
+                  className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(
+                    modalStatus
+                  )}`}
+                >
+                  {modalStatus}
+                </span>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="text-slate-500">Order total</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  ${modalPosOrder?.total || 0}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="text-slate-500">Priority</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {modalPosOrder?.priority || modalRequest?.priority || "N/A"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="text-slate-500">Requested at</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {formatDateTime(modalRequest?.requestedAt)}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-6 xl:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h4 className="text-sm font-semibold text-slate-900">POS order context</h4>
+                <div className="mt-3 space-y-1.5 text-xs text-slate-700">
+                  <p>
+                    Vehicle:{" "}
+                    <span className="font-semibold">
+                      {modalPosOrder?.vehiclePlate || modalPosOrder?.vehicleId || "N/A"}
+                    </span>
+                  </p>
+                  <p>
+                    Service type:{" "}
+                    <span className="font-semibold">{modalPosOrder?.serviceType || "N/A"}</span>
+                  </p>
+                  <p>
+                    Problem type:{" "}
+                    <span className="font-semibold">{modalPosOrder?.problemType || "N/A"}</span>
+                  </p>
+                  <p>
+                    Submitted by:{" "}
+                    <span className="font-semibold">{modalPosOrder?.submittedBy || "N/A"}</span>
+                  </p>
+                  <p>
+                    Submitted at:{" "}
+                    <span className="font-semibold">
+                      {formatDateTime(modalPosOrder?.submittedAt)}
+                    </span>
+                  </p>
+                  <p>
+                    Last updated:{" "}
+                    <span className="font-semibold">
+                      {formatDateTime(modalPosOrder?.updatedAt)}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <FileText size={14} />
+                  Approval decision detail
+                </h4>
+                {!modalRequest ? (
+                  <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+                    No approval request created for this order yet.
+                  </p>
+                ) : (
+                  <div className="mt-3 space-y-2 text-xs text-slate-700">
+                    <p>
+                      Decision:{" "}
+                      <span className="font-semibold">
+                        {modalRequest.approval?.decision || "Pending"}
+                      </span>
+                    </p>
+                    <p>
+                      Approver:{" "}
+                      <span className="font-semibold">
+                        {modalRequest.approval?.approver || "N/A"}
+                      </span>
+                    </p>
+                    <p>
+                      Decision time:{" "}
+                      <span className="font-semibold">
+                        {formatDateTime(modalRequest.approval?.decidedAt)}
+                      </span>
+                    </p>
+                    <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                      {modalRequest.approval?.note ||
+                        modalRequest.orderDetails?.description ||
+                        "No decision note available."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+              <h4 className="text-sm font-semibold text-slate-900">Approval lifecycle</h4>
+              <div className="mt-3 space-y-2">
+                {!modalRequest || !Array.isArray(modalRequest.lifecycle) || modalRequest.lifecycle.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+                    No lifecycle entries available.
+                  </p>
+                ) : (
+                  modalRequest.lifecycle.map((entry, index) => (
+                    <div
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm"
+                      key={`${modalRequest.id}-${entry.time}-${index}`}
+                    >
+                      <p className="font-semibold text-slate-900">
+                        {entry.stage} - {entry.actor}
+                      </p>
+                      <p className="text-xs text-slate-600">{formatDateTime(entry.time)}</p>
+                      {entry.note ? (
+                        <p className="mt-1 text-xs text-slate-700">{entry.note}</p>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {modalRequest ? (
+                <Button
+                  onClick={() => {
+                    setSelectedApprovalRequestId(modalRequest.id);
+                    closeStatusDetails();
+                  }}
+                  type="button"
+                >
+                  Focus in history
+                </Button>
+              ) : null}
+              <Button onClick={closeStatusDetails} type="button" variant="outline">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {feedback ? (
         <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">

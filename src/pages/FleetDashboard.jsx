@@ -155,16 +155,31 @@ function Dashboard() {
     { week: "Wk 2", spend: 9800 },
     { week: "Wk 3", spend: 15600 },
     { week: "Wk 4", spend: 11200 },
+    { week: "Wk 5", spend: 14100 },
+    { week: "Wk 6", spend: 13200 },
+    { week: "Wk 7", spend: 16850 },
+    { week: "Wk 8", spend: 14900 },
+    { week: "Wk 9", spend: 17240 },
+    { week: "Wk 10", spend: 15820 },
+    { week: "Wk 11", spend: 18110 },
+    { week: "Wk 12", spend: 16940 },
   ];
 
   const utilization = [
-    { day: "Mon", rate: 82 },
-    { day: "Tue", rate: 74 },
-    { day: "Wed", rate: 88 },
-    { day: "Thu", rate: 79 },
-    { day: "Fri", rate: 91 },
-    { day: "Sat", rate: 67 },
-    { day: "Sun", rate: 71 },
+    { day: "Mon-1", rate: 82 },
+    { day: "Tue-1", rate: 74 },
+    { day: "Wed-1", rate: 88 },
+    { day: "Thu-1", rate: 79 },
+    { day: "Fri-1", rate: 91 },
+    { day: "Sat-1", rate: 67 },
+    { day: "Sun-1", rate: 71 },
+    { day: "Mon-2", rate: 84 },
+    { day: "Tue-2", rate: 78 },
+    { day: "Wed-2", rate: 86 },
+    { day: "Thu-2", rate: 80 },
+    { day: "Fri-2", rate: 93 },
+    { day: "Sat-2", rate: 69 },
+    { day: "Sun-2", rate: 73 },
   ];
 
   const assignmentVehicles =
@@ -580,13 +595,13 @@ function Dashboard() {
                     <Settings size={18} />
                     Settings
                   </button> */}
-                  <button
+                  {/* <button
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white"
                     type="button"
                   >
                     <HelpCircle size={18} />
                     Help
-                  </button>
+                  </button> */}
                   <button
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white"
                     onClick={handleSignOut}

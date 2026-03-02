@@ -644,7 +644,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
                         type="button"
                         variant="secondary"
                       >
-                        View details
+                        View
                       </Button>
                       <Button
                         onClick={() => loadDraftIntoForm(draft)}
@@ -697,7 +697,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
                         type="button"
                         variant="secondary"
                       >
-                        View details
+                        View
                       </Button>
                       <Button
                         onClick={onDuplicateSubmittedOrder(order.id)}
@@ -897,7 +897,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
             <div className="mt-5 flex flex-wrap gap-2">
               {detailsModal.source === "draft" ? (
                 <Button onClick={loadDraftFromModal} type="button">
-                  Load in editor
+                  Edit
                 </Button>
               ) : (
                 <Button onClick={duplicateFromModal} type="button">
