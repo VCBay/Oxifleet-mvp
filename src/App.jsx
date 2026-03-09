@@ -13,6 +13,7 @@ import POSBillingSettlementPage from "./pages/POSBillingSettlementPage";
 import POSInventoryAvailabilityPage from "./pages/POSInventoryAvailabilityPage";
 import POSAnalyticsReportsPage from "./pages/POSAnalyticsReportsPage";
 import POSProfileSettingsPage from "./pages/POSProfileSettingsPage";
+import DriverServiceRequestPreviewPage from "./pages/DriverServiceRequestPreviewPage";
 import {
   getDefaultRouteForSession,
   getSession,
@@ -45,12 +46,50 @@ function App() {
             ) : isPosSession(session) ? (
               <Navigate to="/pos-dashboard" replace />
             ) : (
+              <Navigate to="/dashboard/overview" replace />
+            )
+          }
+        />
+        <Route
+          path="/dashboard/*"
+          element={
+            !isAuthed ? (
+              <Navigate to="/signin" replace />
+            ) : isDriverSession(session) ? (
+              <Navigate to="/driver-dashboard" replace />
+            ) : isPosSession(session) ? (
+              <Navigate to="/pos-dashboard" replace />
+            ) : (
               <Dashboard />
             )
           }
         />
         <Route
           path="/driver-dashboard"
+          element={
+            !isAuthed ? (
+              <Navigate to="/signin" replace />
+            ) : isDriverSession(session) ? (
+              <Navigate to="/driver-dashboard/overview" replace />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
+        <Route
+          path="/driver-dashboard/service-request-preview"
+          element={
+            !isAuthed ? (
+              <Navigate to="/signin" replace />
+            ) : isDriverSession(session) ? (
+              <DriverServiceRequestPreviewPage />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
+        <Route
+          path="/driver-dashboard/*"
           element={
             !isAuthed ? (
               <Navigate to="/signin" replace />

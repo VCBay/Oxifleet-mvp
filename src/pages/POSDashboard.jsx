@@ -702,6 +702,8 @@ function POSDashboard() {
   const isInventoryAvailabilityRoute = location.pathname.includes("/inventory-availability");
   const isAnalyticsReportsRoute = location.pathname.includes("/analytics-reports");
   const isProfileSettingsRoute = location.pathname.includes("/profile-settings");
+  const isOverviewRoute =
+    location.pathname.includes("/overview") || location.pathname === "/pos-dashboard";
 
   const pageTitle = isOrderManagementRoute
     ? "POS Order Management"
@@ -798,14 +800,26 @@ function POSDashboard() {
         </aside>
 
         <section className="ml-72 flex-1 space-y-6 overflow-y-auto p-8">
-          <header className="flex flex-col gap-4 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-slate-900">
-                  {pageTitle}
-                </h1>
-                <p className="mt-1 text-sm text-slate-500">{pageDescription}</p>
-              </div>
+          <header
+            className={`rounded-3xl border border-slate-200/70 bg-white shadow-sm ${
+              isOverviewRoute ? "p-6" : "p-4"
+            }`}
+          >
+            <div
+              className={`flex gap-4 ${
+                isOverviewRoute
+                  ? "flex-col lg:flex-row lg:items-center lg:justify-between"
+                  : "items-center justify-end"
+              }`}
+            >
+              {isOverviewRoute ? (
+                <div>
+                  <h1 className="text-2xl font-semibold text-slate-900">
+                    {pageTitle}
+                  </h1>
+                  <p className="mt-1 text-sm text-slate-500">{pageDescription}</p>
+                </div>
+              ) : null}
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <button

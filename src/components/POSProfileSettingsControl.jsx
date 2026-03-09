@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { MapPin, Settings, Users } from "lucide-react";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import { MapPin, Send, Settings, Users } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -11,6 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import {
+  getCommunicationState,
+  sendWorkshopMessage,
+  subscribeCommunication,
+} from "../data/communicationStore";
 
 const defaultWorkshopProfile = {
   workshopName: "Oxifleet POS Service Hub",
@@ -72,6 +77,11 @@ const createStaffId = () =>
   `STF-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
 function POSProfileSettingsControl({ session = null }) {
+  const communicationState = useSyncExternalStore(
+    subscribeCommunication,
+    getCommunicationState,
+    getCommunicationState
+  );
   const [workshopProfile, setWorkshopProfile] = useState(defaultWorkshopProfile);
   const [staffMembers, setStaffMembers] = useState(initialStaffMembers);
   const [staffDraft, setStaffDraft] = useState({
@@ -83,6 +93,25 @@ function POSProfileSettingsControl({ session = null }) {
   const [workingHours, setWorkingHours] = useState(defaultWorkingHours);
   const [locationSettings, setLocationSettings] = useState(defaultLocationSettings);
   const [feedback, setFeedback] = useState("");
+  const [fleetMessageDraft, setFleetMessageDraft] = useState("");
+  const [fleetMessageMeta, setFleetMessageMeta] = useState({
+    channel: "Portal",
+    urgency: "Normal",
+  });
+
+  const formatDateTime = (value) => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return "N/A";
+    }
+    return parsed.toLocaleString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const staffSummary = useMemo(() => {
     const active = staffMembers.filter((member) => member.status === "Active").length;
@@ -93,6 +122,27 @@ function POSProfileSettingsControl({ session = null }) {
       onLeave,
     };
   }, [staffMembers]);
+
+  const workshopIdentity = useMemo(
+    () =>
+      String(workshopProfile.workshopName || locationSettings.locationName || session?.name || "Workshop Desk").trim(),
+    [locationSettings.locationName, session?.name, workshopProfile.workshopName]
+  );
+
+  const fleetConversation = useMemo(
+    () =>
+      communicationState.workshopMessages
+        .filter(
+          (message) =>
+            String(message.workshop || "").trim().toLowerCase() ===
+            workshopIdentity.toLowerCase()
+        )
+        .sort(
+          (a, b) =>
+            (new Date(a.sentAt).getTime() || 0) - (new Date(b.sentAt).getTime() || 0)
+        ),
+    [communicationState.workshopMessages, workshopIdentity]
+  );
 
   const addStaffMember = () => {
     if (!staffDraft.name.trim()) {
@@ -129,6 +179,25 @@ function POSProfileSettingsControl({ session = null }) {
 
   const saveAllSettings = () => {
     setFeedback("Profile and settings saved.");
+  };
+
+  const sendFleetMessage = () => {
+    const message = fleetMessageDraft.trim();
+    if (!message) {
+      setFeedback("Write message before sending to fleet.");
+      return;
+    }
+    sendWorkshopMessage({
+      workshop: workshopIdentity,
+      channel: fleetMessageMeta.channel,
+      urgency: fleetMessageMeta.urgency,
+      message,
+      sentBy: session?.name || workshopIdentity,
+      fromRole: "workshop",
+      toRole: "fleet",
+    });
+    setFleetMessageDraft("");
+    setFeedback("Message sent to fleet control.");
   };
 
   return (
@@ -487,6 +556,94 @@ function POSProfileSettingsControl({ session = null }) {
                 value={locationSettings.serviceCoverageKm}
               />
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Fleet communication</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Send workshop updates to fleet and receive their responses in the same thread.
+          </p>
+          <div className="mt-4 grid gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Select
+                onValueChange={(value) =>
+                  setFleetMessageMeta((prev) => ({ ...prev, channel: value }))
+                }
+                value={fleetMessageMeta.channel}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Channel" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Portal">Portal</SelectItem>
+                  <SelectItem value="Email">Email</SelectItem>
+                  <SelectItem value="Call">Call</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                onValueChange={(value) =>
+                  setFleetMessageMeta((prev) => ({ ...prev, urgency: value }))
+                }
+                value={fleetMessageMeta.urgency}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Urgency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Normal">Normal</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Emergency">Emergency</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Textarea
+              onChange={(event) => setFleetMessageDraft(event.target.value)}
+              placeholder="Write update for fleet control"
+              rows={4}
+              value={fleetMessageDraft}
+            />
+            <Button onClick={sendFleetMessage} type="button">
+              <Send className="mr-2" size={14} />
+              Send to fleet
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Fleet conversation</h2>
+          <p className="mt-1 text-sm text-slate-500">{workshopIdentity}</p>
+          <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar]:w-1.5">
+            {fleetConversation.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
+                No fleet communication yet.
+              </p>
+            ) : (
+              fleetConversation.map((message) => {
+                const inbound = String(message.fromRole || "").toLowerCase() === "fleet";
+                return (
+                  <div
+                    className={`flex ${inbound ? "justify-start" : "justify-end"}`}
+                    key={message.id}
+                  >
+                    <div
+                      className={`max-w-[86%] rounded-2xl px-3 py-2 text-xs ${
+                        inbound
+                          ? "border border-slate-200 bg-slate-50 text-slate-700"
+                          : "bg-slate-900 text-white"
+                      }`}
+                    >
+                      <p className={`${inbound ? "text-slate-500" : "text-slate-300"}`}>
+                        {message.sentBy} | {formatDateTime(message.sentAt)}
+                      </p>
+                      <p className="mt-1">{message.message}</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </section>

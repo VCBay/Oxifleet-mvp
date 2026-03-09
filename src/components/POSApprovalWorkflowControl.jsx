@@ -1,5 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Clock3, FileText, History, Send, X } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock3, FileText, History, Play, Send, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -13,9 +13,12 @@ import {
 } from "./ui/select";
 import { getPosOrderState, subscribePosOrders } from "../data/posOrderStore";
 import {
+  confirmServiceAppointment,
+  confirmServiceCompletion,
   createServiceRequest,
   getServiceOrderState,
   setOrderLifecycleStage,
+  startServiceExecution,
   subscribeServiceOrders,
 } from "../data/serviceOrderStore";
 
@@ -64,6 +67,17 @@ const formatDateTime = (value) => {
   });
 };
 
+const toIsoFromLocalInput = (value) => {
+  if (!value) {
+    return "";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  return parsed.toISOString();
+};
+
 const statusBadgeClass = (status) => {
   if (status === "Approved") {
     return "bg-emerald-100 text-emerald-700";
@@ -102,6 +116,15 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
     requestId: "",
   });
   const [feedback, setFeedback] = useState("");
+  const [selectedQueueOrderId, setSelectedQueueOrderId] = useState("");
+  const [appointmentAtLocal, setAppointmentAtLocal] = useState(() => {
+    const next = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    next.setMinutes(0, 0, 0);
+    return next.toISOString().slice(0, 16);
+  });
+  const [appointmentNote, setAppointmentNote] = useState("");
+  const [calendarChecked, setCalendarChecked] = useState(true);
+  const [stockChecked, setStockChecked] = useState(true);
 
   const submittedOrders = useMemo(
     () => posOrderState.submittedOrders,
@@ -138,6 +161,33 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
     });
     return map;
   }, [approvalRequests]);
+
+  const serviceQueue = useMemo(
+    () =>
+      serviceOrderState.orders
+        .filter((order) => {
+          const status = normalize(order.status);
+          if (status.includes("rejected") || status.includes("completed") || status.includes("closed")) {
+            return false;
+          }
+          return (
+            status.includes("approved") ||
+            status.includes("pending booking") ||
+            status.includes("scheduled") ||
+            status.includes("progress")
+          );
+        })
+        .sort((a, b) => {
+          const ta = new Date(a.updatedAt || a.requestedAt).getTime() || 0;
+          const tb = new Date(b.updatedAt || b.requestedAt).getTime() || 0;
+          return tb - ta;
+        }),
+    [serviceOrderState.orders]
+  );
+
+  const selectedQueueOrder =
+    serviceQueue.find((order) => order.id === (selectedQueueOrderId || serviceQueue[0]?.id || "")) ||
+    null;
 
   const posOrderStatusRows = useMemo(
     () =>
@@ -300,6 +350,69 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
     setFeedback(`Corrected order re-submitted as ${newRequest.id}.`);
   };
 
+  const confirmAppointment = () => {
+    if (!selectedQueueOrder) {
+      setFeedback("Select a service request from POS queue.");
+      return;
+    }
+    if (!calendarChecked || !stockChecked) {
+      setFeedback("Calendar and stock checks are required before appointment confirmation.");
+      return;
+    }
+    const appointmentAt = toIsoFromLocalInput(appointmentAtLocal);
+    if (!appointmentAt) {
+      setFeedback("Choose a valid appointment date and time.");
+      return;
+    }
+    const updated = confirmServiceAppointment(selectedQueueOrder.id, {
+      appointmentAt,
+      actor: session?.name || "POS User",
+      note: appointmentNote,
+      calendarChecked,
+      stockChecked,
+    });
+    if (!updated) {
+      setFeedback("Unable to confirm appointment for selected request.");
+      return;
+    }
+    setAppointmentNote("");
+    setFeedback(`Appointment confirmed for ${updated.id}. Driver and fleet can now track schedule.`);
+  };
+
+  const startService = () => {
+    if (!selectedQueueOrder) {
+      setFeedback("Select a service request from POS queue.");
+      return;
+    }
+    const updated = startServiceExecution(selectedQueueOrder.id, {
+      actor: session?.name || "POS User",
+      note: "Service started by POS team.",
+    });
+    if (!updated) {
+      setFeedback("Unable to move request to in-progress state.");
+      return;
+    }
+    setFeedback(`Service started for ${updated.id}.`);
+  };
+
+  const completeService = () => {
+    if (!selectedQueueOrder) {
+      setFeedback("Select a service request from POS queue.");
+      return;
+    }
+    const updated = confirmServiceCompletion(selectedQueueOrder.id, {
+      actor: session?.name || "POS User",
+      note: "POS confirmed service completion.",
+    });
+    if (!updated) {
+      setFeedback("Unable to complete selected service request.");
+      return;
+    }
+    setFeedback(
+      `Service completed for ${updated.id}. Fleet manager has settlement-ready confirmation.`
+    );
+  };
+
   const openStatusDetails = (row) => () => {
     if (row.requestId) {
       setSelectedApprovalRequestId(row.requestId);
@@ -362,6 +475,124 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm xl:col-span-2">
+          <h2 className="text-lg font-semibold text-slate-900">
+            POS service queue (driver to completion flow)
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Receive fleet-approved requests, check calendar and stock, confirm appointment,
+            run service, and mark completion for settlement.
+          </p>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-[1.15fr_1fr]">
+            <div className="space-y-3">
+              <Label>Select service request</Label>
+              <Select
+                onValueChange={setSelectedQueueOrderId}
+                value={selectedQueueOrderId || serviceQueue[0]?.id || "__none__"}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select service request" />
+                </SelectTrigger>
+                <SelectContent>
+                  {serviceQueue.length === 0 ? (
+                    <SelectItem value="__none__">No requests in queue</SelectItem>
+                  ) : (
+                    serviceQueue.map((order) => (
+                      <SelectItem key={order.id} value={order.id}>
+                        {order.id} - {order.serviceType} ({order.status})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+
+              {selectedQueueOrder ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <p className="font-semibold text-slate-900">
+                    {selectedQueueOrder.id} - {selectedQueueOrder.requestTitle}
+                  </p>
+                  <p className="mt-1 text-slate-600">
+                    {selectedQueueOrder.vehicleId} | {selectedQueueOrder.orderDetails?.vendor || "Unassigned vendor"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Current status: {selectedQueueOrder.status}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Appointment:{" "}
+                    {selectedQueueOrder.appointment?.dateTime
+                      ? formatDateTime(selectedQueueOrder.appointment.dateTime)
+                      : "Not scheduled"}
+                  </p>
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
+                  No eligible requests for POS scheduling.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid gap-2">
+                <Label htmlFor="appointment-datetime">Appointment date and time</Label>
+                <Input
+                  id="appointment-datetime"
+                  type="datetime-local"
+                  value={appointmentAtLocal}
+                  onChange={(event) => setAppointmentAtLocal(event.target.value)}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="appointment-note">POS scheduling note</Label>
+                <Textarea
+                  id="appointment-note"
+                  rows={3}
+                  value={appointmentNote}
+                  onChange={(event) => setAppointmentNote(event.target.value)}
+                  placeholder="Calendar/stock check result and appointment context"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-4 text-sm text-slate-700">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-slate-900"
+                    checked={calendarChecked}
+                    onChange={(event) => setCalendarChecked(event.target.checked)}
+                  />
+                  Calendar checked
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-slate-900"
+                    checked={stockChecked}
+                    onChange={(event) => setStockChecked(event.target.checked)}
+                  />
+                  Stock checked
+                </label>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={confirmAppointment} type="button" variant="outline">
+                  <CalendarClock className="mr-2" size={14} />
+                  Confirm appointment
+                </Button>
+                <Button onClick={startService} type="button">
+                  <Play className="mr-2" size={14} />
+                  Start service
+                </Button>
+                <Button onClick={completeService} type="button" variant="secondary">
+                  <CheckCircle2 className="mr-2" size={14} />
+                  Confirm completion
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <Send size={18} />

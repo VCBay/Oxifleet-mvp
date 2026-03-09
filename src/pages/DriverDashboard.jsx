@@ -1,37 +1,14 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
-import { useNavigate } from "react-router-dom";
-import { CalendarClock, LogOut, ShieldCheck, Truck, Wrench } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import Logo from "../icons/Logo";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   clearSession,
   getSession,
   subscribeSession,
 } from "../auth/session";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import { Textarea } from "../components/ui/textarea";
 import {
   getDriverState,
   subscribeDrivers,
+  updateDriver,
 } from "../data/driverStore";
 import {
   getVehicleState,
@@ -48,10 +25,23 @@ import {
 import {
   createServiceRequest,
   getServiceOrderState,
-  setOrderLifecycleStage,
   subscribeServiceOrders,
 } from "../data/serviceOrderStore";
+import {
+  createSupportTicket,
+  getCommunicationState,
+  sendDriverMessage,
+  sendWorkshopMessage,
+  subscribeCommunication,
+} from "../data/communicationStore";
 import DriverBookingTrackingPanel from "../components/DriverBookingTrackingPanel";
+import DriverSidebar from "../components/driver/DriverSidebar";
+import DriverTopbar from "../components/driver/DriverTopbar";
+import DriverOverviewSection from "../components/driver/DriverOverviewSection";
+import DriverServiceRequestSection from "../components/driver/DriverServiceRequestSection";
+import DriverDocumentsHistorySection from "../components/driver/DriverDocumentsHistorySection";
+import DriverCommunicationSection from "../components/driver/DriverCommunicationSection";
+import DriverProfileSection from "../components/driver/DriverProfileSection";
 
 const toDate = (value) => {
   const parsed = new Date(value);
@@ -80,6 +70,68 @@ const formatDate = (value) => {
     day: "2-digit",
     year: "numeric",
   });
+};
+
+const formatDateTime = (value) => {
+  const parsed = toDate(value);
+  if (!parsed) {
+    return "N/A";
+  }
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const normalizeValue = (value) => String(value || "").trim().toLowerCase();
+
+const parseDriverNotes = (value) => {
+  const text = String(value || "").trim();
+  if (!text) {
+    return {
+      emergencyContact: "",
+      contactAddress: "",
+      bio: "",
+      photoUrl: "",
+    };
+  }
+
+  const parts = text
+    .split("|")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  let contactAddress = "";
+  let bio = "";
+  let photoUrl = "";
+  const emergencyParts = [];
+
+  parts.forEach((part) => {
+    const lower = part.toLowerCase();
+    if (lower.startsWith("address:")) {
+      contactAddress = part.slice(8).trim();
+      return;
+    }
+    if (lower.startsWith("bio:")) {
+      bio = part.slice(4).trim();
+      return;
+    }
+    if (lower.startsWith("photo:")) {
+      photoUrl = part.slice(6).trim();
+      return;
+    }
+    emergencyParts.push(part);
+  });
+
+  return {
+    emergencyContact: emergencyParts.join(" | "),
+    contactAddress,
+    bio,
+    photoUrl,
+  };
 };
 
 const getWarrantyStatus = (expiryDate) => {
@@ -162,28 +214,236 @@ const policyMatchesVehicle = (policy, vehicle, tenantName) => {
 
 const eligibilityClass = (value) => {
   if (value === "Allowed") {
-    return "bg-emerald-100 text-emerald-700";
+    return "bg-emerald-900 text-emerald-100 ring-1 ring-emerald-700/60";
   }
   if (value === "Approval Required") {
-    return "bg-amber-100 text-amber-700";
+    return "bg-amber-900 text-amber-100 ring-1 ring-amber-700/60";
   }
-  return "bg-rose-100 text-rose-700";
+  return "bg-rose-900 text-rose-100 ring-1 ring-rose-700/60";
 };
 
-const problemTypeOptions = [
-  "Engine diagnostics",
-  "Tyre damage",
-  "Brake issue",
-  "Battery / electrical",
-  "Accident damage",
-  "General service",
+const requestStatusClass = (value) => {
+  const status = normalizeValue(value);
+  if (status.includes("rejected")) {
+    return "bg-rose-900 text-rose-100 ring-1 ring-rose-700/60";
+  }
+  if (status.includes("completed") || status.includes("closed")) {
+    return "bg-emerald-900 text-emerald-100 ring-1 ring-emerald-700/60";
+  }
+  if (status.includes("progress")) {
+    return "bg-sky-900 text-sky-100 ring-1 ring-sky-700/60";
+  }
+  if (status.includes("approved")) {
+    return "bg-indigo-900 text-indigo-100 ring-1 ring-indigo-700/60";
+  }
+  return "bg-amber-900 text-amber-100 ring-1 ring-amber-700/60";
+};
+
+const simpleIssueOptions = [
+  {
+    value: "Tyre damage",
+    label: "Tyre problem",
+    hint: "Puncture, low air, or damaged tyre",
+  },
+  {
+    value: "Brake issue",
+    label: "Brake problem",
+    hint: "Brake noise, weak brake, warning light",
+  },
+  {
+    value: "Engine diagnostics",
+    label: "Engine problem",
+    hint: "Power loss, smoke, engine light",
+  },
+  {
+    value: "Battery / electrical",
+    label: "Battery or electrical",
+    hint: "Vehicle not starting, light issue",
+  },
+  {
+    value: "Accident damage",
+    label: "Accident damage",
+    hint: "Body or safety damage after impact",
+  },
+  {
+    value: "General service",
+    label: "I am not sure",
+    hint: "General check needed",
+  },
 ];
 
-const severityMultipliers = {
-  Low: 1,
-  Medium: 1.25,
-  High: 1.55,
-  Critical: 1.9,
+const posNetworkCatalog = [
+  {
+    id: "POS-METRO",
+    name: "Metro Service Hub",
+    address: "North Loop Service Road, Dallas, TX",
+    distanceKm: 4.2,
+    etaMin: 14,
+    capabilities: ["tyre", "mechanical", "engine", "electrical", "general"],
+  },
+  {
+    id: "POS-WESTLINE",
+    name: "Westline Tire Care",
+    address: "Industrial Ave, Austin, TX",
+    distanceKm: 7.8,
+    etaMin: 22,
+    capabilities: ["tyre", "general"],
+  },
+  {
+    id: "POS-NORTHERN",
+    name: "Northern Fleet Works",
+    address: "Bay 6, Houston Fleet Park, TX",
+    distanceKm: 12.1,
+    etaMin: 31,
+    capabilities: ["mechanical", "engine", "electrical", "body", "general"],
+  },
+  {
+    id: "POS-RAPID",
+    name: "RapidTow Services",
+    address: "I-35 Corridor Assist Center, TX",
+    distanceKm: 15.4,
+    etaMin: 38,
+    capabilities: ["tyre", "body", "general"],
+  },
+  {
+    id: "POS-LAKESIDE",
+    name: "Lakeside Workshop",
+    address: "Lakeside Blvd, Fort Worth, TX",
+    distanceKm: 18.2,
+    etaMin: 41,
+    capabilities: ["tyre", "mechanical", "general"],
+  },
+  {
+    id: "POS-CENTRAL",
+    name: "Central Fleet Garage",
+    address: "Central Freight Yard, Irving, TX",
+    distanceKm: 20.4,
+    etaMin: 45,
+    capabilities: ["engine", "electrical", "mechanical", "general"],
+  },
+  {
+    id: "POS-SOUTHRIDGE",
+    name: "Southridge Auto Works",
+    address: "Southridge Rd, San Antonio, TX",
+    distanceKm: 23.1,
+    etaMin: 49,
+    capabilities: ["body", "electrical", "general"],
+  },
+  {
+    id: "POS-HIGHWAY24",
+    name: "Highway 24 Service Point",
+    address: "Highway 24 Exit Service Bay, TX",
+    distanceKm: 26.7,
+    etaMin: 54,
+    capabilities: ["tyre", "mechanical", "body", "general"],
+  },
+];
+
+const slotTemplates = [
+  { id: "08:30", label: "08:30 - 09:15" },
+  { id: "09:30", label: "09:30 - 10:15" },
+  { id: "10:30", label: "10:30 - 11:15" },
+  { id: "11:30", label: "11:30 - 12:15" },
+  { id: "13:30", label: "13:30 - 14:15" },
+  { id: "14:30", label: "14:30 - 15:15" },
+  { id: "15:30", label: "15:30 - 16:15" },
+  { id: "16:30", label: "16:30 - 17:15" },
+];
+
+const toDateInputValue = (value) => {
+  const parsed = toDate(value) || new Date();
+  return parsed.toISOString().slice(0, 10);
+};
+
+const getTomorrowDateInput = () => {
+  const value = new Date();
+  value.setDate(value.getDate() + 1);
+  return toDateInputValue(value);
+};
+
+const getNearestPosForProblem = (problemType) => {
+  const key = normalizeValue(problemType);
+  const targetCapability = key.includes("tyre")
+    ? "tyre"
+    : key.includes("brake")
+    ? "mechanical"
+    : key.includes("engine")
+    ? "engine"
+    : key.includes("battery") || key.includes("electrical")
+    ? "electrical"
+    : key.includes("accident")
+    ? "body"
+    : "general";
+
+  return posNetworkCatalog
+    .filter(
+      (pos) =>
+        pos.capabilities.includes(targetCapability) || pos.capabilities.includes("general")
+    )
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+};
+
+const hashText = (text) => {
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash * 31 + text.charCodeAt(index)) % 1000003;
+  }
+  return Math.abs(hash);
+};
+
+const buildSlotAvailability = ({ posId, date, problemType }) => {
+  if (!posId || !date) {
+    return [];
+  }
+  const keyBase = `${posId}|${date}|${problemType}`;
+  return slotTemplates.map((slot, index) => {
+    const slotHash = hashText(`${keyBase}|${slot.id}|${index}`);
+    const busy = slotHash % 5 === 0 || slotHash % 7 === 0;
+    const queue = busy ? 2 + (slotHash % 4) : 0;
+    const iso = new Date(`${date}T${slot.id}:00`).toISOString();
+    return {
+      id: `${date}-${slot.id}`,
+      slotTime: slot.id,
+      label: slot.label,
+      status: busy ? "Busy" : "Free",
+      queue,
+      dateTime: iso,
+    };
+  });
+};
+
+const driverMenuRouteMap = {
+  overview: "overview",
+  service_request: "service-request",
+  booking_tracking: "booking-tracking",
+  documents_history: "documents-history",
+  communication: "communication",
+  profile: "profile",
+};
+
+const parseDriverMenuFromPath = (pathname) => {
+  const cleaned = String(pathname || "").replace(/\/+$/, "");
+  const parts = cleaned.split("/").filter(Boolean);
+  const section = parts[1] || "";
+  if (section === driverMenuRouteMap.overview) {
+    return "overview";
+  }
+  if (section === driverMenuRouteMap.service_request) {
+    return "service_request";
+  }
+  if (section === driverMenuRouteMap.booking_tracking) {
+    return "booking_tracking";
+  }
+  if (section === driverMenuRouteMap.documents_history) {
+    return "documents_history";
+  }
+  if (section === driverMenuRouteMap.communication) {
+    return "communication";
+  }
+  if (section === driverMenuRouteMap.profile) {
+    return "profile";
+  }
+  return "overview";
 };
 
 const baseCostByProblem = {
@@ -212,6 +472,7 @@ const driverSpendFallback = [
 
 function DriverDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const session = useSyncExternalStore(subscribeSession, getSession, getSession);
   const driverState = useSyncExternalStore(
     subscribeDrivers,
@@ -237,6 +498,11 @@ function DriverDashboard() {
     subscribeServiceOrders,
     getServiceOrderState,
     getServiceOrderState
+  );
+  const communicationState = useSyncExternalStore(
+    subscribeCommunication,
+    getCommunicationState,
+    getCommunicationState
   );
 
   const driverRecord = useMemo(() => {
@@ -505,6 +771,38 @@ function DriverDashboard() {
 
   const displayName = driverRecord?.name || session?.driverName || session?.name || "Driver";
   const displayEmail = session?.email || driverRecord?.email || "N/A";
+  const parsedDriverNotes = useMemo(
+    () => parseDriverNotes(driverRecord?.notes),
+    [driverRecord?.notes]
+  );
+  const initialProfileForm = useMemo(
+    () => ({
+      name: displayName,
+      email: displayEmail,
+      phone: driverRecord?.phone || "+1 (555) 010-0000",
+      license: driverRecord?.license || "CDL-A 847563",
+      licenseClass: "CDL-A",
+      licenseExpiry: "2027-09-30",
+      contactAddress: parsedDriverNotes.contactAddress || tenant?.region || "N/A",
+      emergencyContact:
+        parsedDriverNotes.emergencyContact || "Dispatch Desk - +1 (555) 010-2200",
+      bio:
+        parsedDriverNotes.bio ||
+        "Experienced fleet driver focused on safe, on-time and compliant operations.",
+      photoUrl: parsedDriverNotes.photoUrl || "",
+    }),
+    [
+      displayEmail,
+      displayName,
+      driverRecord?.license,
+      driverRecord?.phone,
+      parsedDriverNotes.bio,
+      parsedDriverNotes.contactAddress,
+      parsedDriverNotes.emergencyContact,
+      parsedDriverNotes.photoUrl,
+      tenant?.region,
+    ]
+  );
   const profileInitials = displayName
     .split(/\s+/)
     .filter(Boolean)
@@ -512,25 +810,349 @@ function DriverDashboard() {
     .map((part) => part[0]?.toUpperCase() || "")
     .join("") || "DR";
 
-  const [activeMenu, setActiveMenu] = useState("overview");
-  const [wizardStep, setWizardStep] = useState(1);
   const [requestForm, setRequestForm] = useState({
-    problemType: "Engine diagnostics",
-    severity: "Medium",
+    problemType: "Tyre damage",
     description: "",
     emergency: false,
-    requiresManagerApproval: true,
-    fleetManager: "Fleet Manager",
     photos: [],
+    preferredPosId: "",
+    preferredDate: getTomorrowDateInput(),
+    preferredSlotId: "",
   });
+  const [selectedRequestId, setSelectedRequestId] = useState("");
   const [wizardFeedback, setWizardFeedback] = useState("");
+  const driverNotificationCount = 3;
+  const activeMenu = useMemo(
+    () => parseDriverMenuFromPath(location.pathname),
+    [location.pathname]
+  );
+  const nearestPosOptions = useMemo(
+    () => getNearestPosForProblem(requestForm.problemType),
+    [requestForm.problemType]
+  );
+  const selectedPos = useMemo(() => {
+    if (nearestPosOptions.length === 0 || !requestForm.preferredPosId) {
+      return null;
+    }
+    const byId = nearestPosOptions.find((pos) => pos.id === requestForm.preferredPosId);
+    return byId || null;
+  }, [nearestPosOptions, requestForm.preferredPosId]);
+  const slotAvailability = useMemo(
+    () =>
+      buildSlotAvailability({
+        posId: requestForm.preferredPosId,
+        date: requestForm.preferredDate,
+        problemType: requestForm.problemType,
+      }),
+    [requestForm.preferredDate, requestForm.preferredPosId, requestForm.problemType]
+  );
+  const selectedSlot = useMemo(
+    () =>
+      slotAvailability.find(
+        (slot) => slot.id === requestForm.preferredSlotId && slot.status === "Free"
+      ) || null,
+    [requestForm.preferredSlotId, slotAvailability]
+  );
+
+  useEffect(() => {
+    const expectedPath = `/driver-dashboard/${driverMenuRouteMap[activeMenu]}`;
+    if (location.pathname !== expectedPath) {
+      navigate(expectedPath, { replace: true });
+    }
+  }, [activeMenu, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (nearestPosOptions.length === 0) {
+      setRequestForm((prev) => {
+        if (!prev.preferredPosId && !prev.preferredSlotId) {
+          return prev;
+        }
+        return {
+          ...prev,
+          preferredPosId: "",
+          preferredSlotId: "",
+        };
+      });
+      return;
+    }
+    setRequestForm((prev) => {
+      if (!prev.preferredPosId) {
+        return prev;
+      }
+      const stillValid = nearestPosOptions.some((pos) => pos.id === prev.preferredPosId);
+      if (stillValid) {
+        return prev;
+      }
+      return {
+        ...prev,
+        preferredPosId: "",
+        preferredSlotId: "",
+      };
+    });
+  }, [nearestPosOptions]);
+
+  useEffect(() => {
+    setRequestForm((prev) => {
+      if (!prev.preferredSlotId) {
+        return prev;
+      }
+      const stillFree = slotAvailability.some(
+        (slot) => slot.id === prev.preferredSlotId && slot.status === "Free"
+      );
+      if (stillFree) {
+        return prev;
+      }
+      return {
+        ...prev,
+        preferredSlotId: "",
+      };
+    });
+  }, [slotAvailability]);
+
+  const driverServiceRequests = useMemo(() => {
+    const vehicleId = normalizeValue(vehicle.id);
+    const driver = normalizeValue(displayName);
+    return [...(serviceOrderState.orders || [])]
+      .filter((order) => {
+        const orderVehicle = normalizeValue(order?.vehicleId);
+        const orderDriver = normalizeValue(order?.requestedBy);
+        return orderVehicle === vehicleId || orderDriver === driver;
+      })
+      .sort(
+        (a, b) =>
+          (toDate(b?.requestedAt || b?.updatedAt)?.getTime() || 0) -
+          (toDate(a?.requestedAt || a?.updatedAt)?.getTime() || 0)
+      )
+      .slice(0, 12);
+  }, [displayName, serviceOrderState.orders, vehicle.id]);
+
+  const selectedRequest = useMemo(() => {
+    if (driverServiceRequests.length === 0) {
+      return null;
+    }
+    const bySelection = driverServiceRequests.find((order) => order.id === selectedRequestId);
+    return bySelection || driverServiceRequests[0];
+  }, [driverServiceRequests, selectedRequestId]);
+
+  const documentsHistoryRows = useMemo(() => {
+    const fromVehicleHistory = (vehicle.serviceHistory || []).map((entry, index) => {
+      const event = String(entry?.event || "Service update");
+      return {
+        id: `VH-SVC-${index + 1}`,
+        source: "Vehicle service log",
+        date: entry?.date || new Date().toISOString(),
+        title: event,
+        isTyre: normalizeValue(event).includes("tyre"),
+        cost: entry?.cost || "N/A",
+        location: tenant?.region || "N/A",
+        details: `${event} recorded in assigned vehicle history.`,
+        documentNo: `INV-${String(vehicle.id || "VH").replace(/[^A-Z0-9]/gi, "").toUpperCase()}-${String(
+          index + 1
+        ).padStart(3, "0")}`,
+      };
+    });
+
+    const fromRequests = driverServiceRequests.map((order, index) => {
+      const type = String(order?.serviceType || "Service request");
+      return {
+        id: order.id,
+        source: "Service request",
+        date: order?.updatedAt || order?.requestedAt || new Date().toISOString(),
+        title: type,
+        isTyre: normalizeValue(type).includes("tyre"),
+        cost: order?.orderDetails?.estimatedCost || "N/A",
+        location: order?.orderDetails?.location || tenant?.region || "N/A",
+        details:
+          order?.orderDetails?.description ||
+          order?.orderDetails?.notes ||
+          "No additional details.",
+        status: order?.status || "Pending",
+        documentNo: `RCPT-${String(order.id || `ROW-${index + 1}`).replace(/[^A-Z0-9-]/gi, "").toUpperCase()}`,
+      };
+    });
+
+    return [...fromRequests, ...fromVehicleHistory]
+      .sort((a, b) => (toDate(b.date)?.getTime() || 0) - (toDate(a.date)?.getTime() || 0))
+      .slice(0, 30);
+  }, [driverServiceRequests, tenant?.region, vehicle.id, vehicle.serviceHistory]);
+
+  const tyreReplacementHistory = useMemo(
+    () => documentsHistoryRows.filter((row) => row.isTyre),
+    [documentsHistoryRows]
+  );
+
+  const [selectedDocumentId, setSelectedDocumentId] = useState("");
+  const [profileForm, setProfileForm] = useState(initialProfileForm);
+  const [profileNotice, setProfileNotice] = useState("");
+  const selectedDocument = useMemo(() => {
+    if (documentsHistoryRows.length === 0) {
+      return null;
+    }
+    const bySelection = documentsHistoryRows.find((row) => row.id === selectedDocumentId);
+    return bySelection || documentsHistoryRows[0];
+  }, [documentsHistoryRows, selectedDocumentId]);
+
+  useEffect(() => {
+    setProfileForm(initialProfileForm);
+  }, [initialProfileForm]);
+
+  const communicationContacts = useMemo(
+    () => [
+      {
+        id: "fleet_manager",
+        title: "Chat with fleet manager",
+        name: tenant?.fleetManager || "Fleet Manager",
+        subtitle: "Approval and policy support",
+        phone: "+1 (555) 010-2411",
+      },
+      {
+        id: "workshop_pos",
+        title: "Contact workshop/POS",
+        name: tenant?.workshopLead || "Workshop Desk",
+        subtitle: "Booking and workshop coordination",
+        phone: "+1 (555) 010-9820",
+      },
+      {
+        id: "support",
+        title: "Support/help request",
+        name: "Support Team",
+        subtitle: "Technical and booking help",
+        phone: "",
+      },
+    ],
+    [tenant?.fleetManager, tenant?.workshopLead]
+  );
+
+  const supportTopicOptions = [
+    "General help",
+    "App not working",
+    "Booking issue",
+    "Emergency support",
+  ];
+
+  const activeDriverId = driverRecord?.id || session?.driverId || "";
+  const [activeCommunicationContact, setActiveCommunicationContact] = useState("fleet_manager");
+  const [communicationDraft, setCommunicationDraft] = useState("");
+  const [supportRequest, setSupportRequest] = useState({
+    topic: "General help",
+    message: "",
+  });
+  const [communicationNotice, setCommunicationNotice] = useState("");
+
+  const activeCommunicationDetails =
+    communicationContacts.find((item) => item.id === activeCommunicationContact) ||
+    communicationContacts[0];
+  const fleetConversation = useMemo(() => {
+    const rows = communicationState.driverMessages
+      .filter(
+        (message) =>
+          normalizeValue(message.driverId) === normalizeValue(activeDriverId) ||
+          normalizeValue(message.driverName) === normalizeValue(displayName)
+      )
+      .sort(
+        (a, b) => (toDate(a.sentAt)?.getTime() || 0) - (toDate(b.sentAt)?.getTime() || 0)
+      )
+      .map((message) => ({
+        id: message.id,
+        sender: message.sentBy || "Fleet Desk",
+        text: message.message,
+        createdAt: message.sentAt,
+        mine: normalizeValue(message.fromRole) === "driver",
+      }));
+    if (rows.length > 0) {
+      return rows;
+    }
+    return [
+      {
+        id: "FM-1001",
+        sender: "Fleet Manager",
+        text: "Send short message here. We will guide you quickly.",
+        createdAt: "2026-03-03T07:45:00.000Z",
+        mine: false,
+      },
+    ];
+  }, [activeDriverId, communicationState.driverMessages, displayName]);
+
+  const activeWorkshopName =
+    activeCommunicationDetails?.name || tenant?.workshopLead || "Workshop Desk";
+  const workshopConversation = useMemo(() => {
+    const rows = communicationState.workshopMessages
+      .filter(
+        (message) =>
+          normalizeValue(message.workshop) === normalizeValue(activeWorkshopName)
+      )
+      .sort(
+        (a, b) => (toDate(a.sentAt)?.getTime() || 0) - (toDate(b.sentAt)?.getTime() || 0)
+      )
+      .map((message) => ({
+        id: message.id,
+        sender: message.sentBy || activeWorkshopName,
+        text: message.message,
+        createdAt: message.sentAt,
+        mine: normalizeValue(message.fromRole) === "driver",
+      }));
+    if (rows.length > 0) {
+      return rows;
+    }
+    return [
+      {
+        id: "WS-1001",
+        sender: activeWorkshopName,
+        text: "Share vehicle issue and current location.",
+        createdAt: "2026-03-03T08:00:00.000Z",
+        mine: false,
+      },
+    ];
+  }, [activeWorkshopName, communicationState.workshopMessages]);
+
+  const supportMessages = useMemo(() => {
+    const rows = communicationState.tickets
+      .filter((ticket) => {
+        const createdBy = normalizeValue(ticket.createdBy);
+        const relatedRef = normalizeValue(ticket.relatedRef);
+        return (
+          createdBy === normalizeValue(displayName) ||
+          relatedRef === normalizeValue(activeDriverId) ||
+          relatedRef === normalizeValue(displayName)
+        );
+      })
+      .sort(
+        (a, b) => (toDate(b.updatedAt)?.getTime() || 0) - (toDate(a.updatedAt)?.getTime() || 0)
+      )
+      .slice(0, 12)
+      .map((ticket) => ({
+        id: ticket.id,
+        sender: `Support (${ticket.status})`,
+        text: `${ticket.id} - ${ticket.subject}`,
+        createdAt: ticket.updatedAt,
+        mine: false,
+      }));
+    if (rows.length > 0) {
+      return rows;
+    }
+    return [
+      {
+        id: "SUP-1001",
+        sender: "Support Team",
+        text: "Need help? Send issue and we will raise a support ticket.",
+        createdAt: "2026-03-03T08:10:00.000Z",
+        mine: false,
+      },
+    ];
+  }, [activeDriverId, communicationState.tickets, displayName]);
+
+  const activeCommunicationMessages =
+    activeCommunicationContact === "fleet_manager"
+      ? fleetConversation
+      : activeCommunicationContact === "workshop_pos"
+      ? workshopConversation
+      : supportMessages;
 
   const estimatedCost = useMemo(() => {
     const baseCost = baseCostByProblem[requestForm.problemType] || 420;
-    const severityMultiplier = severityMultipliers[requestForm.severity] || 1;
     const emergencySurcharge = requestForm.emergency ? 250 : 0;
-    const labour = Math.round(baseCost * 0.42);
-    const parts = Math.round(baseCost * severityMultiplier);
+    const labour = Math.round(baseCost * 0.35);
+    const parts = Math.round(baseCost * 0.55);
     const total = parts + labour + emergencySurcharge;
     return {
       baseCost,
@@ -539,7 +1161,7 @@ function DriverDashboard() {
       emergencySurcharge,
       total,
     };
-  }, [requestForm.emergency, requestForm.problemType, requestForm.severity]);
+  }, [requestForm.emergency, requestForm.problemType]);
 
   const policyValidation = useMemo(() => {
     if (matchingPolicies.length === 0) {
@@ -572,7 +1194,6 @@ function DriverDashboard() {
       serviceLimit !== null && Number(estimatedCost.total) > Number(serviceLimit);
     const requiresApprovalByPolicy = policy.approvalThreshold !== null;
     const requiresApproval =
-      requestForm.requiresManagerApproval ||
       requestForm.emergency ||
       requiresApprovalByLimit ||
       requiresApprovalByPolicy;
@@ -593,21 +1214,7 @@ function DriverDashboard() {
     matchingPolicies,
     requestForm.emergency,
     requestForm.problemType,
-    requestForm.requiresManagerApproval,
   ]);
-
-  const posBookingUrl = useMemo(() => {
-    const params = new URLSearchParams({
-      vehicle: vehicle.id || "N/A",
-      problem: requestForm.problemType,
-      amount: String(estimatedCost.total),
-      driver: displayName,
-      tenant: tenant?.name || "N/A",
-    });
-    return `https://pos.oxifleet.com/book?${params.toString()}`;
-  }, [displayName, estimatedCost.total, requestForm.problemType, tenant?.name, vehicle.id]);
-
-  const canProceedToBooking = policyValidation.status !== "Not Covered";
 
   const onSignOut = () => {
     clearSession();
@@ -622,743 +1229,326 @@ function DriverDashboard() {
     }));
   };
 
-  const handleWizardNext = () => {
-    setWizardStep((prev) => Math.min(4, prev + 1));
-  };
-
-  const handleWizardBack = () => {
-    setWizardStep((prev) => Math.max(1, prev - 1));
-  };
-
   const createDriverServiceRequest = ({ emergency = false, approval = true } = {}) => {
+    const selectedPosName = selectedPos?.name || tenant?.workshopLead || "Unassigned";
+    const slotLabel = selectedSlot?.label || "Not selected";
+    const preferredDateLabel = formatDate(requestForm.preferredDate);
     const order = createServiceRequest({
       vehicleId: vehicle.id || "N/A",
       vehicleModel: vehicle.model || "Assigned Fleet Vehicle",
       serviceType: requestForm.problemType,
       requestTitle: `${requestForm.problemType} request`,
       requestedBy: displayName,
-      priority: emergency ? "Emergency" : requestForm.severity,
+      priority: emergency ? "Emergency" : "Normal",
       emergency,
       status: approval ? "Pending approval" : "Pending booking",
       orderDetails: {
         description:
-          requestForm.description || `${requestForm.problemType} reported by driver.`,
-        vendor: tenant?.workshopLead || "Unassigned",
+          requestForm.description ||
+          `${requestForm.problemType} reported by driver. Preferred slot: ${slotLabel} on ${preferredDateLabel}.`,
+        vendor: selectedPosName,
         estimatedCost: `$${estimatedCost.total}`,
-        location: tenant?.region || "N/A",
+        location: selectedPos?.address || tenant?.region || "N/A",
         notes: [
           `Tenant: ${tenant?.name || "N/A"}`,
+          `Preferred POS: ${selectedPosName} (${selectedPos?.distanceKm ?? "N/A"} km, ETA ${
+            selectedPos?.etaMin ?? "N/A"
+          } min)`,
+          `Preferred date: ${requestForm.preferredDate}`,
+          `Preferred slot: ${slotLabel}`,
           `Photos: ${requestForm.photos.map((file) => file.name).join(", ") || "None"}`,
-          approval
-            ? `Approval requested from ${requestForm.fleetManager || "Fleet Manager"}`
-            : "Direct booking requested",
+          `Policy check: ${policyValidation.status}`,
         ].join(" | "),
       },
+      appointment: selectedSlot
+        ? {
+            dateTime: selectedSlot.dateTime,
+            note: `Preferred slot selected by driver at ${selectedPosName}.`,
+          }
+        : undefined,
     });
     return order;
   };
 
-  const handlePosRedirect = () => {
-    if (!canProceedToBooking) {
-      setWizardFeedback("Policy validation failed. Booking is blocked.");
+  const handleSubmitSimpleRequest = () => {
+    if (!requestForm.preferredPosId) {
+      setWizardFeedback("Select a nearby POS first.");
       return;
     }
-    if (typeof window !== "undefined") {
-      window.open(posBookingUrl, "_blank", "noopener,noreferrer");
+    if (!requestForm.preferredDate) {
+      setWizardFeedback("Select a booking date first.");
+      return;
     }
-    setWizardFeedback("Redirecting to POS booking.");
-  };
-
-  const handleRequestApproval = () => {
-    createDriverServiceRequest({ emergency: requestForm.emergency, approval: true });
-    setWizardFeedback("Approval request submitted to fleet manager.");
-  };
-
-  const handleEmergencyBreakdown = () => {
-    createDriverServiceRequest({ emergency: true, approval: true });
-    setWizardFeedback("Emergency breakdown request submitted.");
-  };
-
-  const handleConfirmServiceCompletion = (orderId) => {
-    const updated = setOrderLifecycleStage(orderId, {
-      stage: "Completed",
-      actor: displayName,
-      note: "Service completion confirmed by driver.",
+    if (!selectedSlot) {
+      setWizardFeedback("Select a free slot to continue.");
+      return;
+    }
+    const approvalRequired =
+      requestForm.emergency || policyValidation.status !== "Allowed";
+    createDriverServiceRequest({
+      emergency: requestForm.emergency,
+      approval: approvalRequired,
     });
+    setWizardFeedback(
+      approvalRequired
+        ? "Request sent. Fleet manager approval is required."
+        : "Request sent. Booking flow has started."
+    );
+    setRequestForm((prev) => ({
+      ...prev,
+      description: "",
+      emergency: false,
+      photos: [],
+      preferredDate: getTomorrowDateInput(),
+      preferredSlotId: "",
+    }));
+  };
 
-    if (!updated) {
+  const handleDownloadReceipt = (row) => {
+    if (!row || typeof window === "undefined") {
       return;
     }
+
+    const content = [
+      "Oxifleet Service Receipt",
+      `Document: ${row.documentNo}`,
+      `Service: ${row.title}`,
+      `Date: ${formatDateTime(row.date)}`,
+      `Source: ${row.source}`,
+      `Cost: ${row.cost}`,
+      `Location: ${row.location}`,
+      "",
+      "Details:",
+      row.details || "N/A",
+    ].join("\n");
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${row.documentNo}.txt`;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleSendCommunicationMessage = () => {
+    const message = communicationDraft.trim();
+    if (!message) {
+      setCommunicationNotice("Type a message first.");
+      return;
+    }
+
+    if (activeCommunicationContact === "fleet_manager") {
+      sendDriverMessage({
+        driverId: activeDriverId || "N/A",
+        driverName: displayName,
+        channel: "In-app",
+        message,
+        sentBy: displayName,
+        fromRole: "driver",
+        toRole: "fleet",
+      });
+    } else if (activeCommunicationContact === "workshop_pos") {
+      sendWorkshopMessage({
+        workshop: activeWorkshopName,
+        channel: "Portal",
+        urgency: "Normal",
+        message,
+        sentBy: displayName,
+        fromRole: "driver",
+        toRole: "workshop",
+      });
+    } else {
+      const created = createSupportTicket({
+        subject: supportRequest.topic || "Driver support request",
+        category: "Driver support",
+        priority: supportRequest.topic === "Emergency support" ? "High" : "Medium",
+        relatedRef: activeDriverId || vehicle.id || displayName,
+        description: message,
+        assignee: "Support Team",
+        createdBy: displayName,
+        status: "Open",
+        escalationLevel: 0,
+      });
+      setCommunicationNotice(`Support request ${created.id} submitted.`);
+      setCommunicationDraft("");
+      return;
+    }
+    setCommunicationDraft("");
+    setCommunicationNotice(`Message sent to ${activeCommunicationDetails?.name || "contact"}.`);
+  };
+
+  const handleQuickMessage = (value) => {
+    setCommunicationDraft(value);
+  };
+
+  const handleSupportRequestSubmit = () => {
+    const message = supportRequest.message.trim();
+    if (!message) {
+      setCommunicationNotice("Write short issue for support.");
+      return;
+    }
+    const created = createSupportTicket({
+      subject: supportRequest.topic || "Driver support request",
+      category: "Driver support",
+      priority: supportRequest.topic === "Emergency support" ? "High" : "Medium",
+      relatedRef: activeDriverId || vehicle.id || displayName,
+      description: message,
+      assignee: "Support Team",
+      createdBy: displayName,
+      status: "Open",
+      escalationLevel: 0,
+    });
+    setSupportRequest((prev) => ({ ...prev, message: "" }));
+    setCommunicationNotice(`Support request ${created.id} submitted.`);
+  };
+
+  const handleCallContact = (contactPhone) => {
+    setCommunicationNotice(`Contact request sent to ${contactPhone}.`);
+  };
+
+  const handleProfileSave = () => {
+    const notesParts = [];
+    const emergencyText = profileForm.emergencyContact.trim();
+    const addressText = profileForm.contactAddress.trim();
+    const bioText = profileForm.bio.trim();
+    const photoText = profileForm.photoUrl.trim();
+    if (emergencyText) {
+      notesParts.push(emergencyText);
+    }
+    if (addressText) {
+      notesParts.push(`Address: ${addressText}`);
+    }
+    if (bioText) {
+      notesParts.push(`Bio: ${bioText}`);
+    }
+    if (photoText) {
+      notesParts.push(`Photo: ${photoText}`);
+    }
+
+    const payload = {
+      name: profileForm.name.trim() || displayName,
+      email: profileForm.email.trim() || displayEmail,
+      phone: profileForm.phone.trim() || "N/A",
+      license: profileForm.license.trim() || "N/A",
+      notes: notesParts.join(" | "),
+    };
+
+    if (driverRecord?.id) {
+      updateDriver(driverRecord.id, payload);
+      setProfileNotice("Profile updated successfully.");
+      return;
+    }
+
+    setProfileNotice("Profile saved for current session.");
+  };
+
+  const handleProfileReset = () => {
+    setProfileForm(initialProfileForm);
+    setProfileNotice("Profile changes reset.");
   };
 
   return (
     <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
       <div className="flex h-full w-full">
-        <aside className="fixed inset-y-0 left-0 w-72">
-          <div className="flex h-full flex-col bg-[#0D0F16] p-6 text-white shadow-xl">
-            <div className="space-y-8">
-              <Logo className="w-48 text-white" />
-
-              <nav className="space-y-2 text-sm">
-                <button
-                  className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                    activeMenu === "overview"
-                      ? "bg-white/10 font-semibold text-white"
-                      : "text-white/70 transition hover:bg-white/10 hover:text-white"
-                  }`}
-                  onClick={() => setActiveMenu("overview")}
-                  type="button"
-                >
-                  <Truck size={18} />
-                  Dashboard
-                </button>
-                <button
-                  className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                    activeMenu === "service_request"
-                      ? "bg-white/10 font-semibold text-white"
-                      : "text-white/70 transition hover:bg-white/10 hover:text-white"
-                  }`}
-                  onClick={() => setActiveMenu("service_request")}
-                  type="button"
-                >
-                  <Wrench size={18} />
-                  Service Request
-                </button>
-                <button
-                  className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                    activeMenu === "booking_tracking"
-                      ? "bg-white/10 font-semibold text-white"
-                      : "text-white/70 transition hover:bg-white/10 hover:text-white"
-                  }`}
-                  onClick={() => setActiveMenu("booking_tracking")}
-                  type="button"
-                >
-                  <CalendarClock size={18} />
-                  Booking & Tracking
-                </button>
-              </nav>
-            </div>
-
-            <div className="mt-auto space-y-2">
-              <Button
-                className="w-full justify-start"
-                onClick={onSignOut}
-                type="button"
-                variant="secondary"
-              >
-                <LogOut className="mr-2" size={16} />
-                Sign out
-              </Button>
-            </div>
-          </div>
-        </aside>
+        <DriverSidebar
+          activeMenu={activeMenu}
+          onMenuClick={(menuKey) =>
+            navigate(`/driver-dashboard/${driverMenuRouteMap[menuKey] || driverMenuRouteMap.overview}`)
+          }
+          onSignOut={onSignOut}
+        />
 
         <section className="ml-72 flex-1 space-y-6 overflow-y-auto p-8">
-          <header className="flex flex-col gap-4 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  Driver dashboard
-                </p>
-                <h1 className="text-3xl font-semibold text-slate-900">
-                  Welcome
-                  {displayName ? `, ${displayName}` : " John Doe"}
-                </h1>
-                <p className="mt-1 text-sm text-slate-500">
-                  Vehicle and policy visibility for your assigned operations.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
-                <div className="grid size-9 place-items-center rounded-full bg-[#0D0F16] text-xs font-semibold text-white">
-                  {profileInitials}
-                </div>
-                <div className="leading-tight">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {displayName}
-                  </p>
-                  <p className="text-xs text-slate-500">{displayEmail}</p>
-                  {/* <p className="text-xs text-slate-500">
-                    Tenant: {tenant?.name || session?.tenantId || "N/A"}
-                  </p> */}
-                </div>
-              </div>
-            </div>
-          </header>
+          <DriverTopbar
+            activeMenu={activeMenu}
+            displayEmail={displayEmail}
+            displayName={displayName}
+            driverNotificationCount={driverNotificationCount}
+            profileInitials={profileInitials}
+          />
 
           {activeMenu === "overview" ? (
-            <>
-              <section className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs text-slate-500">
-                      Days to next service
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-slate-900">
-                      {analytics.daysToNextService}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs text-slate-500">
-                      Warranty days remaining
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-slate-900">
-                      {analytics.warrantyDaysRemaining ?? "N/A"}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs text-slate-500">Eligibility score</p>
-                    <p className="mt-2 text-2xl font-semibold text-slate-900">
-                      {analytics.serviceEligibilityScore}%
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs text-slate-500">Policies mapped</p>
-                    <p className="mt-2 text-2xl font-semibold text-slate-900">
-                      {matchingPolicies.length}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-6 xl:grid-cols-2">
-                  <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-slate-900">
-                      Service spend trend (6 months)
-                    </h2>
-                    <div className="mt-4 h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={analytics.spendTrend}>
-                          <defs>
-                            <linearGradient
-                              id="driverSpendGradient"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="5%"
-                                stopColor="#0f172a"
-                                stopOpacity={0.35}
-                              />
-                              <stop
-                                offset="95%"
-                                stopColor="#0f172a"
-                                stopOpacity={0.03}
-                              />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#e2e8f0"
-                          />
-                          <XAxis dataKey="label" stroke="#64748b" />
-                          <YAxis stroke="#64748b" />
-                          <Tooltip
-                            formatter={(value, name) =>
-                              name === "spend"
-                                ? [`$${value}`, "Spend"]
-                                : [value, "Checks"]
-                            }
-                            labelStyle={{ color: "#0f172a" }}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="spend"
-                            stroke="#0f172a"
-                            fillOpacity={1}
-                            fill="url(#driverSpendGradient)"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-slate-900">
-                      Vehicle health index
-                    </h2>
-                    <div className="mt-4 h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={analytics.healthIndex}
-                          layout="vertical"
-                          margin={{ left: 30 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#e2e8f0"
-                          />
-                          <XAxis
-                            type="number"
-                            domain={[0, 100]}
-                            stroke="#64748b"
-                          />
-                          <YAxis
-                            dataKey="name"
-                            type="category"
-                            stroke="#64748b"
-                            width={110}
-                          />
-                          <Tooltip
-                            formatter={(value) => [`${value}%`, "Score"]}
-                          />
-                          <Bar
-                            dataKey="score"
-                            fill="#0f172a"
-                            radius={[4, 4, 4, 4]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="grid gap-6 xl:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-                    <Truck size={18} />
-                    Assigned vehicle details
-                  </h2>
-                  <div className="mt-4 space-y-2 text-sm">
-                    <p className="font-semibold text-slate-900">
-                      {vehicle.id} - {vehicle.model}
-                    </p>
-                    <p className="text-slate-600">
-                      Plate: {vehicle.plate || "N/A"}
-                    </p>
-                    <p className="text-slate-600">
-                      Class: {vehicle.type || "N/A"}
-                    </p>
-                    <p className="text-slate-600">
-                      Status: {vehicle.status || "Active"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-                    <ShieldCheck size={18} />
-                    Service eligibility status
-                  </h2>
-                  <div className="mt-4">
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${eligibilityClass(
-                        serviceEligibility.status,
-                      )}`}
-                    >
-                      {serviceEligibility.status}
-                    </span>
-                    <p className="mt-3 text-sm text-slate-600">
-                      {serviceEligibility.note}
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="grid gap-6 xl:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Next service due (date / km)
-                  </h2>
-                  <div className="mt-4 space-y-2 text-sm">
-                    <p className="text-slate-700">
-                      Service type:{" "}
-                      <span className="font-semibold">
-                        {nextService.serviceType}
-                      </span>
-                    </p>
-                    <p className="text-slate-700">
-                      Due date:{" "}
-                      <span className="font-semibold">
-                        {formatDate(nextService.date)}
-                      </span>
-                    </p>
-                    <p className="text-slate-700">
-                      Due odometer:{" "}
-                      <span className="font-semibold">
-                        {nextService.km.toLocaleString()} km
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Seasonal tyre change reminder
-                  </h2>
-                  <div className="mt-4 space-y-2 text-sm">
-                    <p className="font-semibold text-slate-900">
-                      {seasonalReminder.title}
-                    </p>
-                    <p className="text-slate-700">
-                      Reminder date: {formatDate(seasonalReminder.dueDate)}
-                    </p>
-                    <p className="text-slate-600">{seasonalReminder.note}</p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="grid gap-6 xl:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Vehicle tyre specifications
-                  </h2>
-                  <div className="mt-4 space-y-2 text-sm text-slate-700">
-                    <p>
-                      Brand:{" "}
-                      <span className="font-semibold">
-                        {vehicle.tyreSpecs?.brand || "N/A"}
-                      </span>
-                    </p>
-                    <p>
-                      Size:{" "}
-                      <span className="font-semibold">
-                        {vehicle.tyreSpecs?.size || "N/A"}
-                      </span>
-                    </p>
-                    <p>
-                      Front PSI:{" "}
-                      <span className="font-semibold">
-                        {vehicle.tyreSpecs?.frontPsi ?? "N/A"}
-                      </span>
-                    </p>
-                    <p>
-                      Rear PSI:{" "}
-                      <span className="font-semibold">
-                        {vehicle.tyreSpecs?.rearPsi ?? "N/A"}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Warranty information
-                  </h2>
-                  <div className="mt-4 space-y-2 text-sm text-slate-700">
-                    <p>
-                      Provider:{" "}
-                      <span className="font-semibold">{warranty.provider}</span>
-                    </p>
-                    <p>
-                      Expiry date:{" "}
-                      <span className="font-semibold">
-                        {formatDate(warranty.expiryDate)}
-                      </span>
-                    </p>
-                    <p>
-                      Status:{" "}
-                      <span className="font-semibold">{warranty.status}</span>
-                    </p>
-                  </div>
-                </div>
-              </section>
-            </>
+            <DriverOverviewSection
+              analytics={analytics}
+              eligibilityClass={eligibilityClass}
+              formatDate={formatDate}
+              matchingPolicies={matchingPolicies}
+              nextService={nextService}
+              seasonalReminder={seasonalReminder}
+              serviceEligibility={serviceEligibility}
+              vehicle={vehicle}
+              warranty={warranty}
+            />
           ) : null}
-
           {activeMenu === "service_request" ? (
-            <section className="space-y-6">
-              <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-semibold text-slate-900">
-                  Guided service request wizard
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Complete each step to validate policy, estimate cost, and book
-                  with approval workflow.
-                </p>
-                <div className="mt-4 grid gap-2 sm:grid-cols-4">
-                  {[
-                    "Problem type",
-                    "Upload photos",
-                    "Estimate & policy",
-                    "Booking & approval",
-                  ].map((label, index) => {
-                    const stepNumber = index + 1;
-                    const isActive = wizardStep === stepNumber;
-                    const isDone = wizardStep > stepNumber;
-                    return (
-                      <button
-                        key={label}
-                        className={`rounded-xl border px-3 py-2 text-left text-xs ${
-                          isActive
-                            ? "border-slate-400 bg-slate-100 font-semibold text-slate-900"
-                            : isDone
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                              : "border-slate-200 bg-white text-slate-500"
-                        }`}
-                        onClick={() => setWizardStep(stepNumber)}
-                        type="button"
-                      >
-                        {stepNumber}. {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {wizardStep === 1 ? (
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Select problem type
-                  </h3>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                      <Label>Problem type</Label>
-                      <Select
-                        onValueChange={(value) =>
-                          setRequestForm((prev) => ({
-                            ...prev,
-                            problemType: value,
-                          }))
-                        }
-                        value={requestForm.problemType}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Problem type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {problemTypeOptions.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Severity</Label>
-                      <Select
-                        onValueChange={(value) =>
-                          setRequestForm((prev) => ({
-                            ...prev,
-                            severity: value,
-                          }))
-                        }
-                        value={requestForm.severity}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Severity" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Low">Low</SelectItem>
-                          <SelectItem value="Medium">Medium</SelectItem>
-                          <SelectItem value="High">High</SelectItem>
-                          <SelectItem value="Critical">Critical</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid gap-2">
-                    <Label>Problem description</Label>
-                    <Textarea
-                      onChange={(event) =>
-                        setRequestForm((prev) => ({
-                          ...prev,
-                          description: event.target.value,
-                        }))
-                      }
-                      placeholder="Describe the issue in detail"
-                      rows={4}
-                      value={requestForm.description}
-                    />
-                  </div>
-                  <div className="mt-3 flex items-center gap-2 text-sm">
-                    <input
-                      checked={requestForm.emergency}
-                      className="size-4 accent-slate-900"
-                      onChange={(event) =>
-                        setRequestForm((prev) => ({
-                          ...prev,
-                          emergency: event.target.checked,
-                        }))
-                      }
-                      type="checkbox"
-                    />
-                    Emergency breakdown request
-                  </div>
-                </div>
-              ) : null}
-
-              {wizardStep === 2 ? (
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Upload vehicle/tyre photos
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Attach clear images of damage, tyres, and dashboard alerts.
-                  </p>
-                  <div className="mt-4 grid gap-3">
-                    <Input
-                      accept="image/*"
-                      multiple
-                      onChange={onPhotoChange}
-                      type="file"
-                    />
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                      {requestForm.photos.length === 0 ? (
-                        <p className="text-slate-500">
-                          No photos uploaded yet.
-                        </p>
-                      ) : (
-                        <div className="space-y-1 text-slate-700">
-                          {requestForm.photos.map((file) => (
-                            <p key={file.name}>
-                              {file.name} (
-                              {Math.max(1, Math.round(file.size / 1024))} KB)
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {wizardStep === 3 ? (
-                <div className="grid gap-6 xl:grid-cols-2">
-                  <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      Service cost estimation
-                    </h3>
-                    <div className="mt-4 space-y-2 text-sm text-slate-700">
-                      <p>
-                        Base cost:{" "}
-                        <span className="font-semibold">
-                          ${estimatedCost.baseCost}
-                        </span>
-                      </p>
-                      <p>
-                        Parts estimate:{" "}
-                        <span className="font-semibold">
-                          ${estimatedCost.parts}
-                        </span>
-                      </p>
-                      <p>
-                        Labour estimate:{" "}
-                        <span className="font-semibold">
-                          ${estimatedCost.labour}
-                        </span>
-                      </p>
-                      <p>
-                        Emergency surcharge:{" "}
-                        <span className="font-semibold">
-                          ${estimatedCost.emergencySurcharge}
-                        </span>
-                      </p>
-                      <p className="pt-2 text-base font-semibold text-slate-900">
-                        Total estimated: ${estimatedCost.total}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      Policy validation before booking
-                    </h3>
-                    <div className="mt-4">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${eligibilityClass(
-                          policyValidation.status,
-                        )}`}
-                      >
-                        {policyValidation.status}
-                      </span>
-                      <p className="mt-3 text-sm text-slate-600">
-                        {policyValidation.note}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {wizardStep === 4 ? (
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Booking and approval actions
-                  </h3>
-                  <div className="mt-4 grid gap-3">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <input
-                          checked={requestForm.requiresManagerApproval}
-                          className="size-4 accent-slate-900"
-                          onChange={(event) =>
-                            setRequestForm((prev) => ({
-                              ...prev,
-                              requiresManagerApproval: event.target.checked,
-                            }))
-                          }
-                          type="checkbox"
-                        />
-                        Request approval from fleet manager
-                      </div>
-                      <Input
-                        onChange={(event) =>
-                          setRequestForm((prev) => ({
-                            ...prev,
-                            fleetManager: event.target.value,
-                          }))
-                        }
-                        placeholder="Fleet manager"
-                        value={requestForm.fleetManager}
-                      />
-                    </div>
-                    <Button
-                      onClick={handlePosRedirect}
-                      type="button"
-                      variant="outline"
-                    >
-                      Redirect to POS booking
-                    </Button>
-                    <Button onClick={handleRequestApproval} type="button">
-                      Submit request for fleet manager approval
-                    </Button>
-                    <Button
-                      onClick={handleEmergencyBreakdown}
-                      type="button"
-                      variant="destructive"
-                    >
-                      Emergency breakdown request
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={wizardStep === 1}
-                  onClick={handleWizardBack}
-                  type="button"
-                  variant="outline"
-                >
-                  Previous
-                </Button>
-                <Button
-                  disabled={wizardStep === 4}
-                  onClick={handleWizardNext}
-                  type="button"
-                >
-                  Next
-                </Button>
-              </div>
-
-              {wizardFeedback ? (
-                <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
-                  {wizardFeedback}
-                </div>
-              ) : null}
-            </section>
+            <DriverServiceRequestSection
+              driverServiceRequests={driverServiceRequests}
+              eligibilityClass={eligibilityClass}
+              formatDateTime={formatDateTime}
+              handleSubmitSimpleRequest={handleSubmitSimpleRequest}
+              nearestPosOptions={nearestPosOptions}
+              onPhotoChange={onPhotoChange}
+              policyValidation={policyValidation}
+              requestForm={requestForm}
+              requestStatusClass={requestStatusClass}
+              selectedPos={selectedPos}
+              selectedRequest={selectedRequest}
+              selectedSlot={selectedSlot}
+              setRequestForm={setRequestForm}
+              setSelectedRequestId={setSelectedRequestId}
+              slotAvailability={slotAvailability}
+              simpleIssueOptions={simpleIssueOptions}
+              wizardFeedback={wizardFeedback}
+            />
           ) : null}
-
+          {activeMenu === "documents_history" ? (
+            <DriverDocumentsHistorySection
+              documentsHistoryRows={documentsHistoryRows}
+              formatDateTime={formatDateTime}
+              handleDownloadReceipt={handleDownloadReceipt}
+              selectedDocument={selectedDocument}
+              setSelectedDocumentId={setSelectedDocumentId}
+              tyreReplacementHistory={tyreReplacementHistory}
+            />
+          ) : null}
+          {activeMenu === "communication" ? (
+            <DriverCommunicationSection
+              activeCommunicationContact={activeCommunicationContact}
+              activeCommunicationDetails={activeCommunicationDetails}
+              activeCommunicationMessages={activeCommunicationMessages}
+              communicationDraft={communicationDraft}
+              communicationNotice={communicationNotice}
+              formatDateTime={formatDateTime}
+              handleCallContact={handleCallContact}
+              handleQuickMessage={handleQuickMessage}
+              handleSendCommunicationMessage={handleSendCommunicationMessage}
+              handleSupportRequestSubmit={handleSupportRequestSubmit}
+              communicationContacts={communicationContacts}
+              setActiveCommunicationContact={setActiveCommunicationContact}
+              setCommunicationDraft={setCommunicationDraft}
+              setSupportRequest={setSupportRequest}
+              supportMessages={supportMessages}
+              supportRequest={supportRequest}
+              supportTopicOptions={supportTopicOptions}
+            />
+          ) : null}
           {activeMenu === "booking_tracking" ? (
             <DriverBookingTrackingPanel
               displayName={displayName}
               nextServiceDate={nextService.date}
-              onConfirmCompletion={handleConfirmServiceCompletion}
               orders={serviceOrderState.orders}
               vehicle={vehicle}
+            />
+          ) : null}
+           {activeMenu === "profile" ? (
+            <DriverProfileSection
+              handleProfileReset={handleProfileReset}
+              handleProfileSave={handleProfileSave}
+              profileForm={profileForm}
+              profileInitials={profileInitials}
+              profileNotice={profileNotice}
+              setProfileForm={setProfileForm}
             />
           ) : null}
         </section>

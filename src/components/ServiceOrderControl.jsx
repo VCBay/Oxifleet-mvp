@@ -11,11 +11,46 @@ import {
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import {
+  acknowledgeSettlementByFleet,
   decideServiceRequest,
   getServiceOrderState,
   setOrderLifecycleStage,
   subscribeServiceOrders,
 } from "../data/serviceOrderStore";
+
+const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
+
+const statusTabs = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
+  { key: "in_progress", label: "In progress" },
+  { key: "completed", label: "Completed" },
+];
+
+const matchesStatusFilter = (status, filterKey) => {
+  const normalized = normalizeStatus(status);
+  if (filterKey === "all") {
+    return true;
+  }
+  if (filterKey === "pending") {
+    return normalized.includes("pending");
+  }
+  if (filterKey === "approved") {
+    return normalized.includes("approved");
+  }
+  if (filterKey === "rejected") {
+    return normalized.includes("rejected");
+  }
+  if (filterKey === "in_progress") {
+    return normalized.includes("progress");
+  }
+  if (filterKey === "completed") {
+    return normalized.includes("completed") || normalized.includes("closed");
+  }
+  return false;
+};
 
 const statusClassName = (status) => {
   const normalized = String(status || "").toLowerCase();
@@ -64,7 +99,7 @@ function ServiceOrderControl() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      if (statusFilter !== "all" && order.status !== statusFilter) {
+      if (!matchesStatusFilter(order.status, statusFilter)) {
         return false;
       }
       if (!searchQuery.trim()) {
@@ -84,6 +119,15 @@ function ServiceOrderControl() {
       return blob.includes(searchQuery.trim().toLowerCase());
     });
   }, [orders, searchQuery, statusFilter]);
+
+  const statusTabCounts = useMemo(() => {
+    return statusTabs.reduce((acc, tab) => {
+      acc[tab.key] = orders.filter((order) =>
+        matchesStatusFilter(order.status, tab.key)
+      ).length;
+      return acc;
+    }, {});
+  }, [orders]);
 
   const selectedOrder = useMemo(() => {
     const explicit = orders.find((order) => order.id === selectedOrderId);
@@ -109,10 +153,28 @@ function ServiceOrderControl() {
     );
   });
 
+  const pendingApprovalOrders = useMemo(
+    () =>
+      orders.filter((order) =>
+        String(order.status || "").toLowerCase().includes("pending")
+      ),
+    [orders]
+  );
+
   const decisionDisabled =
     !selectedOrder ||
     !decisionApprover.trim() ||
     !String(selectedOrder.status || "").toLowerCase().includes("pending");
+
+  const settlementReadyOrders = useMemo(
+    () =>
+      orders.filter(
+        (order) =>
+          order?.settlement?.readyForSettlement &&
+          !String(order?.settlement?.fleetAcknowledgedAt || "").trim()
+      ),
+    [orders]
+  );
 
   const handleDecision = (decision, manualOverride = false) => () => {
     if (!selectedOrder) {
@@ -139,6 +201,13 @@ function ServiceOrderControl() {
     setLifecycleNote("");
   };
 
+  const handleAcknowledgeSettlement = (orderId) => () => {
+    acknowledgeSettlementByFleet(orderId, {
+      actor: decisionApprover,
+      note: "Settlement confirmation received from POS.",
+    });
+  };
+
   return (
     <section className="space-y-6">
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
@@ -151,13 +220,13 @@ function ServiceOrderControl() {
         </p>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.5fr]">
+      <div className="grid gap-6 xl:grid-cols-2">
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
               Emergency service monitoring
             </h3>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs text-slate-500">Emergency requests</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
@@ -174,6 +243,12 @@ function ServiceOrderControl() {
                 <p className="text-xs text-slate-500">Total requests</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {orders.length}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs text-slate-500">Pending FM approvals</p>
+                <p className="mt-2 text-2xl font-semibold text-sky-700">
+                  {pendingApprovalOrders.length}
                 </p>
               </div>
             </div>
@@ -205,28 +280,34 @@ function ServiceOrderControl() {
             <h3 className="text-lg font-semibold text-slate-900">
               All service requests list
             </h3>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 space-y-3">
               <Input
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search by order, vehicle, type, requester"
                 value={searchQuery}
               />
-              <Select onValueChange={setStatusFilter} value={statusFilter}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Status filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {Array.from(new Set(orders.map((order) => order.status))).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-2">
+                {statusTabs.map((tab) => {
+                  const isActive = statusFilter === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setStatusFilter(tab.key)}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                        isActive
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-300 hover:bg-slate-200"
+                      }`}
+                    >
+                      {tab.label} ({statusTabCounts[tab.key] || 0})
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 max-h-[460px] space-y-3 overflow-y-auto pr-1">
               {filteredOrders.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
                   No service requests found.
@@ -270,6 +351,49 @@ function ServiceOrderControl() {
                     </button>
                   );
                 })
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Settlement confirmations (FM notifications)
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Completed services confirmed by POS and ready for fleet settlement.
+            </p>
+            <div className="mt-4 space-y-2">
+              {settlementReadyOrders.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
+                  No completion confirmations pending settlement acknowledgment.
+                </p>
+              ) : (
+                settlementReadyOrders.map((order) => (
+                  <div
+                    key={`settlement-ready-${order.id}`}
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-emerald-900">
+                        {order.id} - {order.requestTitle}
+                      </p>
+                      <Button
+                        onClick={handleAcknowledgeSettlement(order.id)}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                      >
+                        Acknowledge for settlement
+                      </Button>
+                    </div>
+                    <p className="mt-1 text-xs text-emerald-700">
+                      Completed by {order?.settlement?.completionConfirmedBy || "POS"} on{" "}
+                      {order?.settlement?.completionConfirmedAt
+                        ? new Date(order.settlement.completionConfirmedAt).toLocaleString()
+                        : "N/A"}
+                    </p>
+                  </div>
+                ))
               )}
             </div>
           </div>

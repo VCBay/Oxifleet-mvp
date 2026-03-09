@@ -47,6 +47,30 @@ const normalizeDriverMessage = (message = {}) => ({
   channel: String(message.channel || "In-app").trim() || "In-app",
   message: String(message.message || "").trim(),
   sentBy: String(message.sentBy || "Operations Desk").trim() || "Operations Desk",
+  fromRole:
+    String(
+      message.fromRole ||
+        (String(message.sentBy || "").toLowerCase().includes("driver")
+          ? "driver"
+          : "fleet")
+    ).trim() || "fleet",
+  toRole:
+    String(
+      message.toRole ||
+        (String(
+          message.fromRole ||
+            (String(message.sentBy || "").toLowerCase().includes("driver")
+              ? "driver"
+              : "fleet")
+        )
+          .toLowerCase()
+          .trim() === "driver"
+          ? "fleet"
+          : "driver")
+    ).trim() || "driver",
+  threadId:
+    String(message.threadId || `DRV-${String(message.driverId || "UNASSIGNED").trim()}`).trim() ||
+    "DRV-UNASSIGNED",
   sentAt: toIsoString(message.sentAt),
 });
 
@@ -57,6 +81,30 @@ const normalizeWorkshopMessage = (message = {}) => ({
   urgency: String(message.urgency || "Normal").trim() || "Normal",
   message: String(message.message || "").trim(),
   sentBy: String(message.sentBy || "Service Desk").trim() || "Service Desk",
+  fromRole:
+    String(
+      message.fromRole ||
+        (String(message.sentBy || "").toLowerCase().includes("workshop")
+          ? "workshop"
+          : "fleet")
+    ).trim() || "fleet",
+  toRole:
+    String(
+      message.toRole ||
+        (String(
+          message.fromRole ||
+            (String(message.sentBy || "").toLowerCase().includes("workshop")
+              ? "workshop"
+              : "fleet")
+        )
+          .toLowerCase()
+          .trim() === "workshop"
+          ? "fleet"
+          : "workshop")
+    ).trim() || "workshop",
+  threadId:
+    String(message.threadId || `WSH-${String(message.workshop || "UNASSIGNED").trim()}`).trim() ||
+    "WSH-UNASSIGNED",
   sentAt: toIsoString(message.sentAt),
 });
 
@@ -89,6 +137,19 @@ const getDefaultState = () => ({
       message: "Route rerouted due to weather. Please confirm acknowledgement.",
       sentBy: "Dispatch Control",
       sentAt: minusHours(6),
+      fromRole: "fleet",
+      toRole: "driver",
+    }),
+    normalizeDriverMessage({
+      id: "DRV-DEMO-002",
+      driverId: "DR-104",
+      driverName: "Jamie Stewart",
+      channel: "In-app",
+      message: "Acknowledged. Vehicle reached checkpoint and ready for next instruction.",
+      sentBy: "Jamie Stewart",
+      sentAt: minusHours(5),
+      fromRole: "driver",
+      toRole: "fleet",
     }),
   ],
   workshopMessages: [
@@ -100,6 +161,19 @@ const getDefaultState = () => ({
       message: "Please prioritize order SR-1001 and share revised ETA.",
       sentBy: "Service Desk",
       sentAt: minusHours(4),
+      fromRole: "fleet",
+      toRole: "workshop",
+    }),
+    normalizeWorkshopMessage({
+      id: "WSH-DEMO-002",
+      workshop: "Metro Service Hub",
+      channel: "Portal",
+      urgency: "Normal",
+      message: "Order SR-1001 is in bay-2. Updated ETA is 1 hour.",
+      sentBy: "Metro Service Hub",
+      sentAt: minusHours(3),
+      fromRole: "workshop",
+      toRole: "fleet",
     }),
   ],
   tickets: [

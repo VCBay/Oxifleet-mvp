@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -69,8 +69,32 @@ import {
   updateDriver,
 } from "../data/driverStore";
 
+const fleetMenuRouteMap = {
+  dashboard: "overview",
+  vehicles: "vehicles",
+  drivers: "drivers",
+  vehicle_policy: "vehicle-policy",
+  service_order_control: "service-order-control",
+  billing_finance: "billing-finance",
+  reporting_analytics: "reporting-analytics",
+  communication: "communication",
+  team_access_control: "team-access-control",
+  settings_profile: "settings-profile",
+};
+
+const parseFleetMenuFromPath = (pathname) => {
+  const cleaned = String(pathname || "").replace(/\/+$/, "");
+  const parts = cleaned.split("/").filter(Boolean);
+  const section = parts[1] || fleetMenuRouteMap.dashboard;
+  const matched = Object.entries(fleetMenuRouteMap).find(
+    ([, route]) => route === section
+  );
+  return matched ? matched[0] : "dashboard";
+};
+
 function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = getSession();
   const vehicleState = useSyncExternalStore(
     subscribeVehicles,
@@ -97,7 +121,7 @@ function Dashboard() {
     notes: "",
   });
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
-  const [activeMenu, setActiveMenu] = useState("dashboard");
+  const activeMenu = parseFleetMenuFromPath(location.pathname);
   const [driverSearchQuery, setDriverSearchQuery] = useState("");
   const [driverForm, setDriverForm] = useState({
     id: "",
@@ -220,6 +244,10 @@ function Dashboard() {
   const handleSignOut = () => {
     clearSession();
     navigate("/signin", { replace: true });
+  };
+
+  const handleMenuNavigate = (menuKey) => {
+    navigate(`/dashboard/${fleetMenuRouteMap[menuKey] || fleetMenuRouteMap.dashboard}`);
   };
 
   const handleVehicleChange = (field) => (event) => {
@@ -424,7 +452,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("dashboard")}
+                    onClick={() => handleMenuNavigate("dashboard")}
                     type="button"
                   >
                     <LayoutGrid size={18} />
@@ -436,7 +464,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("vehicles")}
+                    onClick={() => handleMenuNavigate("vehicles")}
                     type="button"
                   >
                     <Van size={18} />
@@ -448,7 +476,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("drivers")}
+                    onClick={() => handleMenuNavigate("drivers")}
                     type="button"
                   >
                     <User size={18} />
@@ -461,7 +489,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("vehicle_policy")}
+                    onClick={() => handleMenuNavigate("vehicle_policy")}
                     type="button"
                   >
                     <User size={18} />
@@ -474,7 +502,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("service_order_control")}
+                    onClick={() => handleMenuNavigate("service_order_control")}
                     type="button"
                   >
                     <FileUp size={18} />
@@ -487,7 +515,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("billing_finance")}
+                    onClick={() => handleMenuNavigate("billing_finance")}
                     type="button"
                   >
                     <CircleDollarSign size={18} />
@@ -500,7 +528,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("reporting_analytics")}
+                    onClick={() => handleMenuNavigate("reporting_analytics")}
                     type="button"
                   >
                     <Search size={18} />
@@ -513,7 +541,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("communication")}
+                    onClick={() => handleMenuNavigate("communication")}
                     type="button"
                   >
                     <Bell size={18} />
@@ -526,7 +554,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("team_access_control")}
+                    onClick={() => handleMenuNavigate("team_access_control")}
                     type="button"
                   >
                     <Users size={18} />
@@ -539,7 +567,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("settings_profile")}
+                    onClick={() => handleMenuNavigate("settings_profile")}
                     type="button"
                   >
                     <Settings size={18} />
@@ -568,7 +596,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("team_access_control")}
+                    onClick={() => handleMenuNavigate("team_access_control")}
                     type="button"
                   >
                     <Users size={18} />
@@ -581,7 +609,7 @@ function Dashboard() {
                         ? "bg-white/10 font-semibold text-white"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
-                    onClick={() => setActiveMenu("settings_profile")}
+                    onClick={() => handleMenuNavigate("settings_profile")}
                     type="button"
                   >
                     <Settings size={18} />
@@ -915,7 +943,8 @@ function Dashboard() {
             </DialogContent>
           </Dialog>
 
-          <header className="flex flex-col gap-4 rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-lg">
+          {activeMenu === "dashboard" ? (
+            <header className="flex flex-col gap-4 rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-lg">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
@@ -1153,7 +1182,32 @@ function Dashboard() {
                 </DialogContent>
               </Dialog>
             </div>
-          </header>
+            </header>
+          ) : (
+            <header className="rounded-3xl border border-slate-200/70 bg-white/90 p-4 shadow-sm">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  className="grid size-10 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300"
+                  type="button"
+                >
+                  <Bell size={18} />
+                </button>
+                <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+                  <div className="grid size-9 place-items-center rounded-full bg-[#0D0F16] text-xs font-semibold text-white">
+                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "JD"}
+                  </div>
+                  <div className="leading-tight">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {user?.name || "John Doe"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {user?.email || "john@oxifleet.com"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </header>
+          )}
 
           {activeMenu === "vehicles" ? (
             <VehicleManagement vehicles={vehicleState.vehicles} />
@@ -1717,3 +1771,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+

@@ -8,7 +8,6 @@ import {
   Siren,
   XCircle,
 } from "lucide-react";
-import { Button } from "./ui/button";
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
 
@@ -46,18 +45,18 @@ const formatDate = (value) => {
 const badgeClassByStatus = (status) => {
   const normalized = normalize(status);
   if (normalized.includes("rejected")) {
-    return "bg-rose-100 text-rose-700";
+    return "bg-rose-900 text-rose-100 ring-1 ring-rose-700/60";
   }
   if (normalized.includes("completed") || normalized.includes("closed")) {
-    return "bg-emerald-100 text-emerald-700";
+    return "bg-emerald-900 text-emerald-100 ring-1 ring-emerald-700/60";
   }
   if (normalized.includes("progress")) {
-    return "bg-sky-100 text-sky-700";
+    return "bg-sky-900 text-sky-100 ring-1 ring-sky-700/60";
   }
   if (normalized.includes("approved")) {
-    return "bg-indigo-100 text-indigo-700";
+    return "bg-indigo-900 text-indigo-100 ring-1 ring-indigo-700/60";
   }
-  return "bg-amber-100 text-amber-700";
+  return "bg-amber-900 text-amber-100 ring-1 ring-amber-700/60";
 };
 
 function DriverBookingTrackingPanel({
@@ -65,7 +64,6 @@ function DriverBookingTrackingPanel({
   vehicle,
   nextServiceDate,
   orders = [],
-  onConfirmCompletion,
 }) {
   const scopedOrders = useMemo(() => {
     const vehicleId = normalize(vehicle?.id);
@@ -134,15 +132,6 @@ function DriverBookingTrackingPanel({
     [upcomingBookings]
   );
 
-  const completionCandidates = useMemo(
-    () =>
-      upcomingBookings.filter((order) => {
-        const status = normalize(order.status);
-        return status.includes("progress") || status.includes("approved");
-      }),
-    [upcomingBookings]
-  );
-
   const notifications = useMemo(() => {
     const rows = [];
     rows.push({
@@ -151,7 +140,7 @@ function DriverBookingTrackingPanel({
       icon: CalendarClock,
       title: `Next service due on ${formatDate(nextServiceDate)}`,
       detail: `${vehicle?.id || "Vehicle"} is approaching service milestone.`,
-      levelClass: "bg-slate-100 text-slate-700",
+      levelClass: "bg-slate-800 text-slate-100",
     });
 
     scopedOrders.forEach((order) => {
@@ -170,24 +159,28 @@ function DriverBookingTrackingPanel({
             `Order ${order.id} has a new approval decision.`,
           levelClass:
             approvalDecision === "approved"
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-rose-100 text-rose-700",
+              ? "bg-emerald-900 text-emerald-100"
+              : "bg-rose-900 text-rose-100",
         });
       }
 
       const status = normalize(order.status);
       if (
         status.includes("pending booking") ||
+        status.includes("scheduled") ||
         status.includes("approved") ||
         status.includes("progress")
       ) {
+        const appointmentText = order?.appointment?.dateTime
+          ? ` Appointment: ${formatDateTime(order.appointment.dateTime)}.`
+          : "";
         rows.push({
           id: `NTF-BOOKING-${order.id}`,
           type: "Booking confirmations",
           icon: Bell,
           title: `Booking update: ${order.id}`,
-          detail: `${order.serviceType} is currently ${order.status}.`,
-          levelClass: "bg-sky-100 text-sky-700",
+          detail: `${order.serviceType} is currently ${order.status}.${appointmentText}`,
+          levelClass: "bg-sky-900 text-sky-100",
         });
       }
 
@@ -201,7 +194,7 @@ function DriverBookingTrackingPanel({
             order?.approval?.note ||
             order?.lifecycle?.[order.lifecycle.length - 1]?.note ||
             "Please review and re-submit with corrections.",
-          levelClass: "bg-amber-100 text-amber-700",
+          levelClass: "bg-amber-900 text-amber-100",
         });
       }
 
@@ -212,7 +205,7 @@ function DriverBookingTrackingPanel({
           icon: Siren,
           title: `Emergency request ${order.id}`,
           detail: `${order.serviceType} marked as emergency. Track updates closely.`,
-          levelClass: "bg-rose-100 text-rose-700",
+          levelClass: "bg-rose-900 text-rose-100",
         });
       }
     });
@@ -243,9 +236,9 @@ function DriverBookingTrackingPanel({
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Service completion pending</p>
+          <p className="text-xs text-slate-500">Active workflows</p>
           <p className="mt-2 text-2xl font-semibold text-slate-900">
-            {completionCandidates.length}
+            {upcomingBookings.length}
           </p>
         </div>
       </div>
@@ -277,6 +270,11 @@ function DriverBookingTrackingPanel({
                   <p className="mt-1 text-xs text-slate-500">
                     Requested: {formatDateTime(booking.requestedAt)}
                   </p>
+                  {booking?.appointment?.dateTime ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Appointment: {formatDateTime(booking.appointment.dateTime)}
+                    </p>
+                  ) : null}
                 </div>
               ))
             )}
@@ -316,8 +314,7 @@ function DriverBookingTrackingPanel({
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">
             Live booking status tracking
           </h2>
@@ -334,6 +331,11 @@ function DriverBookingTrackingPanel({
                 <p className="text-xs text-slate-500">
                   Current status: {liveBooking.status}
                 </p>
+                {liveBooking?.appointment?.dateTime ? (
+                  <p className="text-xs text-slate-500">
+                    Appointment: {formatDateTime(liveBooking.appointment.dateTime)}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-2">
                 {(liveBooking.lifecycle || [])
@@ -362,43 +364,6 @@ function DriverBookingTrackingPanel({
               </div>
             </div>
           )}
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Service completion confirmation
-          </h2>
-          <div className="mt-4 space-y-3">
-            {completionCandidates.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No orders currently eligible for completion confirmation.
-              </p>
-            ) : (
-              completionCandidates.map((booking) => (
-                <div
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
-                  key={`confirm-${booking.id}`}
-                >
-                  <p className="text-sm font-semibold text-slate-900">
-                    {booking.id} - {booking.serviceType}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Current status: {booking.status}
-                  </p>
-                  <Button
-                    className="mt-3 w-full"
-                    onClick={() => onConfirmCompletion(booking.id)}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    Confirm service completion
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">

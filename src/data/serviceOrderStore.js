@@ -45,6 +45,28 @@ const normalizeLifecycleEntry = (entry) => ({
   note: String(entry?.note || "").trim(),
 });
 
+const normalizeAppointment = (appointment = {}) => ({
+  dateTime: appointment?.dateTime ? toIsoString(appointment.dateTime) : "",
+  confirmedBy: String(appointment?.confirmedBy || "").trim(),
+  confirmedAt: appointment?.confirmedAt ? toIsoString(appointment.confirmedAt) : "",
+  note: String(appointment?.note || "").trim(),
+  calendarChecked: Boolean(appointment?.calendarChecked),
+  stockChecked: Boolean(appointment?.stockChecked),
+});
+
+const normalizeSettlement = (settlement = {}) => ({
+  readyForSettlement: Boolean(settlement?.readyForSettlement),
+  completionConfirmedBy: String(settlement?.completionConfirmedBy || "").trim(),
+  completionConfirmedAt: settlement?.completionConfirmedAt
+    ? toIsoString(settlement.completionConfirmedAt)
+    : "",
+  fleetAcknowledgedBy: String(settlement?.fleetAcknowledgedBy || "").trim(),
+  fleetAcknowledgedAt: settlement?.fleetAcknowledgedAt
+    ? toIsoString(settlement.fleetAcknowledgedAt)
+    : "",
+  note: String(settlement?.note || "").trim(),
+});
+
 const normalizeOrder = (order = {}) => {
   const emergency = Boolean(order.emergency);
   const status = String(order.status || "Pending").trim() || "Pending";
@@ -85,6 +107,8 @@ const normalizeOrder = (order = {}) => {
       decidedAt: order.approval?.decidedAt ? toIsoString(order.approval.decidedAt) : "",
       manualOverride: Boolean(order.approval?.manualOverride),
     },
+    appointment: normalizeAppointment(order.appointment),
+    settlement: normalizeSettlement(order.settlement),
     lifecycle: lifecycle.slice(0, 25),
     updatedAt: toIsoString(order.updatedAt),
   };
@@ -526,6 +550,134 @@ export const createServiceRequest = (request = {}) => {
   emit();
   return nextOrder;
 };
+
+export const confirmServiceAppointment = (
+  orderId,
+  {
+    appointmentAt,
+    actor,
+    note,
+    calendarChecked = true,
+    stockChecked = true,
+  } = {}
+) =>
+  updateOrderInternal(orderId, (order) => {
+    const now = new Date().toISOString();
+    const appointmentDateTime = appointmentAt ? toIsoString(appointmentAt) : now;
+    const confirmedBy = String(actor || "POS Desk").trim() || "POS Desk";
+    const checkedCalendar = Boolean(calendarChecked);
+    const checkedStock = Boolean(stockChecked);
+    const messageParts = [
+      `Appointment confirmed for ${new Date(appointmentDateTime).toLocaleString("en-US")}.`,
+      checkedCalendar ? "Calendar checked." : "Calendar not confirmed.",
+      checkedStock ? "Stock checked." : "Stock not confirmed.",
+    ];
+    const noteText = String(note || "").trim();
+    if (noteText) {
+      messageParts.push(noteText);
+    }
+
+    return {
+      ...order,
+      status: "Scheduled",
+      appointment: {
+        ...order.appointment,
+        dateTime: appointmentDateTime,
+        confirmedBy,
+        confirmedAt: now,
+        note: noteText,
+        calendarChecked: checkedCalendar,
+        stockChecked: checkedStock,
+      },
+      lifecycle: [
+        ...order.lifecycle,
+        {
+          stage: "Scheduled",
+          time: now,
+          actor: confirmedBy,
+          note: messageParts.join(" "),
+        },
+      ],
+      updatedAt: now,
+    };
+  });
+
+export const startServiceExecution = (orderId, { actor, note } = {}) =>
+  updateOrderInternal(orderId, (order) => {
+    const now = new Date().toISOString();
+    const performedBy = String(actor || "POS Technician").trim() || "POS Technician";
+    const noteText = String(note || "").trim();
+    return {
+      ...order,
+      status: "In progress",
+      lifecycle: [
+        ...order.lifecycle,
+        {
+          stage: "In progress",
+          time: now,
+          actor: performedBy,
+          note: noteText || "Service execution started at POS.",
+        },
+      ],
+      updatedAt: now,
+    };
+  });
+
+export const confirmServiceCompletion = (orderId, { actor, note } = {}) =>
+  updateOrderInternal(orderId, (order) => {
+    const now = new Date().toISOString();
+    const confirmedBy = String(actor || "POS Manager").trim() || "POS Manager";
+    const noteText = String(note || "").trim();
+    return {
+      ...order,
+      status: "Completed",
+      settlement: {
+        ...order.settlement,
+        readyForSettlement: true,
+        completionConfirmedBy: confirmedBy,
+        completionConfirmedAt: now,
+        note: noteText,
+      },
+      lifecycle: [
+        ...order.lifecycle,
+        {
+          stage: "Completed",
+          time: now,
+          actor: confirmedBy,
+          note: noteText || "Service completed and marked ready for settlement.",
+        },
+      ],
+      updatedAt: now,
+    };
+  });
+
+export const acknowledgeSettlementByFleet = (orderId, { actor, note } = {}) =>
+  updateOrderInternal(orderId, (order) => {
+    const now = new Date().toISOString();
+    const acknowledgedBy =
+      String(actor || "Fleet Manager").trim() || "Fleet Manager";
+    const noteText = String(note || "").trim();
+    return {
+      ...order,
+      settlement: {
+        ...order.settlement,
+        readyForSettlement: false,
+        fleetAcknowledgedBy: acknowledgedBy,
+        fleetAcknowledgedAt: now,
+        note: noteText || order.settlement?.note || "",
+      },
+      lifecycle: [
+        ...order.lifecycle,
+        {
+          stage: "Settlement acknowledged",
+          time: now,
+          actor: acknowledgedBy,
+          note: noteText || "Fleet manager acknowledged completion for settlement.",
+        },
+      ],
+      updatedAt: now,
+    };
+  });
 
 export const subscribeServiceOrders = (listener) => {
   listeners.add(listener);

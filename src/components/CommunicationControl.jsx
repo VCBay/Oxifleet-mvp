@@ -1,20 +1,19 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  LifeBuoy,
+  Search,
+  Send,
+  UserRound,
+  Wrench,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { getDriverState, subscribeDrivers } from "../data/driverStore";
-import {
-  getServiceOrderState,
-  subscribeServiceOrders,
-} from "../data/serviceOrderStore";
+import { getServiceOrderState, subscribeServiceOrders } from "../data/serviceOrderStore";
 import {
   createSupportTicket,
   escalateSupportTicket,
@@ -26,6 +25,10 @@ import {
   subscribeCommunication,
 } from "../data/communicationStore";
 
+const NONE = "__none__";
+
+const parseTime = (value) => new Date(value).getTime() || 0;
+
 const formatDateTime = (value) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -34,24 +37,31 @@ const formatDateTime = (value) => {
   return parsed.toLocaleString("en-US", {
     month: "short",
     day: "2-digit",
-    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
 };
 
-const statusClassName = (status) => {
-  const normalized = String(status || "").toLowerCase();
-  if (normalized.includes("resolved")) {
+const formatListTime = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "--:--";
+  }
+  return parsed.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const statusClass = (status) => {
+  const value = String(status || "").toLowerCase();
+  if (value.includes("resolved")) {
     return "bg-emerald-100 text-emerald-700";
   }
-  if (normalized.includes("escalated")) {
+  if (value.includes("escalated")) {
     return "bg-rose-100 text-rose-700";
   }
-  if (normalized.includes("open")) {
-    return "bg-amber-100 text-amber-700";
-  }
-  return "bg-slate-100 text-slate-700";
+  return "bg-amber-100 text-amber-700";
 };
 
 function CommunicationControl() {
@@ -92,27 +102,78 @@ function CommunicationControl() {
     return Array.from(new Set([...fromOrders, ...defaults]));
   }, [serviceOrderState.orders]);
 
+  const driverThreads = useMemo(() => {
+    const map = new Map();
+    communicationState.driverMessages.forEach((row) => {
+      const threadId = row.threadId || `DRV-${row.driverId || "UNASSIGNED"}`;
+      const current = map.get(threadId) || [];
+      current.push(row);
+      map.set(threadId, current);
+    });
+
+    return Array.from(map.entries())
+      .map(([id, rows]) => {
+        const messages = [...rows].sort((a, b) => parseTime(a.sentAt) - parseTime(b.sentAt));
+        const latest = messages[messages.length - 1];
+        return {
+          id,
+          title: latest?.driverName || latest?.driverId || "Unknown driver",
+          ref: latest?.driverId || "N/A",
+          latestMessage: latest?.message || "",
+          latestAt: latest?.sentAt || "",
+          messages,
+        };
+      })
+      .sort((a, b) => parseTime(b.latestAt) - parseTime(a.latestAt));
+  }, [communicationState.driverMessages]);
+
+  const workshopThreads = useMemo(() => {
+    const map = new Map();
+    communicationState.workshopMessages.forEach((row) => {
+      const threadId = row.threadId || `WSH-${row.workshop || "UNASSIGNED"}`;
+      const current = map.get(threadId) || [];
+      current.push(row);
+      map.set(threadId, current);
+    });
+
+    return Array.from(map.entries())
+      .map(([id, rows]) => {
+        const messages = [...rows].sort((a, b) => parseTime(a.sentAt) - parseTime(b.sentAt));
+        const latest = messages[messages.length - 1];
+        return {
+          id,
+          title: latest?.workshop || "Unknown workshop",
+          ref: `${latest?.urgency || "Normal"} priority`,
+          latestMessage: latest?.message || "",
+          latestAt: latest?.sentAt || "",
+          messages,
+        };
+      })
+      .sort((a, b) => parseTime(b.latestAt) - parseTime(a.latestAt));
+  }, [communicationState.workshopMessages]);
+
   const tickets = useMemo(
-    () =>
-      [...communicationState.tickets].sort((a, b) => {
-        const timeA = new Date(a.updatedAt).getTime() || 0;
-        const timeB = new Date(b.updatedAt).getTime() || 0;
-        return timeB - timeA;
-      }),
+    () => [...communicationState.tickets].sort((a, b) => parseTime(b.updatedAt) - parseTime(a.updatedAt)),
     [communicationState.tickets]
   );
 
-  const [driverMessageForm, setDriverMessageForm] = useState({
-    driverId: "__none__",
-    channel: "In-app",
-    message: "",
-  });
-  const [workshopMessageForm, setWorkshopMessageForm] = useState({
-    workshop: "__none__",
-    channel: "Email",
-    urgency: "Normal",
-    message: "",
-  });
+  const [activeTab, setActiveTab] = useState("driver");
+  const [searchText, setSearchText] = useState("");
+
+  const [activeDriverThreadId, setActiveDriverThreadId] = useState("");
+  const [activeWorkshopThreadId, setActiveWorkshopThreadId] = useState("");
+  const [activeTicketId, setActiveTicketId] = useState("");
+
+  const [driverTargetId, setDriverTargetId] = useState(NONE);
+  const [workshopTarget, setWorkshopTarget] = useState(NONE);
+  const [driverChannel, setDriverChannel] = useState("In-app");
+  const [workshopChannel, setWorkshopChannel] = useState("Email");
+  const [workshopUrgency, setWorkshopUrgency] = useState("Normal");
+  const [driverDraft, setDriverDraft] = useState("");
+  const [workshopDraft, setWorkshopDraft] = useState("");
+  const [note, setNote] = useState("");
+  const [notice, setNotice] = useState("");
+
   const [ticketForm, setTicketForm] = useState({
     subject: "",
     category: "Driver support",
@@ -121,69 +182,106 @@ function CommunicationControl() {
     description: "",
     assignee: "Support Team",
   });
-  const [selectedTicketId, setSelectedTicketId] = useState("");
-  const [escalationNote, setEscalationNote] = useState("");
 
-  const selectedTicket = useMemo(() => {
-    const explicit = tickets.find((ticket) => ticket.id === selectedTicketId);
-    if (explicit) {
-      return explicit;
+  const currentDriverThreadId = driverThreads.some((row) => row.id === activeDriverThreadId)
+    ? activeDriverThreadId
+    : driverThreads[0]?.id || "";
+  const currentWorkshopThreadId = workshopThreads.some(
+    (row) => row.id === activeWorkshopThreadId
+  )
+    ? activeWorkshopThreadId
+    : workshopThreads[0]?.id || "";
+  const currentTicketId = tickets.some((row) => row.id === activeTicketId)
+    ? activeTicketId
+    : tickets[0]?.id || "";
+
+  const activeDriverThread = driverThreads.find((row) => row.id === currentDriverThreadId) || null;
+  const activeWorkshopThread =
+    workshopThreads.find((row) => row.id === currentWorkshopThreadId) || null;
+  const activeTicket = tickets.find((row) => row.id === currentTicketId) || null;
+
+  const selectedDriverTargetId =
+    driverTargetId !== NONE ? driverTargetId : activeDriverThread?.ref || NONE;
+  const selectedWorkshopTarget =
+    workshopTarget !== NONE ? workshopTarget : activeWorkshopThread?.title || NONE;
+  const hasSelectedDriverOption = drivers.some((driver) => driver.id === selectedDriverTargetId);
+  const hasSelectedWorkshopOption = workshops.includes(selectedWorkshopTarget);
+
+  const filteredDrivers = useMemo(() => {
+    if (!searchText.trim()) {
+      return driverThreads;
     }
-    return tickets[0] || null;
-  }, [selectedTicketId, tickets]);
+    const search = searchText.trim().toLowerCase();
+    return driverThreads.filter((row) =>
+      [row.title, row.ref, row.latestMessage].join(" ").toLowerCase().includes(search)
+    );
+  }, [driverThreads, searchText]);
 
-  const openTickets = tickets.filter((ticket) =>
-    String(ticket.status || "").toLowerCase().includes("open")
-  );
-  const escalatedTickets = tickets.filter((ticket) =>
-    String(ticket.status || "").toLowerCase().includes("escalated")
-  );
-  const resolvedTickets = tickets.filter((ticket) =>
-    String(ticket.status || "").toLowerCase().includes("resolved")
-  );
+  const filteredWorkshops = useMemo(() => {
+    if (!searchText.trim()) {
+      return workshopThreads;
+    }
+    const search = searchText.trim().toLowerCase();
+    return workshopThreads.filter((row) =>
+      [row.title, row.ref, row.latestMessage].join(" ").toLowerCase().includes(search)
+    );
+  }, [searchText, workshopThreads]);
 
-  const handleSendDriverMessage = () => {
-    if (
-      driverMessageForm.driverId === "__none__" ||
-      !driverMessageForm.message.trim()
-    ) {
+  const filteredTickets = useMemo(() => {
+    if (!searchText.trim()) {
+      return tickets;
+    }
+    const search = searchText.trim().toLowerCase();
+    return tickets.filter((row) =>
+      [row.id, row.subject, row.status, row.priority, row.relatedRef]
+        .join(" ")
+        .toLowerCase()
+        .includes(search)
+    );
+  }, [searchText, tickets]);
+
+  const sendDriver = () => {
+    if (selectedDriverTargetId === NONE || !driverDraft.trim()) {
       return;
     }
-    const driver = drivers.find((item) => item.id === driverMessageForm.driverId);
+    const driver = drivers.find((item) => item.id === selectedDriverTargetId);
+    const threadId = `DRV-${selectedDriverTargetId}`;
     sendDriverMessage({
-      driverId: driverMessageForm.driverId,
-      driverName: driver?.name || driverMessageForm.driverId,
-      channel: driverMessageForm.channel,
-      message: driverMessageForm.message,
+      driverId: selectedDriverTargetId,
+      driverName: driver?.name || selectedDriverTargetId,
+      channel: driverChannel,
+      message: driverDraft.trim(),
       sentBy: "Ops Control",
+      fromRole: "fleet",
+      toRole: "driver",
+      threadId,
     });
-    setDriverMessageForm((prev) => ({
-      ...prev,
-      message: "",
-    }));
+    setActiveDriverThreadId(threadId);
+    setDriverDraft("");
+    setNotice(`Message sent to ${driver?.name || selectedDriverTargetId}.`);
   };
 
-  const handleSendWorkshopMessage = () => {
-    if (
-      workshopMessageForm.workshop === "__none__" ||
-      !workshopMessageForm.message.trim()
-    ) {
+  const sendWorkshop = () => {
+    if (selectedWorkshopTarget === NONE || !workshopDraft.trim()) {
       return;
     }
+    const threadId = `WSH-${selectedWorkshopTarget}`;
     sendWorkshopMessage({
-      workshop: workshopMessageForm.workshop,
-      channel: workshopMessageForm.channel,
-      urgency: workshopMessageForm.urgency,
-      message: workshopMessageForm.message,
+      workshop: selectedWorkshopTarget,
+      channel: workshopChannel,
+      urgency: workshopUrgency,
+      message: workshopDraft.trim(),
       sentBy: "Service Desk",
+      fromRole: "fleet",
+      toRole: "workshop",
+      threadId,
     });
-    setWorkshopMessageForm((prev) => ({
-      ...prev,
-      message: "",
-    }));
+    setActiveWorkshopThreadId(threadId);
+    setWorkshopDraft("");
+    setNotice(`Message sent to ${selectedWorkshopTarget}.`);
   };
 
-  const handleCreateTicket = () => {
+  const createTicket = () => {
     if (!ticketForm.subject.trim() || !ticketForm.description.trim()) {
       return;
     }
@@ -198,413 +296,535 @@ function CommunicationControl() {
       status: "Open",
       escalationLevel: 0,
     });
-    setSelectedTicketId(created.id);
-    setTicketForm((prev) => ({
-      ...prev,
-      subject: "",
-      relatedRef: "",
-      description: "",
-    }));
+    setActiveTab("support");
+    setActiveTicketId(created.id);
+    setTicketForm((prev) => ({ ...prev, subject: "", relatedRef: "", description: "" }));
+    setNotice(`Ticket ${created.id} created.`);
   };
 
-  const handleEscalate = () => {
-    if (!selectedTicket) {
+  const escalate = () => {
+    if (!activeTicket) {
       return;
     }
-    escalateSupportTicket(selectedTicket.id, escalationNote);
-    setEscalationNote("");
+    const updated = escalateSupportTicket(activeTicket.id, note);
+    if (updated) {
+      setNotice(`${updated.id} escalated.`);
+    }
+    setNote("");
   };
 
-  const handleResolve = () => {
-    if (!selectedTicket) {
+  const resolve = () => {
+    if (!activeTicket) {
       return;
     }
-    resolveSupportTicket(selectedTicket.id, escalationNote);
-    setEscalationNote("");
+    const updated = resolveSupportTicket(activeTicket.id, note);
+    if (updated) {
+      setNotice(`${updated.id} resolved.`);
+    }
+    setNote("");
   };
 
-  const handleReopen = () => {
-    if (!selectedTicket) {
+  const reopen = () => {
+    if (!activeTicket) {
       return;
     }
-    reopenSupportTicket(selectedTicket.id);
-    setEscalationNote("");
+    const updated = reopenSupportTicket(activeTicket.id);
+    if (updated) {
+      setNotice(`${updated.id} reopened.`);
+    }
+    setNote("");
   };
+
+  const listRows =
+    activeTab === "driver"
+      ? filteredDrivers
+      : activeTab === "workshop"
+      ? filteredWorkshops
+      : filteredTickets;
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Communication</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Message drivers and workshops, create support tickets, and manage
-          escalations in one place.
-        </p>
-      </div>
+    <section className="space-y-4">
+      <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
+        <header className="border-b border-slate-200 bg-white px-5 py-4">
+          <h2 className="text-lg font-semibold text-slate-900">Communication Hub</h2>
+          <p className="text-xs text-slate-500">
+            Chat-style view while keeping existing message and ticket flow.
+          </p>
+        </header>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">Message driver</h3>
-          <div className="mt-4 grid gap-3">
-            <Select
-              onValueChange={(value) =>
-                setDriverMessageForm((prev) => ({ ...prev, driverId: value }))
-              }
-              value={driverMessageForm.driverId}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select driver" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Select driver</SelectItem>
-                {drivers.map((driver) => (
-                  <SelectItem key={driver.id} value={driver.id}>
-                    {driver.name} ({driver.id})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              onValueChange={(value) =>
-                setDriverMessageForm((prev) => ({ ...prev, channel: value }))
-              }
-              value={driverMessageForm.channel}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Channel" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="In-app">In-app</SelectItem>
-                <SelectItem value="SMS">SMS</SelectItem>
-                <SelectItem value="Email">Email</SelectItem>
-              </SelectContent>
-            </Select>
-            <Textarea
-              onChange={(event) =>
-                setDriverMessageForm((prev) => ({
-                  ...prev,
-                  message: event.target.value,
-                }))
-              }
-              placeholder="Write message to driver"
-              rows={4}
-              value={driverMessageForm.message}
-            />
-            <Button onClick={handleSendDriverMessage} type="button">
-              Send driver message
-            </Button>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">Message workshop</h3>
-          <div className="mt-4 grid gap-3">
-            <Select
-              onValueChange={(value) =>
-                setWorkshopMessageForm((prev) => ({ ...prev, workshop: value }))
-              }
-              value={workshopMessageForm.workshop}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select workshop" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Select workshop</SelectItem>
-                {workshops.map((workshop) => (
-                  <SelectItem key={workshop} value={workshop}>
-                    {workshop}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Select
-                onValueChange={(value) =>
-                  setWorkshopMessageForm((prev) => ({ ...prev, channel: value }))
-                }
-                value={workshopMessageForm.channel}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Channel" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Email">Email</SelectItem>
-                  <SelectItem value="Portal">Portal</SelectItem>
-                  <SelectItem value="Call">Call</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                onValueChange={(value) =>
-                  setWorkshopMessageForm((prev) => ({ ...prev, urgency: value }))
-                }
-                value={workshopMessageForm.urgency}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Urgency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Normal">Normal</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Emergency">Emergency</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Textarea
-              onChange={(event) =>
-                setWorkshopMessageForm((prev) => ({
-                  ...prev,
-                  message: event.target.value,
-                }))
-              }
-              placeholder="Write message to workshop"
-              rows={4}
-              value={workshopMessageForm.message}
-            />
-            <Button onClick={handleSendWorkshopMessage} type="button" variant="outline">
-              Send workshop message
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">
-            Support ticket creation
-          </h3>
-          <div className="mt-4 grid gap-3">
-            <Input
-              onChange={(event) =>
-                setTicketForm((prev) => ({ ...prev, subject: event.target.value }))
-              }
-              placeholder="Ticket subject"
-              value={ticketForm.subject}
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Select
-                onValueChange={(value) =>
-                  setTicketForm((prev) => ({ ...prev, category: value }))
-                }
-                value={ticketForm.category}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Driver support">Driver support</SelectItem>
-                  <SelectItem value="Workshop coordination">
-                    Workshop coordination
-                  </SelectItem>
-                  <SelectItem value="Billing">Billing</SelectItem>
-                  <SelectItem value="Technical">Technical</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                onValueChange={(value) =>
-                  setTicketForm((prev) => ({ ...prev, priority: value }))
-                }
-                value={ticketForm.priority}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                onChange={(event) =>
-                  setTicketForm((prev) => ({
-                    ...prev,
-                    relatedRef: event.target.value,
-                  }))
-                }
-                placeholder="Related ref (vehicle/order/invoice)"
-                value={ticketForm.relatedRef}
-              />
-              <Input
-                onChange={(event) =>
-                  setTicketForm((prev) => ({
-                    ...prev,
-                    assignee: event.target.value,
-                  }))
-                }
-                placeholder="Assignee"
-                value={ticketForm.assignee}
-              />
-            </div>
-            <Textarea
-              onChange={(event) =>
-                setTicketForm((prev) => ({
-                  ...prev,
-                  description: event.target.value,
-                }))
-              }
-              placeholder="Describe the issue and expected action"
-              rows={4}
-              value={ticketForm.description}
-            />
-            <Button onClick={handleCreateTicket} type="button">
-              Create support ticket
-            </Button>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">
-            Escalation management
-          </h3>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">Open</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">
-                {openTickets.length}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">Escalated</p>
-              <p className="mt-1 text-lg font-semibold text-rose-600">
-                {escalatedTickets.length}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">Resolved</p>
-              <p className="mt-1 text-lg font-semibold text-emerald-600">
-                {resolvedTickets.length}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3">
-            <Label htmlFor="escalation-ticket">Select ticket</Label>
-            <Select
-              onValueChange={setSelectedTicketId}
-              value={selectedTicket?.id || "__none__"}
-            >
-              <SelectTrigger id="escalation-ticket" className="w-full">
-                <SelectValue placeholder="Select ticket" />
-              </SelectTrigger>
-              <SelectContent>
-                {tickets.length === 0 ? (
-                  <SelectItem value="__none__">No tickets</SelectItem>
-                ) : (
-                  tickets.map((ticket) => (
-                    <SelectItem key={ticket.id} value={ticket.id}>
-                      {ticket.id} - {ticket.subject}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-
-            <Textarea
-              onChange={(event) => setEscalationNote(event.target.value)}
-              placeholder="Escalation or resolution note"
-              rows={3}
-              value={escalationNote}
-            />
-
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={handleEscalate} type="button" variant="destructive">
-                Escalate
-              </Button>
-              <Button onClick={handleResolve} type="button" variant="outline">
-                Mark resolved
-              </Button>
-              <Button onClick={handleReopen} type="button" variant="secondary">
-                Reopen
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">
-            Recent driver messages
-          </h3>
-          <div className="mt-4 space-y-2">
-            {communicationState.driverMessages.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No driver messages sent yet.
-              </p>
-            ) : (
-              communicationState.driverMessages.slice(0, 5).map((message) => (
-                <div
-                  key={message.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold text-slate-800">
-                      {message.driverName}
-                    </p>
-                    <p className="text-slate-500">{message.channel}</p>
-                  </div>
-                  <p className="mt-1 text-slate-700">{message.message}</p>
-                  <p className="mt-2 text-slate-500">
-                    {message.sentBy} | {formatDateTime(message.sentAt)}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">
-            Workshop messages & tickets
-          </h3>
-          <div className="mt-4 space-y-2">
-            {communicationState.workshopMessages.slice(0, 3).map((message) => (
-              <div
-                key={message.id}
-                className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs"
-              >
-                <p className="font-semibold text-slate-800">{message.workshop}</p>
-                <p className="mt-1 text-slate-700">
-                  {message.urgency} | {message.channel}
-                </p>
-                <p className="mt-1 text-slate-600">{message.message}</p>
-                <p className="mt-1 text-slate-500">{formatDateTime(message.sentAt)}</p>
+        <div className="grid min-h-[680px] grid-cols-1 md:grid-cols-[330px_1fr]">
+          <aside className="border-r border-slate-200 bg-white">
+            <div className="space-y-3 border-b border-slate-200 bg-white p-4">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={14}
+                />
+                <Input
+                  className="h-9 rounded-full border-slate-200 bg-slate-50 pl-9"
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                  placeholder="Search"
+                />
               </div>
-            ))}
-            {tickets.slice(0, 4).map((ticket) => (
-              <div
-                key={ticket.id}
-                className="rounded-xl border border-slate-200 bg-white p-3 text-xs"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-800">
-                    {ticket.id} - {ticket.subject}
-                  </p>
-                  <span
-                    className={`rounded-full px-2 py-1 text-[11px] font-semibold ${statusClassName(
-                      ticket.status
-                    )}`}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  ["driver", "Drivers"],
+                  ["workshop", "Workshop"],
+                  ["support", "Support"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setActiveTab(key)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      activeTab === key
+                        ? "bg-slate-900 text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
                   >
-                    {ticket.status}
-                  </span>
-                </div>
-                <p className="mt-1 text-slate-600">
-                  {ticket.category} | {ticket.priority} | Escalation L
-                  {ticket.escalationLevel}
-                </p>
-                <p className="mt-1 text-slate-500">{formatDateTime(ticket.updatedAt)}</p>
+                    {label}
+                  </button>
+                ))}
               </div>
-            ))}
-            {communicationState.workshopMessages.length === 0 && tickets.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No workshop communication activity yet.
-              </p>
+            </div>
+
+            <div className="max-h-[590px] space-y-1 overflow-y-auto p-2">
+              {listRows.length === 0 ? (
+                <div className="m-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-500">
+                  No items found.
+                </div>
+              ) : null}
+
+              {activeTab === "driver"
+                ? listRows.map((row) => (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => setActiveDriverThreadId(row.id)}
+                      className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+                        activeDriverThread?.id === row.id
+                          ? "border-slate-300 bg-slate-100 shadow-sm"
+                          : "border-transparent bg-white hover:border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-slate-800">{row.title}</p>
+                        <p className="text-[11px] text-slate-400">{formatListTime(row.latestAt)}</p>
+                      </div>
+                      <p className="text-[11px] text-slate-500">{row.ref}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">{row.latestMessage}</p>
+                    </button>
+                  ))
+                : null}
+
+              {activeTab === "workshop"
+                ? listRows.map((row) => (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => setActiveWorkshopThreadId(row.id)}
+                      className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+                        activeWorkshopThread?.id === row.id
+                          ? "border-slate-300 bg-slate-100 shadow-sm"
+                          : "border-transparent bg-white hover:border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-slate-800">{row.title}</p>
+                        <p className="text-[11px] text-slate-400">{formatListTime(row.latestAt)}</p>
+                      </div>
+                      <p className="text-[11px] text-slate-500">{row.ref}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">{row.latestMessage}</p>
+                    </button>
+                  ))
+                : null}
+
+              {activeTab === "support"
+                ? listRows.map((row) => (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => setActiveTicketId(row.id)}
+                      className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+                        activeTicket?.id === row.id
+                          ? "border-slate-300 bg-slate-100 shadow-sm"
+                          : "border-transparent bg-white hover:border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-slate-800">{row.id}</p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusClass(
+                            row.status
+                          )}`}
+                        >
+                          {row.status}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">{row.subject}</p>
+                    </button>
+                  ))
+                : null}
+            </div>
+          </aside>
+
+          <div className="flex min-h-0 flex-col bg-slate-50">
+            {activeTab === "driver" ? (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-10 place-items-center rounded-full bg-slate-100 text-slate-700">
+                      <UserRound size={16} />
+                    </span>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {activeDriverThread?.title || "Select driver"}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={selectedDriverTargetId} onValueChange={setDriverTargetId}>
+                      <SelectTrigger className="w-[180px] bg-slate-50">
+                        <SelectValue placeholder="Driver" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Select driver</SelectItem>
+                        {selectedDriverTargetId !== NONE && !hasSelectedDriverOption ? (
+                          <SelectItem value={selectedDriverTargetId}>
+                            {selectedDriverTargetId}
+                          </SelectItem>
+                        ) : null}
+                        {drivers.map((driver) => (
+                          <SelectItem key={driver.id} value={driver.id}>
+                            {driver.name} ({driver.id})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={driverChannel} onValueChange={setDriverChannel}>
+                      <SelectTrigger className="w-[120px] bg-slate-50">
+                        <SelectValue placeholder="Channel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="In-app">In-app</SelectItem>
+                        <SelectItem value="SMS">SMS</SelectItem>
+                        <SelectItem value="Email">Email</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4">
+                  {activeDriverThread?.messages?.map((message) => {
+                    const mine = String(message.fromRole || "").toLowerCase() !== "driver";
+                    return (
+                      <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                            mine
+                              ? "rounded-br-md bg-slate-900 text-white"
+                              : "rounded-bl-md border border-slate-200 bg-white text-slate-700"
+                          }`}
+                        >
+                          <p
+                            className={`text-[10px] font-semibold uppercase tracking-wide ${
+                              mine ? "text-slate-300" : "text-slate-500"
+                            }`}
+                          >
+                            {message.sentBy}
+                          </p>
+                          <p className="mt-1">{message.message}</p>
+                          <p
+                            className={`mt-1 text-right text-[10px] ${
+                              mine ? "text-slate-300" : "text-slate-400"
+                            }`}
+                          >
+                            {formatDateTime(message.sentAt)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t border-slate-200 bg-white px-4 py-3">
+                  <div className="flex gap-2">
+                    <Textarea
+                      rows={1}
+                      value={driverDraft}
+                      onChange={(event) => setDriverDraft(event.target.value)}
+                      placeholder="Type message"
+                      className="min-h-[44px] resize-none bg-slate-50"
+                    />
+                    <Button onClick={sendDriver} type="button">
+                      <Send className="mr-2" size={14} />
+                      Send
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {activeTab === "workshop" ? (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-10 place-items-center rounded-full bg-slate-100 text-slate-700">
+                      <Wrench size={16} />
+                    </span>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {activeWorkshopThread?.title || "Select workshop"}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={selectedWorkshopTarget} onValueChange={setWorkshopTarget}>
+                      <SelectTrigger className="w-[210px] bg-slate-50">
+                        <SelectValue placeholder="Workshop" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Select workshop</SelectItem>
+                        {selectedWorkshopTarget !== NONE && !hasSelectedWorkshopOption ? (
+                          <SelectItem value={selectedWorkshopTarget}>
+                            {selectedWorkshopTarget}
+                          </SelectItem>
+                        ) : null}
+                        {workshops.map((name) => (
+                          <SelectItem key={name} value={name}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={workshopChannel} onValueChange={setWorkshopChannel}>
+                      <SelectTrigger className="w-[110px] bg-slate-50">
+                        <SelectValue placeholder="Channel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Email">Email</SelectItem>
+                        <SelectItem value="Portal">Portal</SelectItem>
+                        <SelectItem value="Call">Call</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={workshopUrgency} onValueChange={setWorkshopUrgency}>
+                      <SelectTrigger className="w-[120px] bg-slate-50">
+                        <SelectValue placeholder="Urgency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Normal">Normal</SelectItem>
+                        <SelectItem value="High">High</SelectItem>
+                        <SelectItem value="Emergency">Emergency</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4">
+                  {activeWorkshopThread?.messages?.map((message) => {
+                    const mine = String(message.fromRole || "").toLowerCase() !== "workshop";
+                    return (
+                      <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                            mine
+                              ? "rounded-br-md bg-slate-900 text-white"
+                              : "rounded-bl-md border border-slate-200 bg-white text-slate-700"
+                          }`}
+                        >
+                          <p
+                            className={`text-[10px] font-semibold uppercase tracking-wide ${
+                              mine ? "text-slate-300" : "text-slate-500"
+                            }`}
+                          >
+                            {message.sentBy}
+                          </p>
+                          <p className="mt-1">{message.message}</p>
+                          <p
+                            className={`mt-1 text-[10px] ${mine ? "text-slate-300" : "text-slate-500"}`}
+                          >
+                            {message.channel} | {message.urgency}
+                          </p>
+                          <p
+                            className={`text-right text-[10px] ${
+                              mine ? "text-slate-300" : "text-slate-400"
+                            }`}
+                          >
+                            {formatDateTime(message.sentAt)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t border-slate-200 bg-white px-4 py-3">
+                  <div className="flex gap-2">
+                    <Textarea
+                      rows={1}
+                      value={workshopDraft}
+                      onChange={(event) => setWorkshopDraft(event.target.value)}
+                      placeholder="Type workshop message"
+                      className="min-h-[44px] resize-none bg-slate-50"
+                    />
+                    <Button onClick={sendWorkshop} type="button" variant="outline">
+                      <Send className="mr-2" size={14} />
+                      Send
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {activeTab === "support" ? (
+              <div className="grid flex-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[1.1fr_1fr]">
+                <article className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900">
+                        {activeTicket ? `${activeTicket.id} - ${activeTicket.subject}` : "Select ticket"}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {activeTicket
+                          ? `${activeTicket.category} | ${activeTicket.priority} | Ref: ${
+                              activeTicket.relatedRef || "NA"
+                            }`
+                          : "Choose from the left list"}
+                      </p>
+                    </div>
+                    {activeTicket ? (
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(
+                          activeTicket.status
+                        )}`}
+                      >
+                        {activeTicket.status}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {activeTicket ? (
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                        <p>{activeTicket.description}</p>
+                        <p className="mt-2 text-xs text-slate-500">
+                          Created by {activeTicket.createdBy} | Assigned to {activeTicket.assignee}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Updated {formatDateTime(activeTicket.updatedAt)} | Escalation L
+                          {activeTicket.escalationLevel}
+                        </p>
+                      </div>
+                      <Textarea
+                        rows={3}
+                        value={note}
+                        onChange={(event) => setNote(event.target.value)}
+                        placeholder="Escalation or resolution note"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <Button onClick={escalate} type="button" variant="destructive">
+                          <AlertTriangle className="mr-2" size={14} />
+                          Escalate
+                        </Button>
+                        <Button onClick={resolve} type="button" variant="outline">
+                          <CheckCircle2 className="mr-2" size={14} />
+                          Resolve
+                        </Button>
+                        <Button onClick={reopen} type="button" variant="secondary">
+                          Reopen
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+
+                <article className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm">
+                  <h3 className="text-base font-semibold text-slate-900">Create support ticket</h3>
+                  <div className="mt-3 space-y-3">
+                    <Input
+                      value={ticketForm.subject}
+                      onChange={(event) =>
+                        setTicketForm((prev) => ({ ...prev, subject: event.target.value }))
+                      }
+                      placeholder="Ticket subject"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select
+                        value={ticketForm.category}
+                        onValueChange={(value) =>
+                          setTicketForm((prev) => ({ ...prev, category: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Driver support">Driver support</SelectItem>
+                          <SelectItem value="Workshop coordination">Workshop coordination</SelectItem>
+                          <SelectItem value="Billing">Billing</SelectItem>
+                          <SelectItem value="Technical">Technical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={ticketForm.priority}
+                        onValueChange={(value) =>
+                          setTicketForm((prev) => ({ ...prev, priority: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Priority" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Low">Low</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="High">High</SelectItem>
+                          <SelectItem value="Critical">Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Input
+                      value={ticketForm.relatedRef}
+                      onChange={(event) =>
+                        setTicketForm((prev) => ({ ...prev, relatedRef: event.target.value }))
+                      }
+                      placeholder="Related reference"
+                    />
+                    <Input
+                      value={ticketForm.assignee}
+                      onChange={(event) =>
+                        setTicketForm((prev) => ({ ...prev, assignee: event.target.value }))
+                      }
+                      placeholder="Assignee"
+                    />
+                    <Textarea
+                      rows={4}
+                      value={ticketForm.description}
+                      onChange={(event) =>
+                        setTicketForm((prev) => ({ ...prev, description: event.target.value }))
+                      }
+                      placeholder="Issue description"
+                    />
+                    <Button className="w-full" onClick={createTicket} type="button">
+                      <LifeBuoy className="mr-2" size={14} />
+                      Create ticket
+                    </Button>
+                  </div>
+                </article>
+              </div>
             ) : null}
           </div>
         </div>
       </div>
+
+      {notice ? (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
+          <p>{notice}</p>
+          <button
+            type="button"
+            onClick={() => setNotice("")}
+            className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

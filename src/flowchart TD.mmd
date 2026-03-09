@@ -1,0 +1,39 @@
+flowchart TD
+  %% =========================
+  %% POS Onboarding + Usage
+  %% =========================
+
+  A[Start] --> B[Fleet Admin: Open POS Onboarding]
+  B --> C[Create POS Organization<br/>Brand, legal, tax info]
+  C --> D[Add POS Locations<br/>Address, hours, capabilities]
+  D --> E[Upload Compliance Docs]
+  E --> F{Compliance Review Passed?}
+
+  G --> E
+
+  F -- Yes --> H[Create POS Users<br/>Map to Org + Location]
+  H --> I[Create Fleet ↔ POS Contract<br/>Allowed services, limits, SLA]
+  I --> J[Activate POS]
+
+  J --> K[POS User Login]
+  K --> L[Session contains role=pos<br/>posOrgId + posLocationId]
+  L --> M[Load POS Dashboard<br/>Scoped to org/location]
+
+  M --> N[Search Vehicle Plate]
+  N --> O[Fetch Fleet + Driver + Active Contract]
+
+  O --> P{Contract Active for this POS?}
+  P -- No --> Q[Block Booking / Raise Approval]
+  P -- Yes --> R{Service + Price Within Contract Rules?}
+
+  R -- No --> S[Approval Required / Validation Warning]
+  R -- Yes --> T[Create Service Order]
+
+  S --> U[Manager Decision]
+  U -- Approved --> T
+  U -- Rejected --> V[Show Rejection Reason]
+
+  T --> W[Track Lifecycle<br/>Draft → Submitted → Approved/Rejected → Completed]
+  W --> X[Billing & Settlement]
+  X --> Y[Analytics & Reporting]
+  Y --> Z[End]
