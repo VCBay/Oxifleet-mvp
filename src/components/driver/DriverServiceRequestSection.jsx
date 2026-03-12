@@ -1,32 +1,45 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  BatteryCharging,
+  CarFront,
   CircleAlert,
   CircleDashed,
-  Gauge,
-  ShieldAlert,
+  Loader2,
+  MapPin,
+  Trash2,
+  TriangleAlert,
   Wrench,
+  X,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 
-const problemIconMap = {
-  "Tyre damage": CircleDashed,
-  "Brake issue": CircleAlert,
-  "Engine diagnostics": Gauge,
-  "Battery / electrical": BatteryCharging,
-  "Accident damage": ShieldAlert,
-  "General service": Wrench,
-};
-
-const previewCostByProblem = {
-  "Tyre damage": 520,
-  "Brake issue": 740,
-  "Engine diagnostics": 680,
-  "Battery / electrical": 460,
-  "Accident damage": 980,
-  "General service": 390,
+const problemPictogramMap = {
+  tyre: {
+    icon: CircleDashed,
+    badge: "Reifen",
+    accentClass: "border-sky-200 bg-sky-50 text-sky-700",
+  },
+  service: {
+    icon: Wrench,
+    badge: "Service",
+    accentClass: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  technical_problem: {
+    icon: TriangleAlert,
+    badge: "Technisches Problem",
+    accentClass: "border-amber-200 bg-amber-50 text-amber-700",
+  },
+  damage_report: {
+    icon: CarFront,
+    badge: "Schadensmeldung",
+    accentClass: "border-rose-200 bg-rose-50 text-rose-700",
+  },
+  default: {
+    icon: CircleAlert,
+    badge: "Service",
+    accentClass: "border-slate-200 bg-slate-100 text-slate-700",
+  },
 };
 
 const buildDateChips = (baseValue) => {
@@ -47,6 +60,10 @@ const buildDateChips = (baseValue) => {
   });
 };
 
+const STATION_SEARCH_DEBOUNCE_MS = 300;
+const STATION_MODAL_BATCH_SIZE = 24;
+const STATION_MODAL_SCROLL_THROTTLE_MS = 180;
+
 function DriverServiceRequestSection({
   simpleIssueOptions,
   requestForm,
@@ -55,6 +72,8 @@ function DriverServiceRequestSection({
   selectedPos,
   slotAvailability,
   selectedSlot,
+  isServiceRequestFormReady,
+  isSubmittingRequest,
   onPhotoChange,
   policyValidation,
   eligibilityClass,
@@ -66,20 +85,104 @@ function DriverServiceRequestSection({
   requestStatusClass,
   formatDateTime,
 }) {
+  const [showAllServices, setShowAllServices] = useState(false);
+  const [serviceOrder, setServiceOrder] = useState(() =>
+    simpleIssueOptions.map((option) => option.value)
+  );
   const [showAllStations, setShowAllStations] = useState(false);
-  const [collapseToSelectedStation, setCollapseToSelectedStation] = useState(false);
   const [stationSearch, setStationSearch] = useState("");
+  const [debouncedStationSearch, setDebouncedStationSearch] = useState("");
+  const [visibleStationCount, setVisibleStationCount] = useState(STATION_MODAL_BATCH_SIZE);
+  const [isLoadingMoreStations, setIsLoadingMoreStations] = useState(false);
+  const lastStationModalScrollAt = useRef(0);
+  const loadMoreTimeoutRef = useRef(null);
+  const nextSectionScrollTimeoutRef = useRef(null);
+  const nearestPosSectionRef = useRef(null);
+  const dateSlotSectionRef = useRef(null);
+  const optionalDetailsSectionRef = useRef(null);
+  const photoInputRef = useRef(null);
+  const inlineServiceLimit = 6;
   const inlineStationLimit = 6;
-  const isCollapsedView = collapseToSelectedStation && Boolean(selectedPos);
+  const orderedServiceOptions = useMemo(() => {
+    const byValue = new Map(simpleIssueOptions.map((option) => [option.value, option]));
+    const ordered = serviceOrder.map((value) => byValue.get(value)).filter(Boolean);
+    const missing = simpleIssueOptions.filter(
+      (option) => !serviceOrder.includes(option.value)
+    );
+    return [...ordered, ...missing];
+  }, [serviceOrder, simpleIssueOptions]);
+  const inlineServiceOptions = useMemo(
+    () => orderedServiceOptions.slice(0, inlineServiceLimit),
+    [orderedServiceOptions]
+  );
+  const hasMoreServices = orderedServiceOptions.length > inlineServiceLimit;
   const inlineStations = useMemo(() => {
-    if (isCollapsedView && selectedPos) {
-      return [selectedPos];
+    const base = nearestPosOptions.slice(0, inlineStationLimit);
+    if (!selectedPos) {
+      return base;
     }
-    return nearestPosOptions.slice(0, inlineStationLimit);
-  }, [isCollapsedView, nearestPosOptions, selectedPos]);
+    const isInBase = base.some((station) => station.id === selectedPos.id);
+    if (isInBase) {
+      return base;
+    }
+    if (base.length < inlineStationLimit) {
+      return [...base, selectedPos];
+    }
+    return [...base.slice(0, inlineStationLimit - 1), selectedPos];
+  }, [nearestPosOptions, selectedPos]);
   const hasMoreStations = nearestPosOptions.length > inlineStationLimit;
+  const totalStationsCount = nearestPosOptions.length;
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setDebouncedStationSearch(stationSearch);
+    }, STATION_SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timerId);
+  }, [stationSearch]);
+
+  useEffect(() => {
+    if (showAllStations) {
+      setVisibleStationCount(STATION_MODAL_BATCH_SIZE);
+      lastStationModalScrollAt.current = 0;
+      setIsLoadingMoreStations(false);
+    }
+  }, [showAllStations, debouncedStationSearch]);
+
+  useEffect(
+    () => () => {
+      if (loadMoreTimeoutRef.current) {
+        window.clearTimeout(loadMoreTimeoutRef.current);
+      }
+      if (nextSectionScrollTimeoutRef.current) {
+        window.clearTimeout(nextSectionScrollTimeoutRef.current);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (requestForm.photos.length === 0 && photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
+  }, [requestForm.photos.length]);
+
+  const scrollToSection = (targetRef) => {
+    if (!targetRef?.current) {
+      return;
+    }
+    if (nextSectionScrollTimeoutRef.current) {
+      window.clearTimeout(nextSectionScrollTimeoutRef.current);
+    }
+    nextSectionScrollTimeoutRef.current = window.setTimeout(() => {
+      targetRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+  };
+
   const filteredStations = useMemo(() => {
-    const query = stationSearch.trim().toLowerCase();
+    const query = debouncedStationSearch.trim().toLowerCase();
     if (!query) {
       return nearestPosOptions;
     }
@@ -87,18 +190,128 @@ function DriverServiceRequestSection({
       const tags = Array.isArray(pos.capabilities) ? pos.capabilities.join(" ") : "";
       return `${pos.name} ${pos.address} ${tags}`.toLowerCase().includes(query);
     });
-  }, [nearestPosOptions, stationSearch]);
+  }, [nearestPosOptions, debouncedStationSearch]);
+  const visibleFilteredStations = useMemo(
+    () => filteredStations.slice(0, visibleStationCount),
+    [filteredStations, visibleStationCount]
+  );
+  const hasMoreFilteredStations = visibleFilteredStations.length < filteredStations.length;
+  const isSearchDebouncing = stationSearch !== debouncedStationSearch;
   const dateChips = useMemo(
     () => buildDateChips(requestForm.preferredDate || new Date().toISOString().slice(0, 10)),
     [requestForm.preferredDate]
   );
-  const previewCost = previewCostByProblem[requestForm.problemType] || 420;
+  const photoPreviews = useMemo(
+    () =>
+      requestForm.photos.map((file) => ({
+        file,
+        id: `${file.name}-${file.size}-${file.lastModified}`,
+        url: URL.createObjectURL(file),
+      })),
+    [requestForm.photos]
+  );
 
-  const renderStationCard = (pos, { closeOnSelect = false, fromModal = false } = {}) => {
+  useEffect(
+    () => () => {
+      photoPreviews.forEach((preview) => {
+        URL.revokeObjectURL(preview.url);
+      });
+    },
+    [photoPreviews]
+  );
+  const handleServiceSelect = (
+    serviceValue,
+    { closeModal = false, moveToIndex = null } = {}
+  ) => {
+    setRequestForm((prev) => ({
+      ...prev,
+      problemType: serviceValue,
+      preferredPosId: "",
+      preferredSlotId: "",
+    }));
+    if (moveToIndex !== null && Number.isInteger(moveToIndex)) {
+      setServiceOrder((prev) => {
+        const withoutSelected = prev.filter((value) => value !== serviceValue);
+        const targetIndex = Math.max(0, Math.min(moveToIndex, withoutSelected.length));
+        return [
+          ...withoutSelected.slice(0, targetIndex),
+          serviceValue,
+          ...withoutSelected.slice(targetIndex),
+        ];
+      });
+    }
+    if (closeModal) {
+      setShowAllServices(false);
+    }
+    scrollToSection(nearestPosSectionRef);
+  };
+  const policyStatusLabel = "Covered";
+  const policyStatusClass = eligibilityClass("Allowed");
+  const clearAllPhotos = () => {
+    setRequestForm((prev) => ({ ...prev, photos: [] }));
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
+  };
+  const removePhotoById = (photoId) => {
+    setRequestForm((prev) => ({
+      ...prev,
+      photos: prev.photos.filter(
+        (file) => `${file.name}-${file.size}-${file.lastModified}` !== photoId
+      ),
+    }));
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
+  };
+  const renderServiceCard = (option, { onSelect, cardKey } = {}) => {
+    const isSelected = requestForm.problemType === option.value;
+    const pictogram = problemPictogramMap[option.iconKey] || problemPictogramMap.default;
+    const Icon = pictogram.icon;
+    return (
+      <button
+        className={`min-w-0 rounded-2xl border p-2.5 text-left transition sm:p-4 ${
+          isSelected
+            ? "border-slate-900 bg-slate-900 text-white shadow-lg"
+            : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
+        }`}
+        key={cardKey || option.value}
+        onClick={onSelect}
+        type="button"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <span
+            className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg border shadow-sm sm:size-10 ${
+              isSelected ? "border-white/35 bg-white/15 text-white" : pictogram.accentClass
+            }`}
+          >
+            <Icon size={16} strokeWidth={2.2} />
+          </span>
+          <span
+            className={`max-w-[62%] truncate rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] sm:max-w-none sm:text-[11px] ${
+              isSelected ? "bg-white/15 text-slate-100" : "bg-slate-200 text-slate-600"
+            }`}
+            title={pictogram.badge}
+          >
+            {pictogram.badge}
+          </span>
+        </div>
+        <p className="mt-2.5 text-[13px] font-semibold leading-snug sm:mt-3 sm:text-sm">
+          {option.label}
+        </p>
+        <p
+          className={`mt-1 text-[11px] leading-snug sm:text-xs ${isSelected ? "text-slate-200" : "text-slate-500"}`}
+        >
+          {option.hint}
+        </p>
+      </button>
+    );
+  };
+  const renderStationCard = (pos, { closeOnSelect = false } = {}) => {
     const isSelected = requestForm.preferredPosId === pos.id;
     return (
       <button
-        className={`rounded-xl border p-3 text-left transition ${
+        className={`min-w-0 rounded-xl border p-2.5 text-left transition sm:p-3 ${
           isSelected
             ? "border-slate-900 bg-slate-900 text-white"
             : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
@@ -110,106 +323,164 @@ function DriverServiceRequestSection({
             preferredPosId: pos.id,
             preferredSlotId: "",
           }));
-          if (fromModal) {
-            setCollapseToSelectedStation(true);
-          } else {
-            setCollapseToSelectedStation(false);
-          }
           if (closeOnSelect) {
             setShowAllStations(false);
           }
+          scrollToSection(dateSlotSectionRef);
         }}
         type="button"
       >
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[13px] font-semibold leading-5">{pos.name}</p>
-          <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-              isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
-            }`}
-          >
-            {pos.distanceKm} km
-          </span>
-        </div>
-        <p className={`mt-1 text-xs ${isSelected ? "text-slate-200" : "text-slate-600"}`}>
-          {pos.address}
-        </p>
-        <p className={`mt-1 text-xs ${isSelected ? "text-slate-300" : "text-slate-500"}`}>
-          ETA {pos.etaMin} mins
-        </p>
-        {Array.isArray(pos.capabilities) && pos.capabilities.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {pos.capabilities.slice(0, 3).map((tag) => (
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] ${
-                  isSelected ? "bg-white/20 text-slate-100" : "bg-slate-200 text-slate-700"
+        <div className="flex min-h-[110px] flex-col">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p
+                className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                  isSelected ? "bg-white/20 text-slate-100" : "bg-sky-100 text-sky-700"
                 }`}
-                key={`${pos.id}-${tag}`}
               >
-                {tag}
-              </span>
-            ))}
+                Point S Partner
+              </p>
+              <p
+                className="truncate text-[13px] font-semibold leading-5 sm:text-sm"
+                title={pos.name}
+              >
+                {pos.name}
+              </p>
+            </div>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-[11px] ${
+                isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+              }`}
+            >
+              {pos.distanceKm} km
+            </span>
           </div>
-        ) : null}
+          <p
+            className={`mt-1 truncate text-[11px] sm:text-xs ${isSelected ? "text-slate-200" : "text-slate-600"}`}
+            title={pos.address}
+          >
+            {pos.address}
+          </p>
+          <p className={`mt-1 text-[11px] sm:text-xs ${isSelected ? "text-slate-300" : "text-slate-500"}`}>
+            ETA {pos.etaMin} mins
+          </p>
+          {Array.isArray(pos.capabilities) && pos.capabilities.length > 0 ? (
+            <div className="mt-auto flex flex-wrap gap-1 pt-2">
+              {pos.capabilities.slice(0, 3).map((tag) => (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] ${
+                    isSelected ? "bg-white/20 text-slate-100" : "bg-slate-200 text-slate-700"
+                  }`}
+                  key={`${pos.id}-${tag}`}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </button>
     );
   };
+  const handleStationModalScroll = (event) => {
+    const now = Date.now();
+    if (now - lastStationModalScrollAt.current < STATION_MODAL_SCROLL_THROTTLE_MS) {
+      return;
+    }
+    lastStationModalScrollAt.current = now;
+
+    const target = event.currentTarget;
+    const isNearBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 72;
+    if (!isNearBottom) {
+      return;
+    }
+    if (isLoadingMoreStations || visibleStationCount >= filteredStations.length) {
+      return;
+    }
+
+    setIsLoadingMoreStations(true);
+    if (loadMoreTimeoutRef.current) {
+      window.clearTimeout(loadMoreTimeoutRef.current);
+    }
+    loadMoreTimeoutRef.current = window.setTimeout(() => {
+      setVisibleStationCount((prev) =>
+        Math.min(prev + STATION_MODAL_BATCH_SIZE, filteredStations.length)
+      );
+      setIsLoadingMoreStations(false);
+    }, 140);
+  };
 
   return (
-    <section className="space-y-6">
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Select problem type</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Simple visual options for quick request creation.
+    <section className="min-w-0 space-y-4 sm:space-y-6">
+      {isSubmittingRequest ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[1px]">
+          <div className="w-full max-w-xs rounded-2xl border border-slate-200 bg-white px-4 py-5 text-center shadow-2xl">
+            <span className="inline-flex size-11 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+              <Loader2 className="size-5 animate-spin" />
+            </span>
+            <p className="mt-3 text-sm font-semibold text-slate-900">Sending service request...</p>
+            <p className="mt-1 text-xs text-slate-500">Please wait while we submit your details.</p>
+          </div>
+        </div>
+      ) : null}
+      <section className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+        <div className="min-w-0 space-y-4 sm:space-y-6">
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
+            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+              Service category
+            </h2>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+              First-level service options with quick visual selection.
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {simpleIssueOptions.map((option) => {
-                const isSelected = requestForm.problemType === option.value;
-                const Icon = problemIconMap[option.value] || Wrench;
-                return (
-                  <button
-                    className={`rounded-2xl border p-4 text-left transition ${
-                      isSelected
-                        ? "border-slate-900 bg-slate-900 text-white shadow-lg"
-                        : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
-                    }`}
-                    key={option.value}
-                    onClick={() =>
-                      setRequestForm((prev) => ({
-                        ...prev,
-                        problemType: option.value,
-                      }))
-                    }
-                    type="button"
-                  >
-                    <Icon size={16} />
-                    <p className="mt-2 text-sm font-semibold">{option.label}</p>
-                    <p className={`mt-1 text-xs ${isSelected ? "text-slate-200" : "text-slate-500"}`}>
-                      {option.hint}
-                    </p>
-                  </button>
-                );
-              })}
+            <div className="mt-4 flex justify-end">
+              {hasMoreServices ? (
+                <Button onClick={() => setShowAllServices(true)} type="button" variant="outline">
+                  See all services
+                </Button>
+              ) : null}
+            </div>
+            <div className="mt-3 grid min-w-0 grid-cols-1 gap-2.5 min-[430px]:grid-cols-2 sm:gap-3 xl:grid-cols-3">
+              {inlineServiceOptions.map((option) =>
+                renderServiceCard(option, {
+                  onSelect: () => handleServiceSelect(option.value),
+                })
+              )}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm">
+          <div
+            className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
+            ref={nearestPosSectionRef}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">Choose nearest POS</h2>
+                <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+                  Nearest Point S
+                </h2>
                 {/* <p className="mt-1 text-sm text-slate-500">
                   Compact station cards with quick "See all stations" modal.
                 </p> */}
               </div>
               <div className="flex flex-wrap gap-2">
-                {(hasMoreStations || isCollapsedView) ? (
-                  <Button onClick={() => setShowAllStations(true)} type="button" variant="outline">
-                    See all stations
+                {hasMoreStations ? (
+                  <Button
+                    className="group border-sky-200 bg-gradient-to-r from-white to-sky-50 text-slate-800 shadow-sm transition hover:border-sky-300 hover:from-sky-50 hover:to-sky-100"
+                    onClick={() => setShowAllStations(true)}
+                    type="button"
+                    variant="outline"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-flex size-5 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+                        <MapPin size={12} />
+                      </span>
+                      <span>See all</span>
+                      <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                        {totalStationsCount}
+                      </span>
+                    </span>
                   </Button>
                 ) : null}
-                {isCollapsedView && selectedPos ? (
+                {/* {selectedPos ? (
                   <Button
                     onClick={() => {
                       setRequestForm((prev) => ({
@@ -217,20 +488,19 @@ function DriverServiceRequestSection({
                         preferredPosId: "",
                         preferredSlotId: "",
                       }));
-                      setCollapseToSelectedStation(false);
                     }}
                     type="button"
                     variant="outline"
                   >
-                    Unselect POS
+                    Unselect station
                   </Button>
-                ) : null}
+                ) : null} */}
               </div>
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 min-[520px]:grid-cols-2 lg:grid-cols-3">
               {inlineStations.length === 0 ? (
                 <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                  No nearby stations found for selected problem type.
+                  No nearby Point S stations found for selected service category.
                 </p>
               ) : (
                 inlineStations.map((pos) => renderStationCard(pos))
@@ -238,14 +508,17 @@ function DriverServiceRequestSection({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Select date and slot</h2>
+          <div
+            className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
+            ref={dateSlotSectionRef}
+          >
+            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Select date and slot</h2>
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
               {dateChips.map((chip) => {
                 const active = requestForm.preferredDate === chip.id;
                 return (
                   <button
-                    className={`whitespace-nowrap rounded-xl border px-3 py-2 text-sm transition ${
+                    className={`whitespace-nowrap rounded-xl border px-3 py-2 text-xs transition sm:text-sm ${
                       active
                         ? "border-slate-900 bg-slate-900 text-white"
                         : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-400"
@@ -265,10 +538,10 @@ function DriverServiceRequestSection({
                 );
               })}
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 xl:grid-cols-4">
               {slotAvailability.length === 0 ? (
                 <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                  Select POS to see slot availability.
+                  Select a Point S station to see slot availability.
                 </p>
               ) : (
                 slotAvailability.map((slot) => {
@@ -276,7 +549,7 @@ function DriverServiceRequestSection({
                   const isBusy = slot.status === "Busy";
                   return (
                     <button
-                      className={`rounded-xl border px-3 py-2 text-left transition ${
+                      className={`min-w-0 rounded-xl border px-3 py-2 text-left transition ${
                         isBusy
                           ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
                           : isSelected
@@ -286,15 +559,18 @@ function DriverServiceRequestSection({
                       disabled={isBusy}
                       key={slot.id}
                       onClick={() =>
-                        setRequestForm((prev) => ({
-                          ...prev,
-                          preferredSlotId: slot.id,
-                        }))
+                        {
+                          setRequestForm((prev) => ({
+                            ...prev,
+                            preferredSlotId: slot.id,
+                          }));
+                          scrollToSection(optionalDetailsSectionRef);
+                        }
                       }
                       type="button"
                     >
-                      <p className="text-sm font-semibold">{slot.label}</p>
-                      <p className="mt-1 text-[11px]">
+                      <p className="text-xs font-semibold sm:text-sm">{slot.label}</p>
+                      <p className="mt-1 text-[10px] sm:text-[11px]">
                         {isBusy ? `Busy (${slot.queue} in queue)` : "Free to book"}
                       </p>
                     </button>
@@ -303,16 +579,19 @@ function DriverServiceRequestSection({
               )}
             </div>
             {selectedSlot ? (
-              <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700 sm:text-xs">
                 Selected slot: <span className="font-semibold">{selectedSlot.label}</span> on{" "}
                 <span className="font-semibold">{requestForm.preferredDate}</span>
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Optional details</h2>
-            <p className="mt-1 text-sm text-slate-500">Add short note or photos if available.</p>
+          <div
+            className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
+            ref={optionalDetailsSectionRef}
+          >
+            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Optional details</h2>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">Add short note or photos if available.</p>
             <div className="mt-4 space-y-3">
               <Textarea
                 onChange={(event) =>
@@ -325,21 +604,61 @@ function DriverServiceRequestSection({
                 rows={4}
                 value={requestForm.description}
               />
-              <Input accept="image/*" multiple onChange={onPhotoChange} type="file" />
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                {requestForm.photos.length === 0 ? (
-                  <p className="text-slate-500">No photos uploaded.</p>
-                ) : (
-                  <div className="space-y-1 text-slate-700">
-                    {requestForm.photos.map((file) => (
-                      <p key={file.name}>
-                        {file.name} ({Math.max(1, Math.round(file.size / 1024))} KB)
-                      </p>
+              <Input
+                accept="image/*"
+                className="w-full text-xs sm:text-sm"
+                multiple
+                onChange={onPhotoChange}
+                ref={photoInputRef}
+                type="file"
+              />
+              {photoPreviews.length > 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-slate-800">Uploaded images</p>
+                    <button
+                      className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
+                      onClick={clearAllPhotos}
+                      type="button"
+                    >
+                      <Trash2 size={12} />
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                    {photoPreviews.map((preview) => (
+                      <figure
+                        className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                        key={preview.id}
+                      >
+                        <img
+                          alt={preview.file.name}
+                          className="h-24 w-full object-cover sm:h-28"
+                          loading="lazy"
+                          src={preview.url}
+                        />
+                        <button
+                          aria-label={`Remove ${preview.file.name}`}
+                          className="absolute right-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full bg-slate-900/80 text-white opacity-100 transition hover:bg-rose-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          onClick={() => removePhotoById(preview.id)}
+                          type="button"
+                        >
+                          <X size={12} />
+                        </button>
+                        <figcaption className="border-t border-slate-200 px-2 py-1.5">
+                          <p className="truncate text-[11px] font-medium text-slate-800" title={preview.file.name}>
+                            {preview.file.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {Math.max(1, Math.round(preview.file.size / 1024))} KB
+                          </p>
+                        </figcaption>
+                      </figure>
                     ))}
                   </div>
-                )}
-              </div>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+                </div>
+              ) : null}
+              <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
                 <input
                   checked={requestForm.emergency}
                   className="size-4 accent-slate-900"
@@ -357,15 +676,18 @@ function DriverServiceRequestSection({
           </div>
         </div>
 
-        <aside className="space-y-6 xl:sticky xl:top-8 xl:self-start">
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">Request summary</h3>
-            <div className="mt-4 space-y-3 text-sm text-slate-700">
+        <aside className="min-w-0 space-y-4 sm:space-y-6 xl:sticky xl:top-8 xl:self-start">
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
+            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Request summary</h3>
+            <div className="mt-4 space-y-3 text-xs text-slate-700 sm:text-sm">
               <p>
-                Problem: <span className="font-semibold text-slate-900">{requestForm.problemType}</span>
+                Problem:{" "}
+                <span className="font-semibold text-slate-900">
+                  {requestForm.problemType || "Not selected"}
+                </span>
               </p>
               <p>
-                Nearest POS:{" "}
+                Nearest Point S:{" "}
                 <span className="font-semibold text-slate-900">
                   {selectedPos?.name || "Not selected"}
                 </span>
@@ -379,11 +701,9 @@ function DriverServiceRequestSection({
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Policy validation</p>
                 <span
-                  className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${eligibilityClass(
-                    policyValidation.status
-                  )}`}
+                  className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${policyStatusClass}`}
                 >
-                  {policyValidation.status}
+                  {policyStatusLabel}
                 </span>
                 <p className="mt-2 text-xs text-slate-600">{policyValidation.note}</p>
               </div>
@@ -391,9 +711,26 @@ function DriverServiceRequestSection({
                 <p className="text-xs uppercase tracking-wide text-slate-500">Estimated baseline</p>
                 <p className="mt-1 text-xl font-semibold text-slate-900">${previewCost}</p>
               </div> */}
-              <Button className="w-full" onClick={handleSubmitSimpleRequest} type="button">
-                Send request
+              <Button
+                className="w-full"
+                disabled={isSubmittingRequest || !isServiceRequestFormReady}
+                onClick={handleSubmitSimpleRequest}
+                type="button"
+              >
+                {isSubmittingRequest ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="size-4 animate-spin" />
+                    Sending...
+                  </span>
+                ) : (
+                  "Book service appointment"
+                )}
               </Button>
+              {!isSubmittingRequest && !isServiceRequestFormReady ? (
+                <p className="text-[11px] text-slate-500 sm:text-xs">
+                  Select service, station, date and free slot to enable send request.
+                </p>
+              ) : null}
             </div>
           </div>
         </aside>
@@ -402,20 +739,23 @@ function DriverServiceRequestSection({
       {/* 
         Legacy UI (kept commented for future reuse)
         - Quick service request card
-        - Nearest POS and slot booking card
+        - Nearest Point S station and slot booking card
         - Optional details + Request check two-column section
         To restore: re-enable previous JSX block from component history (current handlers still compatible).
       */}
 
       {wizardFeedback ? (
-        <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-700 sm:text-sm">
           {wizardFeedback}
         </div>
       ) : null}
 
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <div
+        className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6"
+        id="driver-service-request-details"
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold text-slate-900">Your service request details</h3>
+          <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Your service request details</h3>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
             {driverServiceRequests.length} requests
           </span>
@@ -426,8 +766,8 @@ function DriverServiceRequestSection({
             No requests yet. Submit one using the quick form above.
           </p>
         ) : (
-          <div className="mt-4 grid gap-6 xl:grid-cols-[340px_1fr]">
-            <div className="max-h-[420px] space-y-2 overflow-y-auto pr-2">
+          <div className="mt-4 grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[340px_1fr]">
+            <div className="max-h-[300px] space-y-2 overflow-y-auto pr-1 sm:max-h-[420px] sm:pr-2">
               {driverServiceRequests.map((order) => {
                 const isActive = selectedRequest?.id === order.id;
                 return (
@@ -442,7 +782,7 @@ function DriverServiceRequestSection({
                     type="button"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold">{order.id}</p>
+                      <p className="text-xs font-semibold sm:text-sm">{order.id}</p>
                       <span
                         className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           isActive ? "bg-white/20 text-white" : requestStatusClass(order.status)
@@ -451,10 +791,14 @@ function DriverServiceRequestSection({
                         {order.status}
                       </span>
                     </div>
-                    <p className={`mt-1 text-xs ${isActive ? "text-slate-200" : "text-slate-600"}`}>
+                    <p className={`mt-1 text-[11px] sm:text-xs ${isActive ? "text-slate-200" : "text-slate-600"}`}>
                       {order.serviceType}
                     </p>
-                    <p className={`mt-1 text-xs ${isActive ? "text-slate-300" : "text-slate-500"}`}>
+                    <p
+                      className={`mt-1 text-[10px] sm:text-xs ${
+                        isActive ? "text-slate-300" : "text-slate-500"
+                      }`}
+                    >
                       {formatDateTime(order.requestedAt)}
                     </p>
                   </button>
@@ -462,11 +806,11 @@ function DriverServiceRequestSection({
               })}
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
               {selectedRequest ? (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h4 className="text-base font-semibold text-slate-900">
+                    <h4 className="text-sm font-semibold text-slate-900 sm:text-base">
                       {selectedRequest.id} - {selectedRequest.requestTitle}
                     </h4>
                     <span
@@ -478,7 +822,7 @@ function DriverServiceRequestSection({
                     </span>
                   </div>
 
-                  <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2 sm:text-sm">
                     <p>
                       Service type:{" "}
                       <span className="font-semibold text-slate-900">
@@ -523,13 +867,13 @@ function DriverServiceRequestSection({
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Description
                     </p>
-                    <p className="mt-1 text-sm text-slate-700">
+                    <p className="mt-1 text-xs text-slate-700 sm:text-sm">
                       {selectedRequest.orderDetails?.description || "N/A"}
                     </p>
                     <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Notes
                     </p>
-                    <p className="mt-1 text-sm text-slate-700">
+                    <p className="mt-1 text-xs text-slate-700 sm:text-sm">
                       {selectedRequest.orderDetails?.notes || "N/A"}
                     </p>
                   </div>
@@ -548,12 +892,12 @@ function DriverServiceRequestSection({
                             className="rounded-xl border border-slate-200 bg-white px-3 py-2"
                             key={`${selectedRequest.id}-timeline-${index}`}
                           >
-                            <p className="text-sm font-semibold text-slate-900">{entry.stage}</p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">{entry.stage}</p>
+                            <p className="text-[11px] text-slate-500 sm:text-xs">
                               {formatDateTime(entry.time)} by {entry.actor || "System"}
                             </p>
                             {entry.note ? (
-                              <p className="mt-1 text-xs text-slate-600">{entry.note}</p>
+                              <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">{entry.note}</p>
                             ) : null}
                           </div>
                         ))}
@@ -566,35 +910,96 @@ function DriverServiceRequestSection({
         )}
       </div>
 
-      {showAllStations ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-4xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
+      {showAllServices ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/45 p-2 sm:items-center sm:p-4">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-lg font-semibold text-slate-900">All nearby stations</p>
-                <p className="text-sm text-slate-500">Select one station to continue</p>
+                <p className="text-lg font-semibold text-slate-900">All services</p>
+                <p className="text-sm text-slate-500">Select one service to continue</p>
+              </div>
+              <Button onClick={() => setShowAllServices(false)} type="button" variant="outline">
+                Close
+              </Button>
+            </div>
+            <div className="mt-4 grid max-h-[60vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3">
+              {orderedServiceOptions.map((option) =>
+                renderServiceCard(option, {
+                  cardKey: `modal-${option.value}`,
+                  onSelect: () =>
+                    handleServiceSelect(option.value, {
+                      closeModal: true,
+                      moveToIndex: 5,
+                    }),
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showAllStations ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/45 p-2 sm:items-center sm:p-4">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-lg font-semibold text-slate-900">All nearby Point S stations</p>
+                {/* <p className="text-sm text-slate-500">
+                  Select one Point S station to continue ({filteredStations.length} shown of{" "}
+                  {totalStationsCount})
+                </p> */}
               </div>
               <Button onClick={() => setShowAllStations(false)} type="button" variant="outline">
                 Close
               </Button>
             </div>
-            <div className="mt-4 max-w-sm">
+            <div className="max-w-sm">
               <Input
                 onChange={(event) => setStationSearch(event.target.value)}
                 placeholder="Search station, location or capability..."
                 value={stationSearch}
               />
+              <div className="mt-1 flex min-h-4 items-center gap-1.5 text-[11px] text-slate-500">
+                {isSearchDebouncing ? (
+                  <>
+                    <Loader2 className="size-3 animate-spin text-sky-600" />
+                    <span>Searching stations...</span>
+                  </>
+                ) : (
+                  <span>{filteredStations.length} matching stations</span>
+                )}
+              </div>
             </div>
-            <div className="mt-4 grid max-h-[60vh] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredStations.length === 0 ? (
+            <div
+              className="mt-4 grid max-h-[60vh] grid-cols-1 gap-3 overflow-y-auto pr-1 min-[520px]:grid-cols-2 lg:grid-cols-3"
+              onScroll={handleStationModalScroll}
+            >
+              {isSearchDebouncing ? (
+                <div className="col-span-full flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                  <Loader2 className="mr-2 size-4 animate-spin text-sky-600" />
+                  Loading matching stations...
+                </div>
+              ) : filteredStations.length === 0 ? (
                 <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
                   No stations found for this search.
                 </p>
               ) : (
-                filteredStations.map((pos) =>
-                  renderStationCard(pos, { closeOnSelect: true, fromModal: true })
-                )
+                visibleFilteredStations.map((pos) => renderStationCard(pos, { closeOnSelect: true }))
               )}
+              {isLoadingMoreStations ? (
+                <div className="col-span-full flex justify-center pt-1">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+                    <Loader2 className="size-3.5 animate-spin text-sky-600" />
+                    Loading more stations...
+                  </span>
+                </div>
+              ) : hasMoreFilteredStations ? (
+                <div className="col-span-full flex justify-center pt-1">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+                    Scroll to load more stations
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

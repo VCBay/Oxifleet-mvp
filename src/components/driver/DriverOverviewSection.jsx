@@ -1,4 +1,12 @@
-import { ShieldCheck, Truck } from "lucide-react";
+import {
+  Activity,
+  CalendarClock,
+  Gauge,
+  ShieldAlert,
+  ShieldCheck,
+  Truck,
+  Wrench,
+} from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -14,13 +22,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useIsMobile } from "../../hooks/use-mobile";
 
 const healthBandColor = (score) => {
   if (score >= 85) {
-    return "#16a34a";
+    return "#22c55e";
   }
   if (score >= 70) {
-    return "#2563eb";
+    return "#3b82f6";
   }
   if (score >= 55) {
     return "#f59e0b";
@@ -47,30 +56,26 @@ const renderHealthTooltip = ({ active, payload }) => {
   }
   const point = payload[0]?.payload;
   const score = Number(point?.score) || 0;
-  const band = healthBandLabel(score);
   const tone = healthBandColor(score);
   return (
     <div className="min-w-[220px] rounded-2xl border border-slate-700/60 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300">
         Vehicle Health
       </p>
       <p className="mt-1 text-sm font-semibold">{point?.name || "Metric"}</p>
-      <div className="mt-2 rounded-xl border border-slate-600/70 bg-white/5 px-3 py-2">
+      <div className="mt-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-slate-300">Score</p>
+          <p className="text-xs text-slate-300">Status</p>
           <span
             className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-slate-900"
             style={{ backgroundColor: tone }}
           >
-            {band}
+            {healthBandLabel(score)}
           </span>
         </div>
-        <p className="mt-1 text-base font-semibold text-white">{score}%</p>
+        <p className="mt-1 text-base font-semibold">{score}%</p>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-700">
-          <div
-            className="h-full rounded-full"
-            style={{ backgroundColor: tone, width: `${Math.min(100, Math.max(0, score))}%` }}
-          />
+          <div className="h-full rounded-full" style={{ backgroundColor: tone, width: `${score}%` }} />
         </div>
       </div>
     </div>
@@ -81,7 +86,6 @@ const renderSpendTrendTooltip = ({ active, payload, label }) => {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
-
   const spendPoint = payload.find((item) => String(item.dataKey) === "spend");
   const checksPoint = payload.find((item) => String(item.dataKey) === "checks");
   const spend = Number(spendPoint?.value) || 0;
@@ -89,8 +93,8 @@ const renderSpendTrendTooltip = ({ active, payload, label }) => {
   const perCheck = checks > 0 ? Math.round(spend / checks) : spend;
 
   return (
-    <div className="min-w-[230px] rounded-2xl border border-slate-700/50 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">
+    <div className="min-w-[230px] rounded-2xl border border-slate-700/60 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300">
         Service Spend Trend
       </p>
       <p className="mt-1 text-sm font-semibold">{label}</p>
@@ -100,22 +104,32 @@ const renderSpendTrendTooltip = ({ active, payload, label }) => {
             <span className="inline-block size-2 rounded-full bg-slate-200" />
             Spend
           </div>
-          <p className="text-xs font-semibold text-white">${spend}</p>
+          <p className="text-xs font-semibold">${spend}</p>
         </div>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs text-slate-200">
-            <span className="inline-block size-2 rounded-full bg-sky-400" />
+            <span className="inline-block size-2 rounded-full bg-cyan-300" />
             Service checks
           </div>
-          <p className="text-xs font-semibold text-white">{checks}</p>
+          <p className="text-xs font-semibold">{checks}</p>
         </div>
-        <div className="mt-1 rounded-lg border border-slate-600/60 bg-white/5 px-2 py-1.5">
+        <div className="mt-1 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5">
           <p className="text-[10px] uppercase tracking-wide text-slate-300">Cost per check</p>
-          <p className="text-xs font-semibold text-white">${perCheck}</p>
+          <p className="text-xs font-semibold">${perCheck}</p>
         </div>
       </div>
     </div>
   );
+};
+
+const kpiTone = (status) => {
+  if (status === "good") {
+    return "bg-emerald-100 text-emerald-700";
+  }
+  if (status === "warn") {
+    return "bg-amber-100 text-amber-700";
+  }
+  return "bg-rose-100 text-rose-700";
 };
 
 function DriverOverviewSection({
@@ -129,32 +143,45 @@ function DriverOverviewSection({
   formatDate,
   eligibilityClass,
 }) {
+  const isMobile = useIsMobile();
   const healthRows = analytics.healthIndex || [];
+  const spendRows = analytics.spendTrend || [];
+
   const averageHealthScore =
     healthRows.length > 0
       ? Math.round(
-          healthRows.reduce((sum, row) => sum + (Number(row.score) || 0), 0) / healthRows.length
+          healthRows.reduce((sum, row) => sum + (Number(row.score) || 0), 0) /
+            healthRows.length
         )
       : 0;
   const bestHealthMetric = healthRows.reduce(
-    (best, row) => ((Number(row.score) || 0) > (Number(best?.score) || -1) ? row : best),
+    (best, row) =>
+      (Number(row.score) || 0) > (Number(best?.score) || -1) ? row : best,
     null
   );
   const riskHealthMetric = healthRows.reduce(
-    (risk, row) => ((Number(row.score) || 0) < (Number(risk?.score) || 101) ? row : risk),
+    (risk, row) =>
+      (Number(row.score) || 0) < (Number(risk?.score) || 101) ? row : risk,
     null
   );
-  const spendRows = analytics.spendTrend || [];
+
   const averageSpend =
     spendRows.length > 0
-      ? Math.round(spendRows.reduce((sum, row) => sum + (Number(row.spend) || 0), 0) / spendRows.length)
+      ? Math.round(
+          spendRows.reduce((sum, row) => sum + (Number(row.spend) || 0), 0) /
+            spendRows.length
+        )
       : 0;
   const peakSpend = spendRows.reduce(
-    (peak, row) => ((Number(row.spend) || 0) > (Number(peak?.spend) || -1) ? row : peak),
+    (peak, row) =>
+      (Number(row.spend) || 0) > (Number(peak?.spend) || -1) ? row : peak,
     null
   );
   const lowSpend = spendRows.reduce(
-    (low, row) => ((Number(row.spend) || 0) < (Number(low?.spend) || Number.MAX_SAFE_INTEGER) ? row : low),
+    (low, row) =>
+      (Number(row.spend) || 0) < (Number(low?.spend) || Number.MAX_SAFE_INTEGER)
+        ? row
+        : low,
     null
   );
   const checksMax = spendRows.reduce(
@@ -162,183 +189,306 @@ function DriverOverviewSection({
     0
   );
 
+  const profileInitials = String(vehicle?.model || "DV")
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
+  const serviceWindowStatus =
+    Number(analytics.daysToNextService) <= 10 ? "warn" : "good";
+  const warrantyStatus =
+    Number(analytics.warrantyDaysRemaining) <= 30 ? "warn" : "good";
+  const policyStatus = matchingPolicies.length > 0 ? "good" : "risk";
+  const eligibilityStatus =
+    Number(analytics.serviceEligibilityScore) >= 70 ? "good" : "warn";
+  const lastUpdated = new Date().toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const summaryCards = [
+    {
+      title: "Days to next service",
+      value: analytics.daysToNextService,
+      helper: `Due ${formatDate(nextService.date)}`,
+      status: serviceWindowStatus,
+      icon: CalendarClock,
+    },
+    {
+      title: "Warranty days remaining",
+      value: analytics.warrantyDaysRemaining ?? "N/A",
+      helper: warranty.status,
+      status: warrantyStatus,
+      icon: ShieldCheck,
+    },
+    {
+      title: "Eligibility score",
+      value: `${analytics.serviceEligibilityScore}%`,
+      helper: serviceEligibility.status,
+      status: eligibilityStatus,
+      icon: Gauge,
+    },
+    {
+      title: "Policies mapped",
+      value: matchingPolicies.length,
+      helper: `${vehicle.type || "Vehicle"} class`,
+      status: policyStatus,
+      icon: Activity,
+    },
+  ];
+
   return (
-    <>
-      <section className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs text-slate-500">Days to next service</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
-              {analytics.daysToNextService}
+    <div className="space-y-6">
+      <section className="relative overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_20%_20%,#1f2937_0%,#0f172a_45%,#0b0d12_100%)] px-5 pb-24 pt-7 text-white shadow-xl sm:px-8 sm:pb-28">
+        <div className="pointer-events-none absolute -right-10 -top-12 size-48 rounded-full bg-sky-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-0 h-24 w-24 rounded-tl-[120px] bg-white/15" />
+        <div className="relative z-10">
+          {/* <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-300">
+            Driver Dashboard
+          </p> */}
+          <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
+            Operations Overview
+          </h2>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-200">
+            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+              Updated {lastUpdated}
+            </span>
+            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+              Vehicle {vehicle.id}
+            </span>
+            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+              Type {vehicle.type || "N/A"}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className="-mt-20 mx-auto grid w-[calc(100%-1.5rem)] grid-cols-2 gap-2.5 sm:-mt-24 sm:w-[calc(100%-2.5rem)] sm:gap-3 lg:w-[calc(100%-4.5rem)] xl:w-[calc(100%-6rem)] xl:grid-cols-4">
+        {summaryCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <article
+              className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm"
+              key={card.title}
+            >
+              <div className="pointer-events-none absolute -right-5 -top-5 size-16 rounded-full bg-slate-100" />
+              <div className="relative z-10 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-slate-500">
+                    {card.title}
+                  </p>
+                  <p className="mt-1 text-base font-semibold text-slate-900 sm:text-lg">
+                    {card.value}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {card.helper}
+                  </p>
+                </div>
+                <span className="rounded-lg bg-slate-100 p-1.5 text-slate-700">
+                  <Icon size={12} />
+                </span>
+              </div>
+              <div className="mt-2.5">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${kpiTone(
+                    card.status,
+                  )}`}
+                >
+                  {card.status === "good"
+                    ? "On track"
+                    : card.status === "warn"
+                      ? "Needs attention"
+                      : "Action required"}
+                </span>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+                Service spend trend (6 months)
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Same operational data, redesigned for quicker reading.
+              </p>
+            </div>
+            {/* <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+              Avg ${averageSpend}
+            </span> */}
+          </div>
+          <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+            <p>
+              Peak month:{" "}
+              <span className="font-semibold text-slate-900">
+                {peakSpend?.label || "N/A"} (${peakSpend?.spend ?? 0})
+              </span>
+            </p>
+            <p>
+              Lowest month:{" "}
+              <span className="font-semibold text-slate-900">
+                {lowSpend?.label || "N/A"} (${lowSpend?.spend ?? 0})
+              </span>
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs text-slate-500">Warranty days remaining</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
-              {analytics.warrantyDaysRemaining ?? "N/A"}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs text-slate-500">Eligibility score</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
-              {analytics.serviceEligibilityScore}%
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs text-slate-500">Policies mapped</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
-              {matchingPolicies.length}
-            </p>
+          <div className="mt-4 h-56 sm:h-64">
+            <ResponsiveContainer height="100%" width="100%">
+              <AreaChart data={analytics.spendTrend}>
+                <defs>
+                  <linearGradient
+                    id="driverSpendGradient"
+                    x1="0"
+                    x2="0"
+                    y1="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor="#0f172a" stopOpacity={0.48} />
+                    <stop offset="70%" stopColor="#0f172a" stopOpacity={0.12} />
+                    <stop
+                      offset="100%"
+                      stopColor="#0f172a"
+                      stopOpacity={0.02}
+                    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  stroke="#e2e8f0"
+                  strokeDasharray="3 3"
+                  vertical={false}
+                />
+                <XAxis
+                  axisLine={false}
+                  dataKey="label"
+                  stroke="#64748b"
+                  tick={{ fill: "#64748b", fontSize: isMobile ? 10 : 11 }}
+                  tickLine={false}
+                />
+                <YAxis
+                  axisLine={false}
+                  stroke="#64748b"
+                  tick={{ fill: "#64748b", fontSize: isMobile ? 10 : 11 }}
+                  tickFormatter={(value) => `$${value}`}
+                  tickLine={false}
+                  width={isMobile ? 34 : 44}
+                />
+                <YAxis
+                  domain={[0, Math.max(3, checksMax + 1)]}
+                  hide
+                  yAxisId="checks"
+                />
+                <ReferenceLine
+                  label={{ fill: "#64748b", fontSize: 10, value: "Avg" }}
+                  stroke="#94a3b8"
+                  strokeDasharray="4 4"
+                  y={averageSpend}
+                />
+                <Tooltip content={renderSpendTrendTooltip} />
+                <Area
+                  activeDot={{
+                    r: 6,
+                    fill: "#0f172a",
+                    stroke: "#e2e8f0",
+                    strokeWidth: 2,
+                  }}
+                  dataKey="spend"
+                  fill="url(#driverSpendGradient)"
+                  fillOpacity={1}
+                  stroke="#0f172a"
+                  strokeWidth={2.4}
+                  type="monotone"
+                />
+                <Line
+                  dataKey="checks"
+                  dot={{ fill: "#06b6d4", r: 3 }}
+                  stroke="#06b6d4"
+                  strokeDasharray="5 3"
+                  strokeWidth={2}
+                  type="monotone"
+                  yAxisId="checks"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Service spend trend (6 months)
-              </h2>
-              <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
-                Avg ${averageSpend}
-              </span>
-            </div>
-            <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-              <p>
-                Peak month:{" "}
-                <span className="font-semibold text-slate-900">
-                  {peakSpend?.label || "N/A"} (${peakSpend?.spend ?? 0})
-                </span>
-              </p>
-              <p>
-                Lowest month:{" "}
-                <span className="font-semibold text-slate-900">
-                  {lowSpend?.label || "N/A"} (${lowSpend?.spend ?? 0})
-                </span>
-              </p>
-            </div>
-            <div className="mt-4 h-64">
-              <ResponsiveContainer height="100%" width="100%">
-                <AreaChart data={analytics.spendTrend}>
-                  <defs>
-                    <linearGradient id="driverSpendGradient" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#0f172a" stopOpacity={0.48} />
-                      <stop offset="70%" stopColor="#0f172a" stopOpacity={0.12} />
-                      <stop offset="100%" stopColor="#0f172a" stopOpacity={0.02} />
-                    </linearGradient>
-                    <filter id="spendGlow">
-                      <feDropShadow dx="0" dy="4" floodColor="#0f172a" floodOpacity="0.24" stdDeviation="3" />
-                    </filter>
-                  </defs>
-                  <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-                  <XAxis
-                    axisLine={false}
-                    dataKey="label"
-                    stroke="#64748b"
-                    tick={{ fill: "#64748b", fontSize: 11 }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    stroke="#64748b"
-                    tick={{ fill: "#64748b", fontSize: 11 }}
-                    tickFormatter={(value) => `$${value}`}
-                    tickLine={false}
-                  />
-                  <YAxis domain={[0, Math.max(3, checksMax + 1)]} hide yAxisId="checks" />
-                  <ReferenceLine
-                    label={{ fill: "#64748b", fontSize: 10, value: "Avg" }}
-                    stroke="#94a3b8"
-                    strokeDasharray="4 4"
-                    y={averageSpend}
-                  />
-                  <Tooltip content={renderSpendTrendTooltip} />
-                  <Area
-                    dataKey="spend"
-                    fill="url(#driverSpendGradient)"
-                    fillOpacity={1}
-                    filter="url(#spendGlow)"
-                    activeDot={{ r: 6, fill: "#0f172a", stroke: "#e2e8f0", strokeWidth: 2 }}
-                    stroke="#0f172a"
-                    strokeWidth={2.4}
-                    type="monotone"
-                  />
-                  <Line
-                    dataKey="checks"
-                    dot={{ fill: "#0ea5e9", r: 3 }}
-                    stroke="#0ea5e9"
-                    strokeDasharray="5 3"
-                    strokeWidth={2}
-                    type="monotone"
-                    yAxisId="checks"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                Spend area
-              </span>
-              <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold text-sky-700">
-                Service checks
-              </span>
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+              Vehicle health index
+            </h2>
+            <div
+              className="rounded-full px-3 py-1 text-xs font-semibold text-white"
+              style={{ backgroundColor: healthBandColor(averageHealthScore) }}
+            >
+              Overall {averageHealthScore}% |{" "}
+              {healthBandLabel(averageHealthScore)}
             </div>
           </div>
-
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <h2 className="text-lg font-semibold text-slate-900">Vehicle health index</h2>
-              <div
-                className="rounded-full px-3 py-1 text-xs font-semibold text-white"
-                style={{ backgroundColor: healthBandColor(averageHealthScore) }}
+          <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+            <p>
+              Best:{" "}
+              <span className="font-semibold text-slate-900">
+                {bestHealthMetric?.name || "N/A"} (
+                {bestHealthMetric?.score ?? 0}%)
+              </span>
+            </p>
+            <p>
+              Needs attention:{" "}
+              <span className="font-semibold text-slate-900">
+                {riskHealthMetric?.name || "N/A"} (
+                {riskHealthMetric?.score ?? 0}%)
+              </span>
+            </p>
+          </div>
+          <div className="mt-4 h-56 sm:h-64">
+            <ResponsiveContainer height="100%" width="100%">
+              <BarChart
+                data={analytics.healthIndex}
+                layout="vertical"
+                margin={{ left: isMobile ? 8 : 30, right: isMobile ? 8 : 14 }}
               >
-                Overall {averageHealthScore}% | {healthBandLabel(averageHealthScore)}
-              </div>
-            </div>
-            <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-              <p>
-                Best:{" "}
-                <span className="font-semibold text-slate-900">
-                  {bestHealthMetric?.name || "N/A"} ({bestHealthMetric?.score ?? 0}%)
-                </span>
-              </p>
-              <p>
-                Needs attention:{" "}
-                <span className="font-semibold text-slate-900">
-                  {riskHealthMetric?.name || "N/A"} ({riskHealthMetric?.score ?? 0}%)
-                </span>
-              </p>
-            </div>
-            <div className="mt-4 h-64">
-              <ResponsiveContainer height="100%" width="100%">
-                <BarChart data={analytics.healthIndex} layout="vertical" margin={{ left: 30 }}>
-                  <CartesianGrid stroke="#dbe6f3" strokeDasharray="3 3" />
-                  <XAxis
-                    domain={[0, 100]}
-                    stroke="#64748b"
-                    ticks={[0, 25, 50, 75, 100]}
-                    type="number"
-                  />
-                  <YAxis dataKey="name" stroke="#64748b" type="category" width={110} />
-                  <Tooltip content={renderHealthTooltip} />
-                  <ReferenceLine
-                    label={{
-                      fill: "#475569",
-                      fontSize: 10,
-                      value: "Benchmark",
-                    }}
-                    stroke="#94a3b8"
-                    strokeDasharray="4 4"
-                    x={75}
-                  />
-                  <Bar
-                    background={{ fill: "#e2e8f0", radius: [8, 8, 8, 8] }}
-                    barSize={18}
-                    dataKey="score"
-                    radius={[8, 8, 8, 8]}
-                  >
-                    {analytics.healthIndex.map((entry) => (
-                      <Cell key={`health-cell-${entry.name}`} fill={healthBandColor(entry.score)} />
-                    ))}
+                <CartesianGrid stroke="#dbe6f3" strokeDasharray="3 3" />
+                <XAxis
+                  domain={[0, 100]}
+                  stroke="#64748b"
+                  ticks={[0, 25, 50, 75, 100]}
+                  tick={{ fill: "#64748b", fontSize: isMobile ? 10 : 11 }}
+                  type="number"
+                />
+                <YAxis
+                  dataKey="name"
+                  stroke="#64748b"
+                  tick={{ fill: "#64748b", fontSize: isMobile ? 10 : 11 }}
+                  type="category"
+                  width={isMobile ? 86 : 110}
+                />
+                <Tooltip content={renderHealthTooltip} />
+                <ReferenceLine
+                  label={{ fill: "#475569", fontSize: 10, value: "Benchmark" }}
+                  stroke="#94a3b8"
+                  strokeDasharray="4 4"
+                  x={75}
+                />
+                <Bar
+                  background={{ fill: "#e2e8f0", radius: [8, 8, 8, 8] }}
+                  barSize={isMobile ? 14 : 18}
+                  dataKey="score"
+                  radius={[8, 8, 8, 8]}
+                >
+                  {analytics.healthIndex.map((entry) => (
+                    <Cell
+                      key={`health-cell-${entry.name}`}
+                      fill={healthBandColor(entry.score)}
+                    />
+                  ))}
+                  {!isMobile ? (
                     <LabelList
                       dataKey="score"
                       fill="#0f172a"
@@ -346,130 +496,186 @@ function DriverOverviewSection({
                       position="right"
                       style={{ fontSize: 11, fontWeight: 700 }}
                     />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                Excellent 85-100
-              </span>
-              <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-                Good 70-84
-              </span>
-              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-                Watch 55-69
-              </span>
-              <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
-                Critical 0-54
-              </span>
-            </div>
+                  ) : null}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Truck size={18} />
-            Assigned vehicle details
-          </h2>
-          <div className="mt-4 space-y-2 text-sm">
-            <p className="font-semibold text-slate-900">
-              {vehicle.id} - {vehicle.model}
-            </p>
-            <p className="text-slate-600">Plate: {vehicle.plate || "N/A"}</p>
-            <p className="text-slate-600">Class: {vehicle.type || "N/A"}</p>
-            <p className="text-slate-600">Status: {vehicle.status || "Active"}</p>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <ShieldCheck size={18} />
-            Service eligibility status
-          </h2>
-          <div className="mt-4">
-            <span
-              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${eligibilityClass(
-                serviceEligibility.status
-              )}`}
-            >
-              {serviceEligibility.status}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+              Excellent 85-100
             </span>
-            <p className="mt-3 text-sm text-slate-600">{serviceEligibility.note}</p>
+            <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+              Good 70-84
+            </span>
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+              Watch 55-69
+            </span>
+            <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+              Critical 0-54
+            </span>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Next service due (date / km)
+      <section className="grid grid-cols-1 items-stretch gap-3 sm:auto-rows-fr sm:grid-cols-2 sm:gap-6">
+        <div className="min-w-0 h-full rounded-3xl border border-slate-200/70 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_12px_32px_-24px_rgba(15,23,42,0.45)] sm:p-6">
+          <h2 className="text-sm font-semibold text-slate-900 sm:text-base lg:text-lg">
+            Driver quick snapshot
           </h2>
-          <div className="mt-4 space-y-2 text-sm">
-            <p className="text-slate-700">
-              Service type: <span className="font-semibold">{nextService.serviceType}</span>
-            </p>
-            <p className="text-slate-700">
-              Due date: <span className="font-semibold">{formatDate(nextService.date)}</span>
-            </p>
-            <p className="text-slate-700">
-              Due odometer:{" "}
-              <span className="font-semibold">{nextService.km.toLocaleString()} km</span>
-            </p>
+          <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+            Key operational details at a glance.
+          </p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <div className="min-w-0 min-h-[96px] rounded-2xl border border-sky-200/70 bg-white p-3 shadow-sm">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                Assigned vehicle
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {vehicle.id} - {vehicle.model}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                Plate {vehicle.plate || "N/A"}
+              </p>
+            </div>
+            <div className="min-w-0 min-h-[96px] rounded-2xl border border-emerald-200/70 bg-white p-3 shadow-sm">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                Service eligibility
+              </p>
+              <span
+                className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${eligibilityClass(
+                  serviceEligibility.status,
+                )}`}
+              >
+                {serviceEligibility.status}
+              </span>
+              <p className="mt-2 break-words text-xs text-slate-600">
+                {serviceEligibility.note}
+              </p>
+            </div>
+            <div className="min-w-0 min-h-[96px] rounded-2xl border border-indigo-200/70 bg-white p-3 shadow-sm">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                Next service
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {nextService.serviceType}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                {formatDate(nextService.date)} |{" "}
+                {nextService.km.toLocaleString()} km
+              </p>
+            </div>
+            <div className="min-w-0 min-h-[96px] rounded-2xl border border-amber-200/80 bg-white p-3 shadow-sm">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                Warranty
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {warranty.provider}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                {warranty.status} | Expires {formatDate(warranty.expiryDate)}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Seasonal tyre change reminder</h2>
-          <div className="mt-4 space-y-2 text-sm">
-            <p className="font-semibold text-slate-900">{seasonalReminder.title}</p>
-            <p className="text-slate-700">
-              Reminder date: {formatDate(seasonalReminder.dueDate)}
+        <div className="min-w-0 h-full rounded-3xl border border-slate-200/70 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4 shadow-[0_12px_32px_-24px_rgba(15,23,42,0.45)] sm:p-6">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 sm:text-base lg:text-lg">
+            <span className="inline-flex size-7 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+              <ShieldAlert size={16} />
+            </span>
+            Vehicle tyre specifications
+          </h2>
+          <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+            Active tyre profile from assigned vehicle.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 text-xs min-[460px]:grid-cols-2 sm:text-sm">
+            <div className="min-w-0 min-h-[84px] rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
+              <p className="text-[11px] text-slate-500">Brand</p>
+              <p className="mt-1 break-words font-semibold text-slate-900">
+                {vehicle.tyreSpecs?.brand || "N/A"}
+              </p>
+            </div>
+            <div className="min-w-0 min-h-[84px] rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
+              <p className="text-[11px] text-slate-500">Size</p>
+              <p className="mt-1 break-all font-semibold text-slate-900">
+                {vehicle.tyreSpecs?.size || "N/A"}
+              </p>
+            </div>
+            <div className="min-w-0 min-h-[84px] rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
+              <p className="text-[11px] text-slate-500">Front PSI</p>
+              <p className="mt-1 font-semibold text-slate-900">
+                {vehicle.tyreSpecs?.frontPsi ?? "N/A"}
+              </p>
+            </div>
+            <div className="min-w-0 min-h-[84px] rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
+              <p className="text-[11px] text-slate-500">Rear PSI</p>
+              <p className="mt-1 font-semibold text-slate-900">
+                {vehicle.tyreSpecs?.rearPsi ?? "N/A"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section className="mt-3 grid grid-cols-1 items-start gap-3 sm:mt-6 sm:grid-cols-2 sm:gap-6">
+        <div className="min-w-0 rounded-3xl border border-slate-200/70 bg-[linear-gradient(180deg,#ffffff_0%,#f9fbff_100%)] p-4 shadow-[0_12px_32px_-24px_rgba(15,23,42,0.45)] sm:p-6">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 sm:text-base lg:text-lg">
+            <span className="inline-flex size-7 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+              <Wrench size={16} />
+            </span>
+            Seasonal tyre change reminder
+          </h2>
+          <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+            Seasonal compliance reminder from current policy window.
+          </p>
+          <div className="mt-4 rounded-2xl border border-indigo-200/70 bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-slate-900">{seasonalReminder.title}</p>
+            <p className="mt-2 text-xs text-slate-700 sm:text-sm">
+              Reminder date: <span className="font-semibold">{formatDate(seasonalReminder.dueDate)}</span>
             </p>
-            <p className="text-slate-600">{seasonalReminder.note}</p>
+            <p className="mt-1 text-xs text-slate-600 sm:text-sm">{seasonalReminder.note}</p>
+          </div>
+        </div>
+
+        <div className="min-w-0 rounded-3xl border border-slate-200/70 bg-[linear-gradient(180deg,#ffffff_0%,#f9fbff_100%)] p-4 shadow-[0_12px_32px_-24px_rgba(15,23,42,0.45)] sm:p-6">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 sm:text-base lg:text-lg">
+            <span className="inline-flex size-7 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+              <Truck size={16} />
+            </span>
+            Driver identity and asset context
+          </h2>
+          <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+            Operational identity details used across service processing.
+          </p>
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
+              <div className="grid size-12 place-items-center rounded-full bg-[#0D0F16] text-sm font-semibold text-white">
+                {profileInitials}
+              </div>
+              <div className="min-w-0 text-sm">
+                <p className="font-semibold text-slate-900">{vehicle.model}</p>
+                <p className="mt-0.5 break-normal text-xs text-slate-600">
+                  Vehicle ID {vehicle.id} | Plate {vehicle.plate || "N/A"}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+              <span className="rounded-full bg-sky-100 px-2.5 py-1 font-semibold text-sky-700">
+                Class {vehicle.type || "N/A"}
+              </span>
+              <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-700">
+                Warranty {warranty.status}
+              </span>
+              <span className="rounded-full bg-slate-200 px-2.5 py-1 font-semibold text-slate-700">
+                Policy links {matchingPolicies.length}
+              </span>
+            </div>
           </div>
         </div>
       </section>
-
-      <section className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Vehicle tyre specifications</h2>
-          <div className="mt-4 space-y-2 text-sm text-slate-700">
-            <p>
-              Brand: <span className="font-semibold">{vehicle.tyreSpecs?.brand || "N/A"}</span>
-            </p>
-            <p>
-              Size: <span className="font-semibold">{vehicle.tyreSpecs?.size || "N/A"}</span>
-            </p>
-            <p>
-              Front PSI:{" "}
-              <span className="font-semibold">{vehicle.tyreSpecs?.frontPsi ?? "N/A"}</span>
-            </p>
-            <p>
-              Rear PSI:{" "}
-              <span className="font-semibold">{vehicle.tyreSpecs?.rearPsi ?? "N/A"}</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Warranty information</h2>
-          <div className="mt-4 space-y-2 text-sm text-slate-700">
-            <p>
-              Provider: <span className="font-semibold">{warranty.provider}</span>
-            </p>
-            <p>
-              Expiry date: <span className="font-semibold">{formatDate(warranty.expiryDate)}</span>
-            </p>
-            <p>
-              Status: <span className="font-semibold">{warranty.status}</span>
-            </p>
-          </div>
-        </div>
-      </section>
-    </>
+    </div>
   );
 }
 

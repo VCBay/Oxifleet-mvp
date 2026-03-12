@@ -6,6 +6,10 @@ import DriverTopbar from "../components/driver/DriverTopbar";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
+import {
+  DRIVER_SERVICE_CATEGORIES as simpleIssueOptions,
+  POINT_S_STATIONS as stationOptions,
+} from "../data/driverBookingCatalog";
 
 const driverMenuRouteMap = {
   overview: "overview",
@@ -15,82 +19,6 @@ const driverMenuRouteMap = {
   communication: "communication",
   profile: "profile",
 };
-
-const simpleIssueOptions = [
-  { value: "Tyre damage", label: "Tyre problem", hint: "Puncture, low air, or damaged tyre" },
-  { value: "Brake issue", label: "Brake problem", hint: "Brake noise, weak brake, warning light" },
-  { value: "Engine diagnostics", label: "Engine problem", hint: "Power loss, smoke, engine light" },
-  { value: "Battery / electrical", label: "Battery or electrical", hint: "Vehicle not starting, light issue" },
-  { value: "Accident damage", label: "Accident damage", hint: "Body or safety damage after impact" },
-  { value: "General service", label: "I am not sure", hint: "General check needed" },
-];
-
-const stationOptions = [
-  {
-    id: "POS-METRO",
-    name: "Metro Service Hub",
-    address: "North Loop Service Road, Dallas, TX",
-    distanceKm: 4.2,
-    etaMin: 14,
-    capabilities: ["tyre", "mechanical", "engine", "electrical", "general"],
-  },
-  {
-    id: "POS-WESTLINE",
-    name: "Westline Tire Care",
-    address: "Industrial Ave, Austin, TX",
-    distanceKm: 7.8,
-    etaMin: 22,
-    capabilities: ["tyre", "general"],
-  },
-  {
-    id: "POS-NORTHERN",
-    name: "Northern Fleet Works",
-    address: "Bay 6, Houston Fleet Park, TX",
-    distanceKm: 12.1,
-    etaMin: 31,
-    capabilities: ["mechanical", "engine", "electrical", "body", "general"],
-  },
-  {
-    id: "POS-RAPID",
-    name: "RapidTow Services",
-    address: "I-35 Corridor Assist Center, TX",
-    distanceKm: 15.4,
-    etaMin: 38,
-    capabilities: ["tyre", "body", "general"],
-  },
-  {
-    id: "POS-LAKESIDE",
-    name: "Lakeside Workshop",
-    address: "Lakeside Blvd, Fort Worth, TX",
-    distanceKm: 18.2,
-    etaMin: 41,
-    capabilities: ["tyre", "mechanical", "general"],
-  },
-  {
-    id: "POS-CENTRAL",
-    name: "Central Fleet Garage",
-    address: "Central Freight Yard, Irving, TX",
-    distanceKm: 20.4,
-    etaMin: 45,
-    capabilities: ["engine", "electrical", "mechanical", "general"],
-  },
-  {
-    id: "POS-SOUTHRIDGE",
-    name: "Southridge Auto Works",
-    address: "Southridge Rd, San Antonio, TX",
-    distanceKm: 23.1,
-    etaMin: 49,
-    capabilities: ["body", "electrical", "general"],
-  },
-  {
-    id: "POS-HIGHWAY24",
-    name: "Highway 24 Service Point",
-    address: "Highway 24 Exit Service Bay, TX",
-    distanceKm: 26.7,
-    etaMin: 54,
-    capabilities: ["tyre", "mechanical", "body", "general"],
-  },
-];
 
 const slotTemplates = [
   { id: "08:30", label: "08:30 - 09:15" },
@@ -177,7 +105,7 @@ const getPolicyStatus = (problemType, emergency) => {
       note: "Emergency requests need fleet manager approval.",
     };
   }
-  if (problemType === "Accident damage") {
+  if (problemType === "Schadensmeldung" || problemType === "Accident damage") {
     return {
       status: "Not Covered",
       note: "Accident-related repairs require manual policy exception.",
@@ -192,8 +120,8 @@ const getPolicyStatus = (problemType, emergency) => {
 const dummyRequests = [
   {
     id: "SR-4011",
-    requestTitle: "Tyre damage request",
-    serviceType: "Tyre damage",
+    requestTitle: "Reifen request",
+    serviceType: "Reifen",
     status: "Pending approval",
     requestedAt: "2026-03-05T08:30:00.000Z",
     priority: "Normal",
@@ -214,8 +142,8 @@ const dummyRequests = [
   },
   {
     id: "SR-3987",
-    requestTitle: "Brake issue request",
-    serviceType: "Brake issue",
+    requestTitle: "Technisches Problem request",
+    serviceType: "Technisches Problem",
     status: "Approved",
     requestedAt: "2026-03-03T07:15:00.000Z",
     priority: "High",
@@ -246,7 +174,7 @@ function DriverServiceRequestPreviewPage() {
   const session = useSyncExternalStore(subscribeSession, getSession, getSession);
   const navigate = useNavigate();
   const [requestForm, setRequestForm] = useState({
-    problemType: "Tyre damage",
+    problemType: simpleIssueOptions[0]?.value || "Reifen",
     description: "",
     emergency: false,
     photos: [],
@@ -300,6 +228,8 @@ function DriverServiceRequestPreviewPage() {
     () => getPolicyStatus(requestForm.problemType, requestForm.emergency),
     [requestForm.emergency, requestForm.problemType]
   );
+  const policyStatusLabel = "Covered";
+  const policyStatusClass = eligibilityClass("Allowed");
   const selectedRequest = useMemo(
     () => dummyRequests.find((item) => item.id === selectedRequestId) || dummyRequests[0],
     [selectedRequestId]
@@ -317,7 +247,7 @@ function DriverServiceRequestPreviewPage() {
 
   const handleSubmitPreview = () => {
     if (!requestForm.preferredPosId) {
-      setWizardFeedback("Select a nearby POS first.");
+      setWizardFeedback("Select a nearby Point S station first.");
       return;
     }
     if (!selectedSlot) {
@@ -379,7 +309,7 @@ function DriverServiceRequestPreviewPage() {
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-slate-900">Quick service request</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Tap the problem, add a note or photo if possible, then send.
+              Tap the service category, add a note or photo if possible, then send.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {simpleIssueOptions.map((option) => {
@@ -413,7 +343,9 @@ function DriverServiceRequestPreviewPage() {
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Nearest POS and slot booking</h3>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Nearest Point S station and slot booking
+                </h3>
                 <p className="mt-1 text-sm text-slate-500">
                   Pick nearby workshop and choose a free time slot.
                 </p>
@@ -496,7 +428,7 @@ function DriverServiceRequestPreviewPage() {
                   type="button"
                   variant="outline"
                 >
-                  Unselect POS
+                  Unselect station
                 </Button>
               ) : null}
             </div>
@@ -511,7 +443,9 @@ function DriverServiceRequestPreviewPage() {
                 </p>
               </div>
               {slotAvailability.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-500">Select POS and date to load slots.</p>
+                <p className="mt-3 text-sm text-slate-500">
+                  Select a Point S station and date to load slots.
+                </p>
               ) : (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {slotAvailability.map((slot) => {
@@ -602,7 +536,7 @@ function DriverServiceRequestPreviewPage() {
                   Problem: <span className="font-semibold text-slate-900">{requestForm.problemType}</span>
                 </p>
                 <p>
-                  Nearest POS:{" "}
+                  Nearest Point S:{" "}
                   <span className="font-semibold text-slate-900">{selectedPos?.name || "Not selected"}</span>
                 </p>
                 <p>
@@ -613,11 +547,9 @@ function DriverServiceRequestPreviewPage() {
                 </p>
                 <div>
                   <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${eligibilityClass(
-                      policyValidation.status
-                    )}`}
+                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${policyStatusClass}`}
                   >
-                    {policyValidation.status}
+                    {policyStatusLabel}
                   </span>
                   <p className="mt-2 text-sm text-slate-600">{policyValidation.note}</p>
                 </div>
@@ -722,7 +654,7 @@ function DriverServiceRequestPreviewPage() {
           <div className="w-full max-w-4xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-lg font-semibold text-slate-900">All nearby stations</p>
+                <p className="text-lg font-semibold text-slate-900">All nearby Point S stations</p>
                 <p className="text-sm text-slate-500">Legacy UI preview modal</p>
               </div>
               <Button onClick={() => setShowAllStations(false)} type="button" variant="outline">

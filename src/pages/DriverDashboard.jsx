@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { X } from "lucide-react";
+import { toast } from "sonner";
 import {
   clearSession,
   getSession,
@@ -42,6 +44,14 @@ import DriverServiceRequestSection from "../components/driver/DriverServiceReque
 import DriverDocumentsHistorySection from "../components/driver/DriverDocumentsHistorySection";
 import DriverCommunicationSection from "../components/driver/DriverCommunicationSection";
 import DriverProfileSection from "../components/driver/DriverProfileSection";
+import { buildDriverBookingNotifications } from "../lib/driverBookingNotifications";
+import {
+  BOOKING_BASE_COST_BY_CATEGORY as baseCostByProblem,
+  DRIVER_SERVICE_CATEGORIES as simpleIssueOptions,
+  POINT_S_STATIONS,
+  getCategoryPolicyKeywords,
+  getNearestPointSStationsForCategory,
+} from "../data/driverBookingCatalog";
 
 const toDate = (value) => {
   const parsed = new Date(value);
@@ -239,106 +249,6 @@ const requestStatusClass = (value) => {
   return "bg-amber-900 text-amber-100 ring-1 ring-amber-700/60";
 };
 
-const simpleIssueOptions = [
-  {
-    value: "Tyre damage",
-    label: "Tyre problem",
-    hint: "Puncture, low air, or damaged tyre",
-  },
-  {
-    value: "Brake issue",
-    label: "Brake problem",
-    hint: "Brake noise, weak brake, warning light",
-  },
-  {
-    value: "Engine diagnostics",
-    label: "Engine problem",
-    hint: "Power loss, smoke, engine light",
-  },
-  {
-    value: "Battery / electrical",
-    label: "Battery or electrical",
-    hint: "Vehicle not starting, light issue",
-  },
-  {
-    value: "Accident damage",
-    label: "Accident damage",
-    hint: "Body or safety damage after impact",
-  },
-  {
-    value: "General service",
-    label: "I am not sure",
-    hint: "General check needed",
-  },
-];
-
-const posNetworkCatalog = [
-  {
-    id: "POS-METRO",
-    name: "Metro Service Hub",
-    address: "North Loop Service Road, Dallas, TX",
-    distanceKm: 4.2,
-    etaMin: 14,
-    capabilities: ["tyre", "mechanical", "engine", "electrical", "general"],
-  },
-  {
-    id: "POS-WESTLINE",
-    name: "Westline Tire Care",
-    address: "Industrial Ave, Austin, TX",
-    distanceKm: 7.8,
-    etaMin: 22,
-    capabilities: ["tyre", "general"],
-  },
-  {
-    id: "POS-NORTHERN",
-    name: "Northern Fleet Works",
-    address: "Bay 6, Houston Fleet Park, TX",
-    distanceKm: 12.1,
-    etaMin: 31,
-    capabilities: ["mechanical", "engine", "electrical", "body", "general"],
-  },
-  {
-    id: "POS-RAPID",
-    name: "RapidTow Services",
-    address: "I-35 Corridor Assist Center, TX",
-    distanceKm: 15.4,
-    etaMin: 38,
-    capabilities: ["tyre", "body", "general"],
-  },
-  {
-    id: "POS-LAKESIDE",
-    name: "Lakeside Workshop",
-    address: "Lakeside Blvd, Fort Worth, TX",
-    distanceKm: 18.2,
-    etaMin: 41,
-    capabilities: ["tyre", "mechanical", "general"],
-  },
-  {
-    id: "POS-CENTRAL",
-    name: "Central Fleet Garage",
-    address: "Central Freight Yard, Irving, TX",
-    distanceKm: 20.4,
-    etaMin: 45,
-    capabilities: ["engine", "electrical", "mechanical", "general"],
-  },
-  {
-    id: "POS-SOUTHRIDGE",
-    name: "Southridge Auto Works",
-    address: "Southridge Rd, San Antonio, TX",
-    distanceKm: 23.1,
-    etaMin: 49,
-    capabilities: ["body", "electrical", "general"],
-  },
-  {
-    id: "POS-HIGHWAY24",
-    name: "Highway 24 Service Point",
-    address: "Highway 24 Exit Service Bay, TX",
-    distanceKm: 26.7,
-    etaMin: 54,
-    capabilities: ["tyre", "mechanical", "body", "general"],
-  },
-];
-
 const slotTemplates = [
   { id: "08:30", label: "08:30 - 09:15" },
   { id: "09:30", label: "09:30 - 10:15" },
@@ -362,25 +272,10 @@ const getTomorrowDateInput = () => {
 };
 
 const getNearestPosForProblem = (problemType) => {
-  const key = normalizeValue(problemType);
-  const targetCapability = key.includes("tyre")
-    ? "tyre"
-    : key.includes("brake")
-    ? "mechanical"
-    : key.includes("engine")
-    ? "engine"
-    : key.includes("battery") || key.includes("electrical")
-    ? "electrical"
-    : key.includes("accident")
-    ? "body"
-    : "general";
-
-  return posNetworkCatalog
-    .filter(
-      (pos) =>
-        pos.capabilities.includes(targetCapability) || pos.capabilities.includes("general")
-    )
-    .sort((a, b) => a.distanceKm - b.distanceKm);
+  if (!String(problemType || "").trim()) {
+    return [...POINT_S_STATIONS].sort((a, b) => a.distanceKm - b.distanceKm);
+  }
+  return getNearestPointSStationsForCategory(problemType);
 };
 
 const hashText = (text) => {
@@ -444,15 +339,6 @@ const parseDriverMenuFromPath = (pathname) => {
     return "profile";
   }
   return "overview";
-};
-
-const baseCostByProblem = {
-  "Engine diagnostics": 680,
-  "Tyre damage": 520,
-  "Brake issue": 740,
-  "Battery / electrical": 460,
-  "Accident damage": 980,
-  "General service": 390,
 };
 
 const driverSpendFallback = [
@@ -811,17 +697,20 @@ function DriverDashboard() {
     .join("") || "DR";
 
   const [requestForm, setRequestForm] = useState({
-    problemType: "Tyre damage",
+    problemType: "",
     description: "",
     emergency: false,
     photos: [],
     preferredPosId: "",
-    preferredDate: getTomorrowDateInput(),
+    preferredDate: "",
     preferredSlotId: "",
   });
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [wizardFeedback, setWizardFeedback] = useState("");
-  const driverNotificationCount = 3;
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const submitRequestTimeoutRef = useRef(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [clearedNotificationIds, setClearedNotificationIds] = useState([]);
   const activeMenu = useMemo(
     () => parseDriverMenuFromPath(location.pathname),
     [location.pathname]
@@ -853,6 +742,19 @@ function DriverDashboard() {
       ) || null,
     [requestForm.preferredSlotId, slotAvailability]
   );
+  const isServiceRequestFormReady = useMemo(
+    () =>
+      Boolean(String(requestForm.problemType || "").trim()) &&
+      Boolean(requestForm.preferredPosId) &&
+      Boolean(requestForm.preferredDate) &&
+      Boolean(selectedSlot),
+    [
+      requestForm.preferredDate,
+      requestForm.preferredPosId,
+      requestForm.problemType,
+      selectedSlot,
+    ]
+  );
 
   useEffect(() => {
     const expectedPath = `/driver-dashboard/${driverMenuRouteMap[activeMenu]}`;
@@ -860,6 +762,10 @@ function DriverDashboard() {
       navigate(expectedPath, { replace: true });
     }
   }, [activeMenu, location.pathname, navigate]);
+
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (nearestPosOptions.length === 0) {
@@ -891,6 +797,15 @@ function DriverDashboard() {
     });
   }, [nearestPosOptions]);
 
+  useEffect(
+    () => () => {
+      if (submitRequestTimeoutRef.current) {
+        window.clearTimeout(submitRequestTimeoutRef.current);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     setRequestForm((prev) => {
       if (!prev.preferredSlotId) {
@@ -909,7 +824,7 @@ function DriverDashboard() {
     });
   }, [slotAvailability]);
 
-  const driverServiceRequests = useMemo(() => {
+  const driverScopedOrders = useMemo(() => {
     const vehicleId = normalizeValue(vehicle.id);
     const driver = normalizeValue(displayName);
     return [...(serviceOrderState.orders || [])]
@@ -922,9 +837,13 @@ function DriverDashboard() {
         (a, b) =>
           (toDate(b?.requestedAt || b?.updatedAt)?.getTime() || 0) -
           (toDate(a?.requestedAt || a?.updatedAt)?.getTime() || 0)
-      )
-      .slice(0, 12);
+      );
   }, [displayName, serviceOrderState.orders, vehicle.id]);
+
+  const driverServiceRequests = useMemo(
+    () => driverScopedOrders.slice(0, 12),
+    [driverScopedOrders]
+  );
 
   const selectedRequest = useMemo(() => {
     if (driverServiceRequests.length === 0) {
@@ -933,6 +852,32 @@ function DriverDashboard() {
     const bySelection = driverServiceRequests.find((order) => order.id === selectedRequestId);
     return bySelection || driverServiceRequests[0];
   }, [driverServiceRequests, selectedRequestId]);
+
+  const bookingNotifications = useMemo(
+    () =>
+      buildDriverBookingNotifications({
+        nextServiceDate: nextService.date,
+        scopedOrders: driverScopedOrders,
+        vehicleId: vehicle.id,
+      }),
+    [driverScopedOrders, nextService.date, vehicle.id]
+  );
+
+  useEffect(() => {
+    setClearedNotificationIds((prev) =>
+      prev.filter((id) => bookingNotifications.some((item) => item.id === id))
+    );
+  }, [bookingNotifications]);
+
+  const visibleBookingNotifications = useMemo(
+    () =>
+      bookingNotifications.filter(
+        (item) => !clearedNotificationIds.includes(item.id)
+      ),
+    [bookingNotifications, clearedNotificationIds]
+  );
+
+  const driverNotificationCount = visibleBookingNotifications.length;
 
   const documentsHistoryRows = useMemo(() => {
     const fromVehicleHistory = (vehicle.serviceHistory || []).map((entry, index) => {
@@ -1175,11 +1120,13 @@ function DriverDashboard() {
     const allowedTypes = Array.isArray(policy.allowedServiceTypes)
       ? policy.allowedServiceTypes.map((item) => String(item || "").toLowerCase())
       : [];
-    const requestedType = String(requestForm.problemType || "").toLowerCase();
+    const requestedTypeKeywords = getCategoryPolicyKeywords(requestForm.problemType);
     const typeAllowed =
       allowedTypes.length === 0 ||
-      allowedTypes.some(
-        (allowed) => requestedType.includes(allowed) || allowed.includes(requestedType)
+      allowedTypes.some((allowed) =>
+        requestedTypeKeywords.some(
+          (keyword) => keyword.includes(allowed) || allowed.includes(keyword)
+        )
       );
 
     if (!typeAllowed) {
@@ -1230,7 +1177,8 @@ function DriverDashboard() {
   };
 
   const createDriverServiceRequest = ({ emergency = false, approval = true } = {}) => {
-    const selectedPosName = selectedPos?.name || tenant?.workshopLead || "Unassigned";
+    const selectedPosName =
+      selectedPos?.name || tenant?.workshopLead || "Point S station (unassigned)";
     const slotLabel = selectedSlot?.label || "Not selected";
     const preferredDateLabel = formatDate(requestForm.preferredDate);
     const order = createServiceRequest({
@@ -1251,7 +1199,7 @@ function DriverDashboard() {
         location: selectedPos?.address || tenant?.region || "N/A",
         notes: [
           `Tenant: ${tenant?.name || "N/A"}`,
-          `Preferred POS: ${selectedPosName} (${selectedPos?.distanceKm ?? "N/A"} km, ETA ${
+          `Preferred Point S station: ${selectedPosName} (${selectedPos?.distanceKm ?? "N/A"} km, ETA ${
             selectedPos?.etaMin ?? "N/A"
           } min)`,
           `Preferred date: ${requestForm.preferredDate}`,
@@ -1270,38 +1218,81 @@ function DriverDashboard() {
     return order;
   };
 
-  const handleSubmitSimpleRequest = () => {
+  const handleSubmitSimpleRequest = async () => {
+    if (isSubmittingRequest) {
+      return;
+    }
+    if (!String(requestForm.problemType || "").trim()) {
+      const message = "Select a service category first.";
+      setWizardFeedback(message);
+      toast.error("Request not sent", { description: message, duration: 3200 });
+      return;
+    }
     if (!requestForm.preferredPosId) {
-      setWizardFeedback("Select a nearby POS first.");
+      const message = "Select a nearby Point S station first.";
+      setWizardFeedback(message);
+      toast.error("Request not sent", { description: message, duration: 3200 });
       return;
     }
     if (!requestForm.preferredDate) {
-      setWizardFeedback("Select a booking date first.");
+      const message = "Select a booking date first.";
+      setWizardFeedback(message);
+      toast.error("Request not sent", { description: message, duration: 3200 });
       return;
     }
     if (!selectedSlot) {
-      setWizardFeedback("Select a free slot to continue.");
+      const message = "Select a free slot to continue.";
+      setWizardFeedback(message);
+      toast.error("Request not sent", { description: message, duration: 3200 });
       return;
     }
-    const approvalRequired =
-      requestForm.emergency || policyValidation.status !== "Allowed";
-    createDriverServiceRequest({
-      emergency: requestForm.emergency,
-      approval: approvalRequired,
-    });
-    setWizardFeedback(
-      approvalRequired
+    setIsSubmittingRequest(true);
+    try {
+      const approvalRequired =
+        requestForm.emergency || policyValidation.status !== "Allowed";
+      await new Promise((resolve) => {
+        submitRequestTimeoutRef.current = window.setTimeout(resolve, 900);
+      });
+      const createdOrder = createDriverServiceRequest({
+        emergency: requestForm.emergency,
+        approval: approvalRequired,
+      });
+      const successMessage = approvalRequired
         ? "Request sent. Fleet manager approval is required."
-        : "Request sent. Booking flow has started."
-    );
-    setRequestForm((prev) => ({
-      ...prev,
-      description: "",
-      emergency: false,
-      photos: [],
-      preferredDate: getTomorrowDateInput(),
-      preferredSlotId: "",
-    }));
+        : "Request sent. Booking flow has started.";
+
+      setWizardFeedback(successMessage);
+      if (createdOrder?.id) {
+        setSelectedRequestId(createdOrder.id);
+      }
+
+      toast.success("Request sent successfully", {
+        description: successMessage,
+        duration: 3600,
+      });
+
+      window.setTimeout(() => {
+        const detailsSection = window.document.getElementById("driver-service-request-details");
+        detailsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 160);
+
+      setRequestForm({
+        problemType: "",
+        description: "",
+        emergency: false,
+        photos: [],
+        preferredPosId: "",
+        preferredDate: "",
+        preferredSlotId: "",
+      });
+    } catch (error) {
+      const message = "Unable to send service request. Please try again.";
+      setWizardFeedback(message);
+      toast.error("Request not sent", { description: message, duration: 3600 });
+      console.error("Failed to create driver service request", error);
+    } finally {
+      setIsSubmittingRequest(false);
+    }
   };
 
   const handleDownloadReceipt = (row) => {
@@ -1448,25 +1439,96 @@ function DriverDashboard() {
     setProfileNotice("Profile changes reset.");
   };
 
+  const clearDriverNotification = (notificationId) => {
+    if (!notificationId) {
+      return;
+    }
+    setClearedNotificationIds((prev) =>
+      prev.includes(notificationId) ? prev : [...prev, notificationId]
+    );
+  };
+
+  const clearAllDriverNotifications = () => {
+    setClearedNotificationIds(bookingNotifications.map((item) => item.id));
+  };
+
+  const handleDriverNotificationAction = (notification) => {
+    const requestedMenu = notification?.actionMenu;
+    const menuKey =
+      requestedMenu && driverMenuRouteMap[requestedMenu]
+        ? requestedMenu
+        : "booking_tracking";
+
+    if (menuKey === "service_request" && notification?.orderId) {
+      setSelectedRequestId(notification.orderId);
+    }
+    if (menuKey === "communication") {
+      setActiveCommunicationContact(
+        notification?.iconKey === "emergency" ? "support" : "fleet_manager"
+      );
+    }
+
+    setIsMobileSidebarOpen(false);
+    navigate(`/driver-dashboard/${driverMenuRouteMap[menuKey]}`);
+  };
+
+  const handleSidebarMenuClick = (menuKey) => {
+    setIsMobileSidebarOpen(false);
+    navigate(`/driver-dashboard/${driverMenuRouteMap[menuKey] || driverMenuRouteMap.overview}`);
+  };
+
   return (
     <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
-      <div className="flex h-full w-full">
-        <DriverSidebar
-          activeMenu={activeMenu}
-          onMenuClick={(menuKey) =>
-            navigate(`/driver-dashboard/${driverMenuRouteMap[menuKey] || driverMenuRouteMap.overview}`)
-          }
-          onSignOut={onSignOut}
-        />
-
-        <section className="ml-72 flex-1 space-y-6 overflow-y-auto p-8">
-          <DriverTopbar
+      <div className="flex h-full w-full min-w-0">
+        <div className="hidden lg:block">
+          <DriverSidebar
             activeMenu={activeMenu}
-            displayEmail={displayEmail}
-            displayName={displayName}
-            driverNotificationCount={driverNotificationCount}
-            profileInitials={profileInitials}
+            onMenuClick={handleSidebarMenuClick}
+            onSignOut={onSignOut}
           />
+        </div>
+
+        {isMobileSidebarOpen ? (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <button
+              aria-label="Close menu backdrop"
+              className="absolute inset-0 bg-slate-900/45"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              type="button"
+            />
+            <div className="absolute inset-y-0 left-0 w-72">
+              <button
+                aria-label="Close menu"
+                className="absolute right-3 top-3 z-[60] grid size-8 place-items-center rounded-full bg-white/10 text-white"
+                onClick={() => setIsMobileSidebarOpen(false)}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+              <DriverSidebar
+                activeMenu={activeMenu}
+                onMenuClick={handleSidebarMenuClick}
+                onSignOut={onSignOut}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <section className="min-w-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-0 sm:px-6 sm:pb-6 sm:pt-0 lg:ml-72 lg:px-8 lg:pb-8 lg:pt-0">
+          <div className="-mx-4 sticky top-0 z-40 bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)] pb-3 pt-0 sm:-mx-6 sm:pb-4 sm:pt-0 lg:-mx-8 lg:pb-4 lg:pt-0">
+            <DriverTopbar
+              activeMenu={activeMenu}
+              displayEmail={displayEmail}
+              displayName={displayName}
+              driverNotificationCount={driverNotificationCount}
+              notifications={visibleBookingNotifications}
+              onClearAllNotifications={clearAllDriverNotifications}
+              onClearNotification={clearDriverNotification}
+              onNotificationAction={handleDriverNotificationAction}
+              onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+              profileInitials={profileInitials}
+            />
+          </div>
 
           {activeMenu === "overview" ? (
             <DriverOverviewSection
@@ -1495,6 +1557,8 @@ function DriverDashboard() {
               selectedPos={selectedPos}
               selectedRequest={selectedRequest}
               selectedSlot={selectedSlot}
+              isServiceRequestFormReady={isServiceRequestFormReady}
+              isSubmittingRequest={isSubmittingRequest}
               setRequestForm={setRequestForm}
               setSelectedRequestId={setSelectedRequestId}
               slotAvailability={slotAvailability}

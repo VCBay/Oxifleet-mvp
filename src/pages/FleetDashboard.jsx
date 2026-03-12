@@ -35,6 +35,7 @@ import ReportingAnalyticsControl from "../components/ReportingAnalyticsControl";
 import CommunicationControl from "../components/CommunicationControl";
 import TeamAccessControl from "../components/TeamAccessControl";
 import SettingsProfileControl from "../components/SettingsProfileControl";
+import FleetTopbar from "../components/fleet/FleetTopbar";
 import { Button } from "../components/ui/button";
 import {
   Dialog,
@@ -657,7 +658,7 @@ function Dashboard() {
           </div>
         </aside>
 
-        <section className="ml-72 flex-1 space-y-6 overflow-y-auto p-8">
+        <section className="ml-72 flex-1 space-y-6 overflow-y-auto px-8 pb-8 pt-0">
           <Dialog
             open={vehicleDetailsOpen}
             onOpenChange={handleVehicleDetailsOpenChange}
@@ -943,271 +944,231 @@ function Dashboard() {
             </DialogContent>
           </Dialog>
 
+          <div className="-mx-8 sticky top-0 z-40 bg-[linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)] pb-4">
+            <FleetTopbar
+              displayEmail={user?.email || "john@oxifleet.com"}
+              displayName={user?.name || "John Doe"}
+              profileInitials={user?.name ? user.name.slice(0, 2).toUpperCase() : "JD"}
+            />
+          </div>
+
           {activeMenu === "dashboard" ? (
             <header className="flex flex-col gap-4 rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-lg">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                {/* <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
                   Fleet dashboard
-                </p>
+                </p> */}
                 <h1 className="text-3xl font-semibold text-slate-900">
                   Welcome{user?.name ? `, ${user.name}` : " John Doe"}
                 </h1>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  className="grid size-10 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300"
-                  type="button"
-                >
-                  <Bell size={18} />
-                </button>
-                <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
-                  <div className="grid size-9 place-items-center rounded-full bg-[#0D0F16] text-xs font-semibold text-white">
-                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "JD"}
-                  </div>
-                  <div className="leading-tight">
-                    <p className="text-sm font-semibold text-slate-900">
-                      {user?.name || "John Doe"}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {user?.email || "john@oxifleet.com"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Dialog open={vehicleDialogOpen} onOpenChange={setVehicleDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className={"cursor-pointer"}>
-                    <Plus size={16} />
-                    Add Vehicle
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Add vehicle</DialogTitle>
-                    <DialogDescription>
-                      Capture details to keep your fleet inventory accurate.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form className="grid gap-4" onSubmit={handleAddVehicle}>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                <Dialog open={vehicleDialogOpen} onOpenChange={setVehicleDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className={"cursor-pointer"}>
+                      <Plus size={16} />
+                      Add Vehicle
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Add vehicle</DialogTitle>
+                      <DialogDescription>
+                        Capture details to keep your fleet inventory accurate.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form className="grid gap-4" onSubmit={handleAddVehicle}>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="vehicle-id">Vehicle ID</Label>
+                          <Input
+                            id="vehicle-id"
+                            value={vehicleForm.id}
+                            onChange={handleVehicleChange("id")}
+                            placeholder="VH-482"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="vehicle-plate">Plate number</Label>
+                          <Input
+                            id="vehicle-plate"
+                            value={vehicleForm.plate}
+                            onChange={handleVehicleChange("plate")}
+                            placeholder="TX-9842"
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="vehicle-model">Vehicle model</Label>
+                          <Input
+                            id="vehicle-model"
+                            value={vehicleForm.model}
+                            onChange={handleVehicleChange("model")}
+                            placeholder="Freightliner Cascadia"
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Vehicle type</Label>
+                          <Select
+                            value={vehicleForm.type}
+                            onValueChange={handleVehicleSelectChange("type")}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Truck">Truck</SelectItem>
+                              <SelectItem value="Van">Van</SelectItem>
+                              <SelectItem value="Trailer">Trailer</SelectItem>
+                              <SelectItem value="Utility">Utility</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Status</Label>
+                          <Select
+                            value={vehicleForm.status}
+                            onValueChange={handleVehicleSelectChange("status")}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Active">Active</SelectItem>
+                              <SelectItem value="In service">In service</SelectItem>
+                              <SelectItem value="Inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="vehicle-id">Vehicle ID</Label>
-                        <Input
-                          id="vehicle-id"
-                          value={vehicleForm.id}
-                          onChange={handleVehicleChange("id")}
-                          placeholder="VH-482"
+                        <Label htmlFor="vehicle-notes">Notes</Label>
+                        <Textarea
+                          id="vehicle-notes"
+                          value={vehicleForm.notes}
+                          onChange={handleVehicleChange("notes")}
+                          placeholder="Add maintenance history or assignments."
+                          rows={3}
                         />
                       </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline">
+                          <FileUp /> Import from Excel
+                        </Button>
+                        <Button type="submit" disabled={!isVehicleReady}>
+                          Add vehicle
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+                <Dialog open={driverDialogOpen} onOpenChange={setDriverDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className={"cursor-pointer"}>
+                      <Plus size={16} />
+                      Add Drivers
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Add driver</DialogTitle>
+                      <DialogDescription>
+                        Add driver details to keep staffing up to date.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form className="grid gap-4" onSubmit={handleAddDriver}>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="driver-id">Driver ID</Label>
+                          <Input
+                            id="driver-id"
+                            value={driverForm.id}
+                            onChange={handleDriverChange("id")}
+                            placeholder="DR-317"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="driver-name">Full name</Label>
+                          <Input
+                            id="driver-name"
+                            value={driverForm.name}
+                            onChange={handleDriverChange("name")}
+                            placeholder="Jamie Stewart"
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="driver-email">Email address</Label>
+                          <Input
+                            id="driver-email"
+                            type="email"
+                            value={driverForm.email}
+                            onChange={handleDriverChange("email")}
+                            placeholder="jamie@oxifleet.com"
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="driver-phone">Phone number</Label>
+                          <Input
+                            id="driver-phone"
+                            value={driverForm.phone}
+                            onChange={handleDriverChange("phone")}
+                            placeholder="+1 (555) 284-3392"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="driver-license">License</Label>
+                          <Input
+                            id="driver-license"
+                            value={driverForm.license}
+                            onChange={handleDriverChange("license")}
+                            placeholder="CDL-A"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Status</Label>
+                          <Select
+                            value={driverForm.status}
+                            onValueChange={handleDriverSelectChange("status")}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Active">Active</SelectItem>
+                              <SelectItem value="On leave">On leave</SelectItem>
+                              <SelectItem value="Inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="vehicle-plate">Plate number</Label>
-                        <Input
-                          id="vehicle-plate"
-                          value={vehicleForm.plate}
-                          onChange={handleVehicleChange("plate")}
-                          placeholder="TX-9842"
-                          required
+                        <Label htmlFor="driver-notes">Notes</Label>
+                        <Textarea
+                          id="driver-notes"
+                          value={driverForm.notes}
+                          onChange={handleDriverChange("notes")}
+                          placeholder="Add certifications or route assignments."
+                          rows={3}
                         />
                       </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="vehicle-model">Vehicle model</Label>
-                        <Input
-                          id="vehicle-model"
-                          value={vehicleForm.model}
-                          onChange={handleVehicleChange("model")}
-                          placeholder="Freightliner Cascadia"
-                          required
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Vehicle type</Label>
-                        <Select
-                          value={vehicleForm.type}
-                          onValueChange={handleVehicleSelectChange("type")}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Truck">Truck</SelectItem>
-                            <SelectItem value="Van">Van</SelectItem>
-                            <SelectItem value="Trailer">Trailer</SelectItem>
-                            <SelectItem value="Utility">Utility</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Status</Label>
-                        <Select
-                          value={vehicleForm.status}
-                          onValueChange={handleVehicleSelectChange("status")}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="In service">In service</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="vehicle-notes">Notes</Label>
-                      <Textarea
-                        id="vehicle-notes"
-                        value={vehicleForm.notes}
-                        onChange={handleVehicleChange("notes")}
-                        placeholder="Add maintenance history or assignments."
-                        rows={3}
-                      />
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline">
-                        <FileUp /> Import from Excel
-                      </Button>
-                      <Button type="submit" disabled={!isVehicleReady}>
-                        Add vehicle
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-              <Dialog open={driverDialogOpen} onOpenChange={setDriverDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className={"cursor-pointer"}>
-                    <Plus size={16} />
-                    Add Drivers
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Add driver</DialogTitle>
-                    <DialogDescription>
-                      Add driver details to keep staffing up to date.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form className="grid gap-4" onSubmit={handleAddDriver}>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="grid gap-2">
-                        <Label htmlFor="driver-id">Driver ID</Label>
-                        <Input
-                          id="driver-id"
-                          value={driverForm.id}
-                          onChange={handleDriverChange("id")}
-                          placeholder="DR-317"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="driver-name">Full name</Label>
-                        <Input
-                          id="driver-name"
-                          value={driverForm.name}
-                          onChange={handleDriverChange("name")}
-                          placeholder="Jamie Stewart"
-                          required
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="driver-email">Email address</Label>
-                        <Input
-                          id="driver-email"
-                          type="email"
-                          value={driverForm.email}
-                          onChange={handleDriverChange("email")}
-                          placeholder="jamie@oxifleet.com"
-                          required
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="driver-phone">Phone number</Label>
-                        <Input
-                          id="driver-phone"
-                          value={driverForm.phone}
-                          onChange={handleDriverChange("phone")}
-                          placeholder="+1 (555) 284-3392"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="driver-license">License</Label>
-                        <Input
-                          id="driver-license"
-                          value={driverForm.license}
-                          onChange={handleDriverChange("license")}
-                          placeholder="CDL-A"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Status</Label>
-                        <Select
-                          value={driverForm.status}
-                          onValueChange={handleDriverSelectChange("status")}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="On leave">On leave</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="driver-notes">Notes</Label>
-                      <Textarea
-                        id="driver-notes"
-                        value={driverForm.notes}
-                        onChange={handleDriverChange("notes")}
-                        placeholder="Add certifications or route assignments."
-                        rows={3}
-                      />
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline">
-                        Import from Excel
-                      </Button>
-                      <Button type="submit" disabled={!isDriverReady}>
-                        Add driver
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-            </header>
-          ) : (
-            <header className="rounded-3xl border border-slate-200/70 bg-white/90 p-4 shadow-sm">
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  className="grid size-10 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300"
-                  type="button"
-                >
-                  <Bell size={18} />
-                </button>
-                <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
-                  <div className="grid size-9 place-items-center rounded-full bg-[#0D0F16] text-xs font-semibold text-white">
-                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "JD"}
-                  </div>
-                  <div className="leading-tight">
-                    <p className="text-sm font-semibold text-slate-900">
-                      {user?.name || "John Doe"}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {user?.email || "john@oxifleet.com"}
-                    </p>
-                  </div>
-                </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline">
+                          Import from Excel
+                        </Button>
+                        <Button type="submit" disabled={!isDriverReady}>
+                          Add driver
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
             </header>
-          )}
+          ) : null}
 
           {activeMenu === "vehicles" ? (
             <VehicleManagement vehicles={vehicleState.vehicles} />

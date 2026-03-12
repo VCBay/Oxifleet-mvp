@@ -115,43 +115,55 @@ function DriverProfileSection({
   };
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/70 bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_100%)] p-6 text-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {profileForm.photoUrl ? (
-              <div className="size-12 overflow-hidden rounded-full ring-2 ring-white/45">
-                <img
-                  alt="Driver profile"
-                  className="h-full w-full object-cover"
-                  src={profileForm.photoUrl}
-                />
-              </div>
-            ) : (
-              <div className="grid size-12 place-items-center rounded-full bg-white/15 text-sm font-semibold text-white">
-                {profileInitials}
-              </div>
-            )}
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Driver Profile</p>
-              <h2 className="text-xl font-semibold text-white">
+    <section className="min-w-0 space-y-4 sm:space-y-6">
+      <div className="rounded-3xl border border-slate-200/70 bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_100%)] p-4 text-white shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <div className="relative">
+              {profileForm.photoUrl ? (
+                <div className="size-11 shrink-0 overflow-hidden rounded-full ring-2 ring-white/45 sm:size-12">
+                  <img
+                    alt="Driver profile"
+                    className="h-full w-full object-cover"
+                    src={profileForm.photoUrl}
+                  />
+                </div>
+              ) : (
+                <div className="grid size-11 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-semibold text-white sm:size-12 sm:text-sm">
+                  {profileInitials}
+                </div>
+              )}
+              <button
+                className="absolute -bottom-1 -right-1 inline-flex size-5 items-center justify-center rounded-full border border-white/70 bg-slate-900 text-white shadow-sm transition hover:bg-slate-800"
+                onClick={() => setPhotoModalOpen(true)}
+                title="Update profile photo"
+                type="button"
+              >
+                <Camera className="size-3" />
+              </button>
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-300 sm:text-xs sm:tracking-[0.2em]">
+                Driver Profile
+              </p>
+              <h2 className="truncate text-lg font-semibold text-white sm:text-xl">
                 {profileForm.name || "Add your profile"}
               </h2>
-              <p className="text-xs text-slate-300">
+              <p className="text-[11px] text-slate-300 sm:text-xs">
                 Keep this profile updated for fleet, workshop and support operations.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full border border-emerald-300/70 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-emerald-300/70 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-100 sm:px-3 sm:text-xs">
               Active driver account
             </span>
-            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${completionTone}`}>
+            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold sm:px-3 sm:text-xs ${completionTone}`}>
               {completionLabel}
             </span>
           </div>
         </div>
-        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto]">
+        <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-[1fr_auto]">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-200">
               <p>Profile completeness</p>
@@ -180,22 +192,36 @@ function DriverProfileSection({
               )}
             </div>
           </div>
-          <div className="flex gap-2 self-start">
-            <Button onClick={handleProfileSave} type="button">
+          {/* <div className="flex w-full flex-col gap-2 self-start sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+            <Button
+              className="w-full border-amber-300/80 bg-amber-300/10 text-amber-100 hover:bg-amber-300/20 sm:w-auto"
+              onClick={() => setPhotoModalOpen(true)}
+              type="button"
+              variant="outline"
+            >
+              <Camera className="mr-2 size-4" />
+              {profileForm.photoUrl ? "Change profile photo" : "Add profile photo"}
+            </Button>
+            <Button className="w-full sm:w-auto" onClick={handleProfileSave} type="button">
               Save profile
             </Button>
-            <Button onClick={handleProfileReset} type="button" variant="outline">
+            <Button
+              className="w-full border-slate-300 bg-white text-slate-900 hover:bg-slate-100 sm:w-auto"
+              onClick={handleProfileReset}
+              type="button"
+              variant="outline"
+            >
               Reset
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">Driver profile management</h3>
+      <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-4 sm:space-y-6">
+          <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+              <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Driver profile management</h3>
               <div className="mt-4 space-y-3">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -213,6 +239,7 @@ function DriverProfileSection({
                   <Input
                     onChange={(event) => updateField("email", event.target.value)}
                     value={profileForm.email}
+                    disabled
                   />
                 </div>
                 <div className="space-y-1">
@@ -220,6 +247,7 @@ function DriverProfileSection({
                     About driver
                   </p>
                   <Textarea
+                    className="text-xs sm:text-sm [overflow-wrap:anywhere] break-all"
                     onChange={(event) => updateField("bio", event.target.value)}
                     placeholder="Short profile summary..."
                     rows={4}
@@ -229,8 +257,8 @@ function DriverProfileSection({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">License details</h3>
+            <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+              <h3 className="text-base font-semibold text-slate-900 sm:text-lg">License details</h3>
               <div className="mt-4 space-y-3">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -264,8 +292,8 @@ function DriverProfileSection({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">Contact details</h3>
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Contact details</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</p>
@@ -296,7 +324,7 @@ function DriverProfileSection({
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {/* <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">Profile setup checklist</h3>
             <p className="mt-1 text-xs text-slate-500">
@@ -326,16 +354,16 @@ function DriverProfileSection({
             </div>
           </div> */}
 
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">Profile preview</h3>
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Profile preview</h3>
             <p className="mt-1 text-xs text-slate-500">
               This is how your profile will appear in operations.
             </p>
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-3">
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+              <div className="flex items-start gap-3">
                 <div className="relative">
                   {profileForm.photoUrl ? (
-                    <div className="size-16 overflow-hidden rounded-full ring-2 ring-slate-300">
+                    <div className="size-14 overflow-hidden rounded-full ring-2 ring-slate-300 sm:size-16">
                       <img
                         alt="Driver profile"
                         className="h-full w-full object-cover"
@@ -343,12 +371,12 @@ function DriverProfileSection({
                       />
                     </div>
                   ) : (
-                    <div className="grid size-16 place-items-center rounded-full bg-slate-900 text-sm font-semibold text-white">
+                    <div className="grid size-14 place-items-center rounded-full bg-slate-900 text-xs font-semibold text-white sm:size-16 sm:text-sm">
                       {profileInitials}
                     </div>
                   )}
                   <button
-                    className="absolute -bottom-1 -right-1 inline-flex size-7 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-sm transition hover:bg-slate-800"
+                    className="absolute -bottom-1 -right-1 inline-flex size-6 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-sm transition hover:bg-slate-800 sm:size-7"
                     onClick={() => setPhotoModalOpen(true)}
                     title="Update profile photo"
                     type="button"
@@ -356,11 +384,11 @@ function DriverProfileSection({
                     <Camera className="size-3.5" />
                   </button>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-slate-900 sm:text-sm">
                     {profileForm.name || "Unnamed Driver"}
                   </p>
-                  <p className="text-xs text-slate-600">{profileForm.email || "N/A"}</p>
+                  <p className="truncate text-[11px] text-slate-600 sm:text-xs">{profileForm.email || "N/A"}</p>
                   <button
                     className="mt-1 text-[11px] font-semibold text-indigo-700 transition hover:text-indigo-600"
                     onClick={() => setPhotoModalOpen(true)}
@@ -396,7 +424,7 @@ function DriverProfileSection({
                 </p>
                 <p>
                   Address:{" "}
-                  <span className="font-semibold text-slate-900">
+                  <span className="break-words font-semibold text-slate-900">
                     {profileForm.contactAddress || "N/A"}
                   </span>
                 </p>
@@ -406,7 +434,9 @@ function DriverProfileSection({
                   About
                 </p>
                 <p className="mt-1 text-xs text-slate-700">
-                  {profileForm.bio || "No profile summary added yet."}
+                  <span className="[overflow-wrap:anywhere] break-all">
+                    {profileForm.bio || "No profile summary added yet."}
+                  </span>
                 </p>
               </div>
             </div>
@@ -415,19 +445,19 @@ function DriverProfileSection({
       </div>
 
       <Dialog onOpenChange={setPhotoModalOpen} open={photoModalOpen}>
-        <DialogContent className="overflow-hidden border-slate-200 p-0 sm:max-w-xl">
-          <div className="bg-[linear-gradient(135deg,#f8fafc_0%,#eef2ff_100%)] p-6">
+        <DialogContent className="max-h-[92vh] overflow-y-auto border-slate-200 p-0 sm:max-w-xl">
+          <div className="bg-[linear-gradient(135deg,#f8fafc_0%,#eef2ff_100%)] p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle className="text-slate-900">Update Profile Photo</DialogTitle>
-              <DialogDescription className="text-slate-600">
+              <DialogTitle className="text-sm text-slate-900 sm:text-base">Update Profile Photo</DialogTitle>
+              <DialogDescription className="text-xs text-slate-600 sm:text-sm">
                 Upload a clear photo for quick identity confirmation at workshop and fleet desk.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white/70 p-5">
+            <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/70 p-4 sm:mt-5 sm:p-5">
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
                 <div className="relative">
-                  <div className="grid size-24 place-items-center overflow-hidden rounded-full bg-slate-900 text-lg font-semibold text-white ring-4 ring-white">
+                  <div className="grid size-20 place-items-center overflow-hidden rounded-full bg-slate-900 text-base font-semibold text-white ring-4 ring-white sm:size-24 sm:text-lg">
                     {profileForm.photoUrl ? (
                       <img
                         alt="Driver profile"
@@ -475,8 +505,9 @@ function DriverProfileSection({
                 </div>
               ) : null}
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     handleProfileSave();
                     setPhotoModalOpen(false);
@@ -485,7 +516,7 @@ function DriverProfileSection({
                 >
                   Save & close
                 </Button>
-                <Button onClick={() => setPhotoModalOpen(false)} type="button" variant="outline">
+                <Button className="w-full sm:w-auto" onClick={() => setPhotoModalOpen(false)} type="button" variant="outline">
                   Close
                 </Button>
               </div>
@@ -495,7 +526,7 @@ function DriverProfileSection({
       </Dialog>
 
       {profileNotice ? (
-        <div className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
+        <div className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-xs text-slate-700 sm:text-sm">
           {profileNotice}
         </div>
       ) : null}

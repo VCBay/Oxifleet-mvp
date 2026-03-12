@@ -108,6 +108,41 @@ const getDefaultPolicies = () => {
   const today = new Date().toISOString().slice(0, 10);
   return [
     normalizePolicy({
+      id: "POL-DEMO-ALL-001",
+      name: "Demo Universal Coverage Policy",
+      policyCode: "DEMO-ALL-CASES",
+      version: 1,
+      status: "Active",
+      allowedServiceTypes: [
+        "Reifen",
+        "Service",
+        "Technisches Problem",
+        "Schadensmeldung",
+        "Tyre damage",
+        "Brake issue",
+        "Engine diagnostics",
+        "Battery / electrical",
+        "Accident damage",
+        "General service",
+      ],
+      allowedTyreBrands: ["Michelin", "Continental", "Bridgestone", "Goodyear", "Pirelli"],
+      allowedTyreCategories: ["Summer", "Winter", "All-season", "Highway", "Performance"],
+      servicePriceLimit: null,
+      tyrePriceLimit: null,
+      approvalThreshold: null,
+      seasonalTyreRules: "No seasonal restriction in demo policy.",
+      specialCaseExceptions: "All request categories are covered in demo mode.",
+      appliesTo: {
+        fleet: "",
+        vehicleGroup: "",
+        vehicleClass: "",
+        vehicleId: "",
+      },
+      changeNote: "Seeded universal policy for all service request cases.",
+      effectiveFrom: today,
+      createdAt: new Date().toISOString(),
+    }),
+    normalizePolicy({
       id: "POL-DEMO-001",
       name: "Demo Fleet Safety Policy",
       policyCode: "DEMO-SAFETY",
@@ -141,10 +176,32 @@ const getDefaultPolicies = () => {
   ];
 };
 
+const ensureSeedPolicies = (existingPolicies) => {
+  const normalizedExisting = existingPolicies.map(normalizePolicy);
+  const seedPolicies = getDefaultPolicies();
+  const existingKeys = new Set(
+    normalizedExisting.map(
+      (policy) => `${String(policy.policyCode || "").toUpperCase()}::${Number(policy.version) || 1}`
+    )
+  );
+  const missingSeedPolicies = seedPolicies.filter((policy) => {
+    const key = `${String(policy.policyCode || "").toUpperCase()}::${Number(policy.version) || 1}`;
+    return !existingKeys.has(key);
+  });
+
+  if (missingSeedPolicies.length === 0) {
+    return normalizedExisting;
+  }
+
+  const merged = [...missingSeedPolicies, ...normalizedExisting];
+  writeStorage(merged);
+  return merged;
+};
+
 const initializePolicies = () => {
   const stored = readStorage();
   if (stored.length > 0) {
-    return stored.map(normalizePolicy);
+    return ensureSeedPolicies(stored);
   }
 
   const defaults = getDefaultPolicies();

@@ -4,10 +4,10 @@ import {
   Bell,
   CalendarClock,
   CheckCircle2,
-  Clock3,
   Siren,
   XCircle,
 } from "lucide-react";
+import { buildDriverBookingNotifications } from "../lib/driverBookingNotifications";
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
 
@@ -27,18 +27,6 @@ const formatDateTime = (value) => {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  });
-};
-
-const formatDate = (value) => {
-  const parsed = toDate(value);
-  if (!parsed) {
-    return "N/A";
-  }
-  return parsed.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
   });
 };
 
@@ -132,146 +120,83 @@ function DriverBookingTrackingPanel({
     [upcomingBookings]
   );
 
-  const notifications = useMemo(() => {
-    const rows = [];
-    rows.push({
-      id: "NTF-SERVICE-DUE",
-      type: "Service due reminders",
-      icon: CalendarClock,
-      title: `Next service due on ${formatDate(nextServiceDate)}`,
-      detail: `${vehicle?.id || "Vehicle"} is approaching service milestone.`,
-      levelClass: "bg-slate-800 text-slate-100",
-    });
+  const iconByNotificationKey = {
+    service_due: CalendarClock,
+    approval_ok: CheckCircle2,
+    approval_rejected: XCircle,
+    booking: Bell,
+    warning: AlertTriangle,
+    emergency: Siren,
+  };
 
-    scopedOrders.forEach((order) => {
-      const approvalDecision = normalize(order?.approval?.decision);
-      if (approvalDecision === "approved" || approvalDecision === "rejected") {
-        rows.push({
-          id: `NTF-APPROVAL-${order.id}`,
-          type: "Approval granted/rejected alerts",
-          icon: approvalDecision === "approved" ? CheckCircle2 : XCircle,
-          title:
-            approvalDecision === "approved"
-              ? `Approval granted for ${order.id}`
-              : `Approval rejected for ${order.id}`,
-          detail:
-            order?.approval?.note ||
-            `Order ${order.id} has a new approval decision.`,
-          levelClass:
-            approvalDecision === "approved"
-              ? "bg-emerald-900 text-emerald-100"
-              : "bg-rose-900 text-rose-100",
-        });
-      }
-
-      const status = normalize(order.status);
-      if (
-        status.includes("pending booking") ||
-        status.includes("scheduled") ||
-        status.includes("approved") ||
-        status.includes("progress")
-      ) {
-        const appointmentText = order?.appointment?.dateTime
-          ? ` Appointment: ${formatDateTime(order.appointment.dateTime)}.`
-          : "";
-        rows.push({
-          id: `NTF-BOOKING-${order.id}`,
-          type: "Booking confirmations",
-          icon: Bell,
-          title: `Booking update: ${order.id}`,
-          detail: `${order.serviceType} is currently ${order.status}.${appointmentText}`,
-          levelClass: "bg-sky-900 text-sky-100",
-        });
-      }
-
-      if (status.includes("rejected")) {
-        rows.push({
-          id: `NTF-REJECT-${order.id}`,
-          type: "Order rejection reasons",
-          icon: AlertTriangle,
-          title: `Order ${order.id} was rejected`,
-          detail:
-            order?.approval?.note ||
-            order?.lifecycle?.[order.lifecycle.length - 1]?.note ||
-            "Please review and re-submit with corrections.",
-          levelClass: "bg-amber-900 text-amber-100",
-        });
-      }
-
-      if (order.emergency) {
-        rows.push({
-          id: `NTF-EMERGENCY-${order.id}`,
-          type: "Emergency updates",
-          icon: Siren,
-          title: `Emergency request ${order.id}`,
-          detail: `${order.serviceType} marked as emergency. Track updates closely.`,
-          levelClass: "bg-rose-900 text-rose-100",
-        });
-      }
-    });
-
-    const unique = Array.from(new Map(rows.map((item) => [item.id, item])).values());
-    return unique.slice(0, 20);
-  }, [nextServiceDate, scopedOrders, vehicle?.id]);
+  const notifications = useMemo(
+    () =>
+      buildDriverBookingNotifications({
+        nextServiceDate,
+        scopedOrders,
+        vehicleId: vehicle?.id,
+      }),
+    [nextServiceDate, scopedOrders, vehicle?.id]
+  );
 
   return (
-    <section className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="min-w-0 space-y-4 sm:space-y-6">
+      <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <p className="text-xs text-slate-500">Upcoming bookings</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
+          <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
             {upcomingBookings.length}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <p className="text-xs text-slate-500">Booking history</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
+          <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
             {bookingHistory.length}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <p className="text-xs text-slate-500">Live status</p>
-          <p className="mt-2 text-sm font-semibold text-slate-900">
+          <p className="mt-2 text-xs font-semibold text-slate-900 sm:text-sm">
             {liveBooking?.status || "No active bookings"}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <p className="text-xs text-slate-500">Active workflows</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
+          <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
             {upcomingBookings.length}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Upcoming bookings</h2>
-          <div className="mt-4 space-y-3">
+      <div className="grid min-w-0 items-start gap-4 sm:gap-6 xl:grid-cols-2">
+        <div className="flex flex-col rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6 xl:h-[30rem]">
+          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Upcoming bookings</h2>
+          <div className="sidebar-scrollbar mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 sm:pr-2">
             {upcomingBookings.length === 0 ? (
-              <p className="text-sm text-slate-500">No upcoming bookings.</p>
+              <p className="text-xs text-slate-500 sm:text-sm">No upcoming bookings.</p>
             ) : (
-              upcomingBookings.slice(0, 6).map((booking) => (
+              upcomingBookings.map((booking) => (
                 <div
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
                   key={booking.id}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-slate-900">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="min-w-0 break-words text-xs font-semibold text-slate-900 sm:text-sm">
                       {booking.id} - {booking.serviceType}
                     </p>
                     <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${badgeClassByStatus(
+                      className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold sm:text-xs ${badgeClassByStatus(
                         booking.status
                       )}`}
                     >
                       {booking.status}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
                     Requested: {formatDateTime(booking.requestedAt)}
                   </p>
                   {booking?.appointment?.dateTime ? (
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
                       Appointment: {formatDateTime(booking.appointment.dateTime)}
                     </p>
                   ) : null}
@@ -281,30 +206,30 @@ function DriverBookingTrackingPanel({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Booking history</h2>
-          <div className="mt-4 space-y-3">
+        <div className="flex flex-col rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6 xl:h-[30rem]">
+          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Booking history</h2>
+          <div className="sidebar-scrollbar mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 sm:pr-2">
             {bookingHistory.length === 0 ? (
-              <p className="text-sm text-slate-500">No historical bookings yet.</p>
+              <p className="text-xs text-slate-500 sm:text-sm">No historical bookings yet.</p>
             ) : (
-              bookingHistory.slice(0, 6).map((booking) => (
+              bookingHistory.map((booking) => (
                 <div
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
                   key={booking.id}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-slate-900">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="min-w-0 break-words text-xs font-semibold text-slate-900 sm:text-sm">
                       {booking.id} - {booking.serviceType}
                     </p>
                     <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${badgeClassByStatus(
+                      className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold sm:text-xs ${badgeClassByStatus(
                         booking.status
                       )}`}
                     >
                       {booking.status}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
                     Updated: {formatDateTime(booking.updatedAt || booking.requestedAt)}
                   </p>
                 </div>
@@ -314,77 +239,98 @@ function DriverBookingTrackingPanel({
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
             Live booking status tracking
           </h2>
           {!liveBooking ? (
-            <p className="mt-4 text-sm text-slate-500">
+            <p className="mt-4 text-xs text-slate-500 sm:text-sm">
               No active booking available for live tracking.
             </p>
           ) : (
             <div className="mt-4 space-y-3">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="break-words text-xs font-semibold text-slate-900 sm:text-sm">
                   {liveBooking.id} - {liveBooking.serviceType}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-[11px] text-slate-500 sm:text-xs">
                   Current status: {liveBooking.status}
                 </p>
                 {liveBooking?.appointment?.dateTime ? (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[11px] text-slate-500 sm:text-xs">
                     Appointment: {formatDateTime(liveBooking.appointment.dateTime)}
                   </p>
                 ) : null}
               </div>
               <div className="space-y-2">
-                {(liveBooking.lifecycle || [])
-                  .slice()
-                  .reverse()
-                  .slice(0, 6)
-                  .map((entry, index) => (
-                    <div
-                      className="flex gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2"
-                      key={`${liveBooking.id}-lifecycle-${index}`}
-                    >
-                      <Clock3 className="mt-0.5 text-slate-500" size={16} />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {entry.stage}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {formatDateTime(entry.time)} by {entry.actor}
-                        </p>
-                        {entry.note ? (
-                          <p className="mt-1 text-xs text-slate-600">{entry.note}</p>
+                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                  {(() => {
+                    const entries = (liveBooking.lifecycle || [])
+                      .slice()
+                      .reverse()
+                      .slice(0, 6);
+                    return (
+                      <div className="relative">
+                        {entries.length > 1 ? (
+                          <span className="absolute left-[9px] top-2 h-[calc(100%-1rem)] w-px bg-emerald-500/60" />
                         ) : null}
+                        {entries.map((entry, index) => {
+                          const isLast = index === entries.length - 1;
+                          return (
+                            <div
+                              className={`relative pl-8 ${isLast ? "" : "pb-4 sm:pb-5"}`}
+                              key={`${liveBooking.id}-lifecycle-${index}`}
+                            >
+                              <span className="absolute left-0 top-0.5 grid size-5 place-items-center rounded-full bg-emerald-600 text-white ring-2 ring-emerald-100">
+                                <CheckCircle2 size={12} />
+                              </span>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-slate-900 sm:text-sm">
+                                  {entry.stage},{" "}
+                                  <span className="font-medium text-slate-700">
+                                    {formatDateTime(entry.time)}
+                                  </span>
+                                </p>
+                                <p className="text-[11px] text-slate-500 sm:text-xs">
+                                  by {entry.actor}
+                                </p>
+                                {entry.note ? (
+                                  <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
+                                    {entry.note}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           )}
       </div>
 
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
-        <div className="mt-4 max-h-[340px] space-y-2 overflow-y-auto pr-2">
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+        <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Notifications</h2>
+        <div className="mt-4 max-h-[300px] space-y-2 overflow-y-auto pr-1 sm:max-h-[340px] sm:pr-2">
           {notifications.map((item) => {
-            const Icon = item.icon;
+            const Icon = iconByNotificationKey[item.iconKey] || Bell;
             return (
               <div
                 className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
                 key={item.id}
               >
-                <span className={`mt-0.5 rounded-full p-1 ${item.levelClass}`}>
-                  <Icon size={14} />
+                <span className={`mt-0.5 shrink-0 rounded-full p-1 ${item.levelClass}`}>
+                  <Icon size={13} />
                 </span>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {item.type}
                   </p>
-                  <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                  <p className="text-xs text-slate-600">{item.detail}</p>
+                  <p className="text-xs font-semibold text-slate-900 sm:text-sm">{item.title}</p>
+                  <p className="text-[11px] text-slate-600 sm:text-xs">{item.detail}</p>
                 </div>
               </div>
             );
