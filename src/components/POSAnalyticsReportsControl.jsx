@@ -483,7 +483,7 @@ function POSAnalyticsReportsControl() {
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Top serviced vehicles</h2>
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
             {topServicedVehicles.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                 No service history available.
@@ -510,7 +510,7 @@ function POSAnalyticsReportsControl() {
 
       <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">Fleet-wise performance</h2>
-        <div className="mt-4 space-y-2">
+        <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
           {fleetWisePerformance.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
               No fleet performance data available.

@@ -1,4 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -466,11 +467,24 @@ function VehiclePolicyManagement({ vehicles }) {
             </span>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <Input
-              onChange={(event) => setPolicySearch(event.target.value)}
-              placeholder="Search name/code/scope"
-              value={policySearch}
-            />
+            <div className="relative">
+              <Input
+                className="pr-10"
+                onChange={(event) => setPolicySearch(event.target.value)}
+                placeholder="Search name/code/scope"
+                value={policySearch}
+              />
+              {policySearch ? (
+                <button
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                  onClick={() => setPolicySearch("")}
+                  type="button"
+                >
+                  <X size={14} />
+                </button>
+              ) : null}
+            </div>
             <Select onValueChange={setStatusFilter} value={statusFilter}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Status filter" />
@@ -484,7 +498,7 @@ function VehiclePolicyManagement({ vehicles }) {
             </Select>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-3 overflow-y-auto pr-1">
             {filteredLatestPolicies.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
                 No policy records found.
@@ -548,7 +562,7 @@ function VehiclePolicyManagement({ vehicles }) {
             Multiple policies can exist for the same class. Latest version per policy
             code is shown here.
           </p>
-          <div className="mt-4 space-y-3">
+          <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-3 overflow-y-auto pr-1">
             {classWisePolicies.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
                 No class-scoped policies yet.
@@ -600,7 +614,7 @@ function VehiclePolicyManagement({ vehicles }) {
           </Select>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-3 overflow-y-auto pr-1">
           {selectedHistory.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
               No version history found.

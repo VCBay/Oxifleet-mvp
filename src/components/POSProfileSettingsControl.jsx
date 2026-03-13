@@ -4,13 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { SearchableSelect } from "./ui/searchable-select";
 import {
   getCommunicationState,
   sendWorkshopMessage,
@@ -72,6 +66,37 @@ const defaultLocationSettings = {
   serviceCoverageKm: "120",
   emergencyDispatchEnabled: "Yes",
 };
+
+const ROLE_OPTIONS = [
+  { value: "POS Supervisor", label: "POS Supervisor" },
+  { value: "Service Advisor", label: "Service Advisor" },
+  { value: "Technician", label: "Technician" },
+  { value: "Billing Staff", label: "Billing Staff" },
+];
+
+const SHIFT_OPTIONS = [
+  { value: "Morning", label: "Morning" },
+  { value: "Evening", label: "Evening" },
+  { value: "Night", label: "Night" },
+  { value: "General", label: "General" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "Active", label: "Active" },
+  { value: "On leave", label: "On leave" },
+];
+
+const CHANNEL_OPTIONS = [
+  { value: "Portal", label: "Portal" },
+  { value: "Email", label: "Email" },
+  { value: "Call", label: "Call" },
+];
+
+const URGENCY_OPTIONS = [
+  { value: "Normal", label: "Normal" },
+  { value: "High", label: "High" },
+  { value: "Emergency", label: "Emergency" },
+];
 
 const createStaffId = () =>
   `STF-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -322,61 +347,51 @@ function POSProfileSettingsControl({ session = null }) {
               value={staffDraft.name}
             />
             <div className="grid gap-2 sm:grid-cols-3">
-              <Select
+              <SearchableSelect
                 onValueChange={(value) =>
                   setStaffDraft((prev) => ({ ...prev, role: value }))
                 }
-                value={staffDraft.role}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="POS Supervisor">POS Supervisor</SelectItem>
-                  <SelectItem value="Service Advisor">Service Advisor</SelectItem>
-                  <SelectItem value="Technician">Technician</SelectItem>
-                  <SelectItem value="Billing Staff">Billing Staff</SelectItem>
-                </SelectContent>
-              </Select>
+                options={ROLE_OPTIONS}
+                value={staffDraft.role || ""}
+                placeholder="Role"
+                searchPlaceholder="Search roles"
+                emptyLabel="No roles"
+                noMatchLabel="No matching roles"
+                triggerClassName="w-full"
+              />
 
-              <Select
+              <SearchableSelect
                 onValueChange={(value) =>
                   setStaffDraft((prev) => ({ ...prev, shift: value }))
                 }
-                value={staffDraft.shift}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Shift" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Morning">Morning</SelectItem>
-                  <SelectItem value="Evening">Evening</SelectItem>
-                  <SelectItem value="Night">Night</SelectItem>
-                  <SelectItem value="General">General</SelectItem>
-                </SelectContent>
-              </Select>
+                options={SHIFT_OPTIONS}
+                value={staffDraft.shift || ""}
+                placeholder="Shift"
+                searchPlaceholder="Search shifts"
+                emptyLabel="No shifts"
+                noMatchLabel="No matching shifts"
+                triggerClassName="w-full"
+              />
 
-              <Select
+              <SearchableSelect
                 onValueChange={(value) =>
                   setStaffDraft((prev) => ({ ...prev, status: value }))
                 }
-                value={staffDraft.status}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="On leave">On leave</SelectItem>
-                </SelectContent>
-              </Select>
+                options={STATUS_OPTIONS}
+                value={staffDraft.status || ""}
+                placeholder="Status"
+                searchPlaceholder="Search status"
+                emptyLabel="No status options"
+                noMatchLabel="No matching status"
+                triggerClassName="w-full"
+              />
             </div>
             <Button onClick={addStaffMember} type="button" variant="outline">
               Add staff member
             </Button>
           </div>
 
-          <div className="mt-4 max-h-64 space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar]:w-1.5">
+          <div className="card-list-scrollbar mt-4 max-h-64 space-y-2 overflow-y-auto pr-1">
             {staffMembers.map((member) => (
               <div
                 key={member.id}
@@ -401,17 +416,20 @@ function POSProfileSettingsControl({ session = null }) {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section className="grid gap-6 2xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Working hours</h2>
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-2 overflow-y-auto pr-1">
             {workingHours.map((item) => (
               <div
                 key={item.day}
-                className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[1fr_120px_120px_90px]"
+                className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
               >
-                <p className="self-center text-sm font-semibold text-slate-900">{item.day}</p>
+                <p className="self-center text-sm font-semibold text-slate-900 sm:col-span-2 lg:col-span-1">
+                  {item.day}
+                </p>
                 <Input
+                  className="min-w-0"
                   disabled={item.closed}
                   onChange={(event) =>
                     updateWorkingDay(item.day)({ open: event.target.value })
@@ -420,6 +438,7 @@ function POSProfileSettingsControl({ session = null }) {
                   value={item.open}
                 />
                 <Input
+                  className="min-w-0"
                   disabled={item.closed}
                   onChange={(event) =>
                     updateWorkingDay(item.day)({ close: event.target.value })
@@ -427,7 +446,7 @@ function POSProfileSettingsControl({ session = null }) {
                   type="time"
                   value={item.close}
                 />
-                <label className="flex items-center gap-2 text-xs text-slate-600">
+                <label className="flex items-center gap-2 text-xs text-slate-600 sm:col-span-2 sm:justify-end lg:col-span-1 lg:justify-start">
                   <input
                     checked={item.closed}
                     onChange={(event) =>
@@ -568,36 +587,30 @@ function POSProfileSettingsControl({ session = null }) {
           </p>
           <div className="mt-4 grid gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Select
+              <SearchableSelect
                 onValueChange={(value) =>
                   setFleetMessageMeta((prev) => ({ ...prev, channel: value }))
                 }
-                value={fleetMessageMeta.channel}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Channel" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Portal">Portal</SelectItem>
-                  <SelectItem value="Email">Email</SelectItem>
-                  <SelectItem value="Call">Call</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
+                options={CHANNEL_OPTIONS}
+                value={fleetMessageMeta.channel || ""}
+                placeholder="Channel"
+                searchPlaceholder="Search channels"
+                emptyLabel="No channels"
+                noMatchLabel="No matching channel"
+                triggerClassName="w-full"
+              />
+              <SearchableSelect
                 onValueChange={(value) =>
                   setFleetMessageMeta((prev) => ({ ...prev, urgency: value }))
                 }
-                value={fleetMessageMeta.urgency}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Urgency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Normal">Normal</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Emergency">Emergency</SelectItem>
-                </SelectContent>
-              </Select>
+                options={URGENCY_OPTIONS}
+                value={fleetMessageMeta.urgency || ""}
+                placeholder="Urgency"
+                searchPlaceholder="Search urgency"
+                emptyLabel="No urgency levels"
+                noMatchLabel="No matching urgency"
+                triggerClassName="w-full"
+              />
             </div>
             <Textarea
               onChange={(event) => setFleetMessageDraft(event.target.value)}
@@ -615,7 +628,7 @@ function POSProfileSettingsControl({ session = null }) {
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Fleet conversation</h2>
           <p className="mt-1 text-sm text-slate-500">{workshopIdentity}</p>
-          <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar]:w-1.5">
+          <div className="card-list-scrollbar mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
             {fleetConversation.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                 No fleet communication yet.

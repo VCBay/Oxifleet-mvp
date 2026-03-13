@@ -140,9 +140,121 @@ const normalizeVehicle = (vehicle = {}) => {
   };
 };
 
+const getDefaultVehicles = () => [
+  {
+    id: "VH-884",
+    model: "Freightliner Cascadia",
+    plate: "TX-9842",
+    type: "Truck",
+    status: "Active",
+    notes: "Primary long-haul lane vehicle.",
+    warrantyProvider: "OEM",
+    warrantyExpiryDate: "2026-09-30",
+  },
+  {
+    id: "VH-241",
+    model: "Volvo VNL 760",
+    plate: "TX-7721",
+    type: "Truck",
+    status: "Active",
+    notes: "Regional dispatch rotation.",
+    warrantyProvider: "Volvo Care",
+    warrantyExpiryDate: "2026-08-14",
+  },
+  {
+    id: "VH-553",
+    model: "Kenworth T680",
+    plate: "TX-6105",
+    type: "Truck",
+    status: "In service",
+    notes: "Scheduled diagnostics and brake calibration.",
+    warrantyProvider: "Kenworth Shield",
+    warrantyExpiryDate: "2026-06-30",
+  },
+  {
+    id: "VH-901",
+    model: "Mack Anthem",
+    plate: "TX-3320",
+    type: "Truck",
+    status: "Active",
+    notes: "Emergency coverage route.",
+    warrantyProvider: "Mack Plus",
+    warrantyExpiryDate: "2026-12-11",
+  },
+  {
+    id: "VH-617",
+    model: "International LT",
+    plate: "TX-4408",
+    type: "Truck",
+    status: "Active",
+    notes: "Night-shift route support.",
+    warrantyProvider: "International Care",
+    warrantyExpiryDate: "2026-11-20",
+  },
+  {
+    id: "VH-730",
+    model: "Volvo VNR",
+    plate: "TX-5594",
+    type: "Truck",
+    status: "Inactive",
+    notes: "Temporarily paused pending route reassignment.",
+    warrantyProvider: "Volvo Care",
+    warrantyExpiryDate: "2026-05-18",
+  },
+  {
+    id: "VH-102",
+    model: "Peterbilt 579",
+    plate: "TX-1201",
+    type: "Truck",
+    status: "Active",
+    notes: "Assigned to central depot operations.",
+    warrantyProvider: "PACCAR",
+    warrantyExpiryDate: "2027-01-08",
+  },
+  {
+    id: "VH-468",
+    model: "Ford Transit 350",
+    plate: "TX-4680",
+    type: "Van",
+    status: "Active",
+    notes: "Light-duty spare parts and technician shuttle.",
+    warrantyProvider: "Ford Fleet",
+    warrantyExpiryDate: "2026-10-05",
+    replacementVehicleId: "VH-730",
+    replacementNotes: "Can be swapped for short routes when needed.",
+  },
+];
+
+const ensureSeedVehicles = (existingVehicles) => {
+  const normalizedExisting = existingVehicles.map(normalizeVehicle);
+  const defaultVehicles = getDefaultVehicles().map(normalizeVehicle);
+  const existingIds = new Set(normalizedExisting.map((vehicle) => vehicle.id));
+  const missingDefaults = defaultVehicles.filter(
+    (vehicle) => !existingIds.has(vehicle.id)
+  );
+
+  if (missingDefaults.length === 0) {
+    return normalizedExisting;
+  }
+
+  const merged = [...missingDefaults, ...normalizedExisting];
+  writeStorage(merged);
+  return merged;
+};
+
+const initializeVehicles = () => {
+  const stored = readStorage();
+  if (stored.length > 0) {
+    return ensureSeedVehicles(stored);
+  }
+  const defaults = getDefaultVehicles().map(normalizeVehicle);
+  writeStorage(defaults);
+  return defaults;
+};
+
 let state = {
   baseVehicleCount: BASE_VEHICLE_COUNT,
-  vehicles: readStorage().map(normalizeVehicle),
+  vehicles: initializeVehicles(),
 };
 
 const listeners = new Set();

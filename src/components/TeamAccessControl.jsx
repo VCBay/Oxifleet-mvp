@@ -299,7 +299,7 @@ function TeamAccessControl() {
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Team roster</h3>
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {members.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                 No team members yet.
@@ -443,7 +443,7 @@ function TeamAccessControl() {
       <div className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Activity logs</h3>
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {teamAccessState.activityLogs.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                 No activity logs available.
@@ -468,7 +468,7 @@ function TeamAccessControl() {
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Audit trail</h3>
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {teamAccessState.auditTrail.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                 No audit events available.

@@ -8,6 +8,7 @@ import {
   Send,
   UserRound,
   Wrench,
+  X,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -139,15 +140,25 @@ function DriverCommunicationSection({
                   size={14}
                 />
                 <Input
-                  className="h-8 rounded-full border-slate-200 bg-slate-50 pl-9 text-xs sm:h-9 sm:text-sm"
+                  className="h-8 rounded-full border-slate-200 bg-slate-50 pl-9 pr-9 text-xs sm:h-9 sm:text-sm"
                   onChange={(event) => setSearchText(event.target.value)}
                   placeholder="Search contact"
                   value={searchText}
                 />
+                {searchText ? (
+                  <button
+                    aria-label="Clear search"
+                    className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                    onClick={() => setSearchText("")}
+                    type="button"
+                  >
+                    <X size={13} />
+                  </button>
+                ) : null}
               </div>
             </div>
 
-            <div className="max-h-[260px] space-y-1 overflow-y-auto p-2 md:max-h-[600px]">
+            <div className="card-list-scrollbar max-h-[260px] space-y-1 overflow-y-auto p-2 pr-1 md:max-h-[600px]">
               {filteredContacts.map((contact) => {
                 const Icon = getContactIcon(contact.id);
                 const isActive = activeCommunicationContact === contact.id;
@@ -226,7 +237,7 @@ function DriverCommunicationSection({
                     View support updates and send quick support message.
                   </p>
 
-                  <div className="mt-4 max-h-[280px] space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:max-h-[360px]">
+                  <div className="card-list-scrollbar mt-4 max-h-[280px] space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 pr-1 sm:max-h-[360px]">
                     {supportMessages.length === 0 ? (
                       <p className="text-xs text-slate-500 sm:text-sm">No support updates yet.</p>
                     ) : (
@@ -339,7 +350,7 @@ function DriverCommunicationSection({
                   ) : null}
                 </div>
 
-                <div className="max-h-[460px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3 sm:max-h-[500px] sm:p-4">
+                <div className="card-list-scrollbar max-h-[460px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3 pr-1 sm:max-h-[500px] sm:p-4">
                   {activeCommunicationMessages.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-slate-300 bg-white/80 p-3 text-xs text-slate-500">
                       No messages yet.

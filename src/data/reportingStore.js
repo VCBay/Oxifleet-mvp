@@ -73,14 +73,31 @@ const getDefaultSchedules = () => [
   }),
 ];
 
+const ensureSeedSchedules = (existingSchedules) => {
+  const normalizedExisting = existingSchedules.map(normalizeSchedule);
+  const defaultSchedules = getDefaultSchedules().map(normalizeSchedule);
+  const existingIds = new Set(
+    normalizedExisting.map((schedule) => String(schedule?.id || "").trim())
+  );
+  const missingDefaults = defaultSchedules.filter(
+    (schedule) => !existingIds.has(String(schedule?.id || "").trim())
+  );
+
+  if (missingDefaults.length === 0) {
+    return normalizedExisting;
+  }
+
+  const merged = [...missingDefaults, ...normalizedExisting];
+  writeStorage(merged);
+  return merged;
+};
+
 const initializeSchedules = () => {
   const stored = readStorage();
   if (stored.length > 0) {
-    const normalized = stored.map(normalizeSchedule);
-    writeStorage(normalized);
-    return normalized;
+    return ensureSeedSchedules(stored);
   }
-  const defaults = getDefaultSchedules();
+  const defaults = getDefaultSchedules().map(normalizeSchedule);
   writeStorage(defaults);
   return defaults;
 };

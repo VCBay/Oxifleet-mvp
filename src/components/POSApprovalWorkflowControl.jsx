@@ -1,20 +1,25 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
-import { CalendarClock, CheckCircle2, Clock3, FileText, History, Play, Send, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  Clock3,
+  FileText,
+  History,
+  Loader2,
+  Play,
+  Send,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { SearchableSelect } from "./ui/searchable-select";
+import { useNavigate } from "react-router-dom";
 import { getPosOrderState, subscribePosOrders } from "../data/posOrderStore";
 import {
   confirmServiceAppointment,
-  confirmServiceCompletion,
   createServiceRequest,
   getServiceOrderState,
   setOrderLifecycleStage,
@@ -38,6 +43,9 @@ const extractPosOrderId = (serviceOrder) => {
 
 const getApprovalState = (status) => {
   const raw = normalize(status);
+  if (raw.includes("invoice")) {
+    return "Invoice processing";
+  }
   if (raw.includes("rejected")) {
     return "Rejected";
   }
@@ -79,6 +87,9 @@ const toIsoFromLocalInput = (value) => {
 };
 
 const statusBadgeClass = (status) => {
+  if (status === "Invoice processing") {
+    return "bg-indigo-100 text-indigo-700";
+  }
   if (status === "Approved") {
     return "bg-emerald-100 text-emerald-700";
   }
@@ -94,7 +105,32 @@ const statusBadgeClass = (status) => {
   return "bg-slate-200 text-slate-700";
 };
 
-function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
+const queueStatusDotClass = (status) => {
+  const raw = normalize(status);
+  if (raw.includes("approved")) {
+    return "bg-emerald-500";
+  }
+  if (raw.includes("pending")) {
+    return "bg-amber-500";
+  }
+  if (raw.includes("scheduled")) {
+    return "bg-sky-500";
+  }
+  if (raw.includes("progress")) {
+    return "bg-violet-500";
+  }
+  return "bg-slate-400";
+};
+
+function POSApprovalWorkflowControl({
+  vehicles = [],
+  session = null,
+  initialPosOrderId = "",
+  initialApprovalRequestId = "",
+  initialQueueOrderId = "",
+  initialFocus = "",
+}) {
+  const navigate = useNavigate();
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
     getPosOrderState,
@@ -125,6 +161,18 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
   const [appointmentNote, setAppointmentNote] = useState("");
   const [calendarChecked, setCalendarChecked] = useState(true);
   const [stockChecked, setStockChecked] = useState(true);
+  const queueSectionRef = useRef(null);
+  const sendApprovalSectionRef = useRef(null);
+  const reSubmitSectionRef = useRef(null);
+  const statusSectionRef = useRef(null);
+  const actionLoaderTimeoutRef = useRef(null);
+  const actionPopupTimeoutRef = useRef(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [actionPopup, setActionPopup] = useState({
+    open: false,
+    title: "",
+    detail: "",
+  });
 
   const submittedOrders = useMemo(
     () => posOrderState.submittedOrders,
@@ -376,7 +424,12 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
       return;
     }
     setAppointmentNote("");
-    setFeedback(`Appointment confirmed for ${updated.id}. Driver and fleet can now track schedule.`);
+    const detail = `Appointment confirmed for ${updated.id}. Driver and fleet can now track schedule.`;
+    setFeedback(detail);
+    showActionSuccess({
+      title: "Appointment confirmed",
+      detail,
+    });
   };
 
   const startService = () => {
@@ -392,7 +445,12 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
       setFeedback("Unable to move request to in-progress state.");
       return;
     }
-    setFeedback(`Service started for ${updated.id}.`);
+    const detail = `Service started for ${updated.id}.`;
+    setFeedback(detail);
+    showActionSuccess({
+      title: "Service started",
+      detail,
+    });
   };
 
   const completeService = () => {
@@ -400,17 +458,17 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
       setFeedback("Select a service request from POS queue.");
       return;
     }
-    const updated = confirmServiceCompletion(selectedQueueOrder.id, {
-      actor: session?.name || "POS User",
-      note: "POS confirmed service completion.",
+    const posOrderId = extractPosOrderId(selectedQueueOrder);
+    const params = new URLSearchParams({
+      mode: "completion-invoice",
+      requestId: selectedQueueOrder.id,
+      vehicleId: selectedQueueOrder.vehicleId || "",
+      serviceType: selectedQueueOrder.serviceType || "",
     });
-    if (!updated) {
-      setFeedback("Unable to complete selected service request.");
-      return;
+    if (posOrderId) {
+      params.set("posOrderId", posOrderId);
     }
-    setFeedback(
-      `Service completed for ${updated.id}. Fleet manager has settlement-ready confirmation.`
-    );
+    navigate(`/pos-dashboard/order-management?${params.toString()}`);
   };
 
   const openStatusDetails = (row) => () => {
@@ -449,6 +507,130 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
 
   const modalStatus = modalRequest ? getApprovalState(modalRequest.status) : "Not requested";
 
+  const selectedQueueStatus = normalize(selectedQueueOrder?.status);
+  const statusAllowsAppointment =
+    selectedQueueStatus.includes("approved") ||
+    selectedQueueStatus.includes("pending booking");
+  const statusAllowsStart = selectedQueueStatus.includes("scheduled");
+  const statusAllowsCompletion = selectedQueueStatus.includes("progress");
+  const hasValidAppointmentDate = Boolean(toIsoFromLocalInput(appointmentAtLocal));
+  const canConfirmAppointment = Boolean(
+    selectedQueueOrder &&
+      statusAllowsAppointment &&
+      calendarChecked &&
+      stockChecked &&
+      hasValidAppointmentDate
+  );
+  const canStartService = Boolean(selectedQueueOrder && statusAllowsStart);
+  const canConfirmCompletion = Boolean(selectedQueueOrder && statusAllowsCompletion);
+
+  const showActionSuccess = ({ title, detail }) => {
+    if (actionLoaderTimeoutRef.current) {
+      window.clearTimeout(actionLoaderTimeoutRef.current);
+    }
+    if (actionPopupTimeoutRef.current) {
+      window.clearTimeout(actionPopupTimeoutRef.current);
+    }
+
+    setIsActionLoading(true);
+    actionLoaderTimeoutRef.current = window.setTimeout(() => {
+      setIsActionLoading(false);
+      setActionPopup({
+        open: true,
+        title,
+        detail,
+      });
+      toast.success(title, {
+        description: detail,
+        duration: 2800,
+      });
+      statusSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      actionPopupTimeoutRef.current = window.setTimeout(() => {
+        setActionPopup((prev) => ({ ...prev, open: false }));
+      }, 1900);
+    }, 700);
+  };
+
+  useEffect(
+    () => () => {
+      if (actionLoaderTimeoutRef.current) {
+        window.clearTimeout(actionLoaderTimeoutRef.current);
+      }
+      if (actionPopupTimeoutRef.current) {
+        window.clearTimeout(actionPopupTimeoutRef.current);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!initialPosOrderId) {
+      return;
+    }
+    if (!submittedOrders.some((order) => order.id === initialPosOrderId)) {
+      return;
+    }
+    setSelectedPosOrderId((prev) => (prev === initialPosOrderId ? prev : initialPosOrderId));
+  }, [initialPosOrderId, submittedOrders]);
+
+  useEffect(() => {
+    if (!initialQueueOrderId) {
+      return;
+    }
+    if (!serviceQueue.some((order) => order.id === initialQueueOrderId)) {
+      return;
+    }
+    setSelectedQueueOrderId((prev) =>
+      prev === initialQueueOrderId ? prev : initialQueueOrderId
+    );
+  }, [initialQueueOrderId, serviceQueue]);
+
+  useEffect(() => {
+    if (!initialApprovalRequestId) {
+      return;
+    }
+    const request = approvalRequests.find(
+      (item) => item.id === initialApprovalRequestId
+    );
+    if (!request) {
+      return;
+    }
+    setSelectedApprovalRequestId((prev) =>
+      prev === initialApprovalRequestId ? prev : initialApprovalRequestId
+    );
+    if (request.posOrderId) {
+      setSelectedPosOrderId((prev) =>
+        prev === request.posOrderId ? prev : request.posOrderId
+      );
+    }
+  }, [approvalRequests, initialApprovalRequestId]);
+
+  useEffect(() => {
+    if (!initialFocus) {
+      return;
+    }
+    const focusMap = {
+      queue: queueSectionRef,
+      send: sendApprovalSectionRef,
+      "send-approval": sendApprovalSectionRef,
+      resubmit: reSubmitSectionRef,
+      status: statusSectionRef,
+    };
+    const targetRef = focusMap[String(initialFocus).toLowerCase()];
+    if (!targetRef?.current) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      targetRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [initialFocus]);
+
   return (
     <section className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -475,37 +657,51 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm xl:col-span-2">
+        <div
+          className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm xl:col-span-2"
+          ref={queueSectionRef}
+        >
           <h2 className="text-lg font-semibold text-slate-900">
             POS service queue (driver to completion flow)
           </h2>
           <p className="mt-1 text-sm text-slate-500">
             Receive fleet-approved requests, check calendar and stock, confirm appointment,
-            run service, and mark completion for settlement.
+            run service, and send invoice to fleet for final completion.
           </p>
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[1.15fr_1fr]">
             <div className="space-y-3">
               <Label>Select service request</Label>
-              <Select
+              <SearchableSelect
                 onValueChange={setSelectedQueueOrderId}
-                value={selectedQueueOrderId || serviceQueue[0]?.id || "__none__"}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select service request" />
-                </SelectTrigger>
-                <SelectContent>
-                  {serviceQueue.length === 0 ? (
-                    <SelectItem value="__none__">No requests in queue</SelectItem>
-                  ) : (
-                    serviceQueue.map((order) => (
-                      <SelectItem key={order.id} value={order.id}>
-                        {order.id} - {order.serviceType} ({order.status})
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+                options={serviceQueue.map((order) => ({
+                  value: order.id,
+                  label: `${order.id} - ${order.serviceType}`,
+                  description: `${order.vehicleId} · ${order.orderDetails?.vendor || "Unassigned vendor"}`,
+                  meta: order.orderDetails?.vendor,
+                  status: order.status,
+                }))}
+                value={selectedQueueOrderId || serviceQueue[0]?.id || ""}
+                placeholder="Select service request"
+                searchPlaceholder="Search requests"
+                emptyLabel="No requests in queue"
+                noMatchLabel="No matching requests"
+                triggerClassName="w-full"
+                renderOption={(option) => (
+                  <div className="flex min-w-0 items-start gap-2">
+                    <span
+                      className={`mt-1 inline-block size-2 rounded-full ${queueStatusDotClass(option.status)}`}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-900">{option.label}</p>
+                      <p className="truncate text-[11px] text-slate-500">
+                        {option.status} · {option.description}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                renderTriggerValue={(option) => option?.label || ""}
+              />
 
               {selectedQueueOrder ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm">
@@ -576,24 +772,42 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button onClick={confirmAppointment} type="button" variant="outline">
+                <Button
+                  className="border border-amber-300 bg-amber-500 text-slate-950 hover:bg-amber-400 disabled:bg-amber-500 disabled:text-slate-950"
+                  disabled={!canConfirmAppointment || isActionLoading}
+                  onClick={confirmAppointment}
+                  type="button"
+                >
                   <CalendarClock className="mr-2" size={14} />
                   Confirm appointment
                 </Button>
-                <Button onClick={startService} type="button">
+                <Button
+                  className="bg-sky-600 text-white hover:bg-sky-500 disabled:bg-sky-600 disabled:text-white"
+                  disabled={!canStartService || isActionLoading}
+                  onClick={startService}
+                  type="button"
+                >
                   <Play className="mr-2" size={14} />
                   Start service
                 </Button>
-                <Button onClick={completeService} type="button" variant="secondary">
+                <Button
+                  className="bg-emerald-600 text-white hover:bg-emerald-500 disabled:bg-emerald-600 disabled:text-white"
+                  disabled={!canConfirmCompletion}
+                  onClick={completeService}
+                  type="button"
+                >
                   <CheckCircle2 className="mr-2" size={14} />
-                  Confirm completion
+                  Send invoice to fleet owner
                 </Button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+        <div
+          className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
+          ref={sendApprovalSectionRef}
+        >
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <Send size={18} />
             Send approval request
@@ -601,25 +815,21 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
           <div className="mt-4 grid gap-3">
             <div className="grid gap-2">
               <Label>Submitted POS order</Label>
-              <Select
+              <SearchableSelect
                 onValueChange={setSelectedPosOrderId}
-                value={selectedPosOrderId || submittedOrders[0]?.id || "__none__"}
-              >
-                <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden">
-                  <SelectValue className="block truncate" placeholder="Select submitted order" />
-                </SelectTrigger>
-                <SelectContent>
-                  {submittedOrders.length === 0 ? (
-                    <SelectItem value="__none__">No submitted orders</SelectItem>
-                  ) : (
-                    submittedOrders.map((order) => (
-                      <SelectItem key={order.id} value={order.id}>
-                        {order.id} - {order.serviceType} (${order.total})
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+                options={submittedOrders.map((order) => ({
+                  value: order.id,
+                  label: `${order.id} - ${order.serviceType}`,
+                  description: `Total $${order.total}`,
+                  meta: `Vehicle ${order.vehicleId}`,
+                }))}
+                value={selectedPosOrderId || ""}
+                placeholder="Select submitted order"
+                searchPlaceholder="Search orders"
+                emptyLabel="No submitted orders"
+                noMatchLabel="No matching orders"
+                triggerClassName="w-full min-w-0 max-w-full overflow-hidden"
+              />
             </div>
             <div className="grid gap-2">
               <Label>Approval note</Label>
@@ -636,7 +846,10 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+        <div
+          className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
+          ref={reSubmitSectionRef}
+        >
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <Clock3 size={18} />
             Re-submit corrected order
@@ -661,9 +874,12 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <section
+        className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
+        ref={statusSectionRef}
+      >
         <h2 className="text-lg font-semibold text-slate-900">View approval status</h2>
-        <div className="mt-4 space-y-2">
+        <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
           {posOrderStatusRows.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
               No submitted POS orders available.
@@ -705,7 +921,7 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
           <History size={18} />
           Approval history
         </h2>
-        <div className="mt-4 space-y-2">
+        <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
           {!selectedApprovalRequest ? (
             <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
               Select a request from status list to view history.
@@ -728,6 +944,40 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
           )}
         </div>
       </section>
+
+      {isActionLoading ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/35 p-4 backdrop-blur-[1px]">
+          <div className="w-full max-w-xs rounded-2xl border border-slate-200 bg-white px-4 py-5 text-center shadow-2xl">
+            <span className="inline-flex size-11 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+              <Loader2 className="size-5 animate-spin" />
+            </span>
+            <p className="mt-3 text-sm font-semibold text-slate-900">
+              Processing action...
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Updating workflow and notifying related teams.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {actionPopup.open ? (
+        <div className="fixed inset-x-3 top-24 z-[71] flex justify-center sm:top-20">
+          <div className="w-full max-w-sm rounded-2xl border border-emerald-200 bg-white px-4 py-3 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <CheckCircle2 size={16} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">
+                  {actionPopup.title}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-600">{actionPopup.detail}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {detailsModal.open ? (
         <div
@@ -872,7 +1122,7 @@ function POSApprovalWorkflowControl({ vehicles = [], session = null }) {
 
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
               <h4 className="text-sm font-semibold text-slate-900">Approval lifecycle</h4>
-              <div className="mt-3 space-y-2">
+              <div className="card-list-scrollbar mt-3 max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                 {!modalRequest || !Array.isArray(modalRequest.lifecycle) || modalRequest.lifecycle.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
                     No lifecycle entries available.

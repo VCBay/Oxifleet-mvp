@@ -710,6 +710,7 @@ function DriverDashboard() {
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const submitRequestTimeoutRef = useRef(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
   const [clearedNotificationIds, setClearedNotificationIds] = useState([]);
   const activeMenu = useMemo(
     () => parseDriverMenuFromPath(location.pathname),
@@ -1483,49 +1484,70 @@ function DriverDashboard() {
         <div className="hidden lg:block">
           <DriverSidebar
             activeMenu={activeMenu}
+            isCollapsed={isDesktopSidebarCollapsed}
             onMenuClick={handleSidebarMenuClick}
             onSignOut={onSignOut}
+            showCollapseToggle={false}
           />
         </div>
 
-        {isMobileSidebarOpen ? (
-          <div className="fixed inset-0 z-50 lg:hidden">
+        <div
+          className={`fixed inset-0 z-50 lg:hidden ${
+            isMobileSidebarOpen ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+        >
+          <button
+            aria-label="Close menu backdrop"
+            className={`absolute inset-0 bg-slate-900/45 transition-opacity duration-300 ease-in-out ${
+              isMobileSidebarOpen ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={() => setIsMobileSidebarOpen(false)}
+            type="button"
+          />
+          <div
+            className={`absolute inset-y-0 left-0 w-72 transform transition-transform duration-300 ease-in-out ${
+              isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
             <button
-              aria-label="Close menu backdrop"
-              className="absolute inset-0 bg-slate-900/45"
+              aria-label="Close menu"
+              className="absolute right-3 top-3 z-[60] grid size-8 place-items-center rounded-full bg-white/10 text-white"
               onClick={() => setIsMobileSidebarOpen(false)}
               type="button"
+            >
+              <X size={16} />
+            </button>
+            <DriverSidebar
+              activeMenu={activeMenu}
+              isCollapsed={false}
+              isMobile
+              onMenuClick={handleSidebarMenuClick}
+              onSignOut={onSignOut}
+              showCollapseToggle={false}
             />
-            <div className="absolute inset-y-0 left-0 w-72">
-              <button
-                aria-label="Close menu"
-                className="absolute right-3 top-3 z-[60] grid size-8 place-items-center rounded-full bg-white/10 text-white"
-                onClick={() => setIsMobileSidebarOpen(false)}
-                type="button"
-              >
-                <X size={16} />
-              </button>
-              <DriverSidebar
-                activeMenu={activeMenu}
-                onMenuClick={handleSidebarMenuClick}
-                onSignOut={onSignOut}
-              />
-            </div>
           </div>
-        ) : null}
+        </div>
 
-        <section className="min-w-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-0 sm:px-6 sm:pb-6 sm:pt-0 lg:ml-72 lg:px-8 lg:pb-8 lg:pt-0">
+        <section
+          className={`min-w-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-0 sm:px-6 sm:pb-6 sm:pt-0 ${
+            isDesktopSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"
+          } lg:px-8 lg:pb-8 lg:pt-0`}
+        >
           <div className="-mx-4 sticky top-0 z-40 bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)] pb-3 pt-0 sm:-mx-6 sm:pb-4 sm:pt-0 lg:-mx-8 lg:pb-4 lg:pt-0">
             <DriverTopbar
               activeMenu={activeMenu}
               displayEmail={displayEmail}
               displayName={displayName}
               driverNotificationCount={driverNotificationCount}
+              isSidebarCollapsed={isDesktopSidebarCollapsed}
               notifications={visibleBookingNotifications}
               onClearAllNotifications={clearAllDriverNotifications}
               onClearNotification={clearDriverNotification}
               onNotificationAction={handleDriverNotificationAction}
               onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+              onToggleSidebarCollapse={() =>
+                setIsDesktopSidebarCollapsed((prev) => !prev)
+              }
               profileInitials={profileInitials}
             />
           </div>

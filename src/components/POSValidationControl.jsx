@@ -2,13 +2,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { AlertTriangle, CircleAlert, ShieldCheck } from "lucide-react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { SearchableSelect } from "./ui/searchable-select";
 import { getPosOrderState, subscribePosOrders } from "../data/posOrderStore";
 
 const kbPriceList = [
@@ -37,6 +31,11 @@ const includesNormalized = (list = [], value) => {
 
 const findKbEntry = (serviceType) =>
   kbPriceList.find((entry) => normalize(entry.serviceType) === normalize(serviceType)) || null;
+
+const VALIDATION_MODE_OPTIONS = [
+  { value: "manual", label: "Manual check" },
+  { value: "draft", label: "Draft order check" },
+];
 
 const evaluateValidation = ({ candidate, policy }) => {
   const alerts = [];
@@ -301,36 +300,35 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label>Validation mode</Label>
-              <Select onValueChange={setValidationMode} value={validationMode}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Manual check</SelectItem>
-                  <SelectItem value="draft">Draft order check</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                onValueChange={setValidationMode}
+                options={VALIDATION_MODE_OPTIONS}
+                value={validationMode || ""}
+                placeholder="Select mode"
+                searchPlaceholder="Search modes"
+                emptyLabel="No modes available"
+                noMatchLabel="No matching mode"
+                triggerClassName="w-full"
+              />
             </div>
 
             {validationMode === "draft" ? (
               <div className="grid gap-2">
                 <Label>Draft order</Label>
-                <Select onValueChange={setSelectedDraftId} value={effectiveDraftId || "__none__"}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select draft" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {posOrderState.draftOrders.length === 0 ? (
-                      <SelectItem value="__none__">No drafts available</SelectItem>
-                    ) : (
-                      posOrderState.draftOrders.map((draft) => (
-                        <SelectItem key={draft.id} value={draft.id}>
-                          {draft.id} - {draft.serviceType}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  onValueChange={setSelectedDraftId}
+                  options={posOrderState.draftOrders.map((draft) => ({
+                    value: draft.id,
+                    label: `${draft.id} - ${draft.serviceType}`,
+                    description: draft.orderDetails?.description,
+                  }))}
+                  value={effectiveDraftId || ""}
+                  placeholder="Select draft"
+                  searchPlaceholder="Search drafts"
+                  emptyLabel="No drafts available"
+                  noMatchLabel="No matching drafts"
+                  triggerClassName="w-full"
+                />
               </div>
             ) : null}
           </div>
@@ -339,7 +337,7 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label>Vehicle</Label>
-                <Select
+                <SearchableSelect
                   onValueChange={(value) => {
                     const vehicle = vehiclesById.get(value);
                     setManualForm((prev) => ({
@@ -348,50 +346,40 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                       tyreBrand: vehicle?.tyreSpecs?.brand || prev.tyreBrand,
                     }));
                   }}
-                  value={manualForm.vehicleId || "__none__"}
-                >
-                  <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden">
-                    <SelectValue placeholder="Select vehicle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vehicles.length === 0 ? (
-                      <SelectItem value="__none__">No vehicles available</SelectItem>
-                    ) : (
-                      vehicles.map((vehicle) => (
-                        <SelectItem key={vehicle.id} value={vehicle.id}>
-                          {vehicle.plate || vehicle.id} - {vehicle.model}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                  options={vehicles.map((vehicle) => ({
+                    value: vehicle.id,
+                    label: `${vehicle.plate || vehicle.id} - ${vehicle.model}`,
+                    description: vehicle.type,
+                    meta: vehicle.status,
+                  }))}
+                  value={manualForm.vehicleId || ""}
+                  placeholder="Select vehicle"
+                  searchPlaceholder="Search vehicles"
+                  emptyLabel="No vehicles available"
+                  noMatchLabel="No matching vehicles"
+                  triggerClassName="w-full min-w-0 max-w-full overflow-hidden"
+                />
               </div>
               <div className="grid gap-2">
                 <Label>Service type</Label>
-                <Select
+                <SearchableSelect
                   onValueChange={(value) =>
                     setManualForm((prev) => ({
                       ...prev,
                       serviceType: value,
                     }))
                   }
-                  value={manualForm.serviceType || "__none__"}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select service type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {serviceTypeOptions.length === 0 ? (
-                      <SelectItem value="__none__">No service types</SelectItem>
-                    ) : (
-                      serviceTypeOptions.map((item) => (
-                        <SelectItem key={item} value={item}>
-                          {item}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                  options={serviceTypeOptions.map((item) => ({
+                    value: item,
+                    label: item,
+                  }))}
+                  value={manualForm.serviceType || ""}
+                  placeholder="Select service type"
+                  searchPlaceholder="Search service types"
+                  emptyLabel="No service types"
+                  noMatchLabel="No matching service types"
+                  triggerClassName="w-full"
+                />
               </div>
               <div className="grid gap-2">
                 <Label>Estimated cost</Label>
@@ -483,7 +471,7 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
             </div>
           </div>
 
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[18rem] space-y-2 overflow-y-auto pr-1">
             {validation.alerts.length === 0 ? (
               <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
                 No warnings or errors. Order is ready for submission.
@@ -511,7 +499,7 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
         <p className="mt-1 text-sm text-slate-500">
           Review draft orders for policy and pricing issues before final submission.
         </p>
-        <div className="mt-4 space-y-2">
+        <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
           {draftValidationRows.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
               No draft orders to validate.

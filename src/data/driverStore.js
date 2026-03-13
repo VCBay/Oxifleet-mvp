@@ -84,9 +84,143 @@ const normalizeDriver = (driver = {}) => {
   };
 };
 
+const getDefaultDrivers = () => [
+  {
+    id: "DR-317",
+    name: "Jamie Stewart",
+    email: "jamie.stewart@oxifleet.com",
+    phone: "+1 (555) 284-3392",
+    license: "CDL-A",
+    status: "Driving",
+    activityStatus: "Driving",
+    assignedVehicleId: "VH-884",
+    complianceScore: 94,
+    accessLevel: "Full",
+    notes: "Night lane specialist.",
+  },
+  {
+    id: "DR-402",
+    name: "Avery Chen",
+    email: "avery.chen@oxifleet.com",
+    phone: "+1 (555) 010-0000",
+    license: "CDL-A",
+    status: "Active",
+    activityStatus: "Active",
+    assignedVehicleId: "VH-241",
+    complianceScore: 91,
+    accessLevel: "Standard",
+    notes: "High-priority route coverage.",
+  },
+  {
+    id: "DR-188",
+    name: "Morgan Patel",
+    email: "morgan.patel@oxifleet.com",
+    phone: "+1 (555) 438-1204",
+    license: "CDL-B",
+    status: "Idle",
+    activityStatus: "Idle",
+    assignedVehicleId: "VH-553",
+    complianceScore: 84,
+    accessLevel: "Standard",
+    notes: "Awaiting service window completion.",
+  },
+  {
+    id: "DR-229",
+    name: "Taylor Reed",
+    email: "taylor.reed@oxifleet.com",
+    phone: "+1 (555) 774-9088",
+    license: "CDL-A",
+    status: "Driving",
+    activityStatus: "Driving",
+    assignedVehicleId: "VH-901",
+    complianceScore: 88,
+    accessLevel: "Full",
+    notes: "Emergency escalation trained.",
+  },
+  {
+    id: "DR-511",
+    name: "Chris Morales",
+    email: "chris.morales@oxifleet.com",
+    phone: "+1 (555) 226-7734",
+    license: "CDL-B",
+    status: "Active",
+    activityStatus: "Active",
+    assignedVehicleId: "VH-617",
+    complianceScore: 86,
+    accessLevel: "Standard",
+    notes: "Regional delivery specialist.",
+  },
+  {
+    id: "DR-644",
+    name: "Jordan Blake",
+    email: "jordan.blake@oxifleet.com",
+    phone: "+1 (555) 619-3321",
+    license: "CDL-A",
+    status: "On leave",
+    activityStatus: "On leave",
+    assignedVehicleId: "VH-730",
+    complianceScore: 79,
+    accessLevel: "Read only",
+    notes: "Returning next cycle.",
+  },
+  {
+    id: "DR-731",
+    name: "Sofia Turner",
+    email: "sofia.turner@oxifleet.com",
+    phone: "+1 (555) 992-3105",
+    license: "CDL-A",
+    status: "Active",
+    activityStatus: "Active",
+    assignedVehicleId: "VH-102",
+    complianceScore: 92,
+    accessLevel: "Standard",
+    notes: "Assigned to central fleet expansion.",
+  },
+  {
+    id: "DR-859",
+    name: "Liam Brooks",
+    email: "liam.brooks@oxifleet.com",
+    phone: "+1 (555) 203-7781",
+    license: "CDL-B",
+    status: "Inactive",
+    activityStatus: "Inactive",
+    assignedVehicleId: "",
+    complianceScore: 72,
+    accessLevel: "Suspended",
+    notes: "Account under review.",
+  },
+];
+
+const ensureSeedDrivers = (existingDrivers) => {
+  const normalizedExisting = existingDrivers.map(normalizeDriver);
+  const defaultDrivers = getDefaultDrivers().map(normalizeDriver);
+  const existingIds = new Set(normalizedExisting.map((driver) => driver.id));
+  const missingDefaults = defaultDrivers.filter(
+    (driver) => !existingIds.has(driver.id)
+  );
+
+  if (missingDefaults.length === 0) {
+    return normalizedExisting;
+  }
+
+  const merged = [...missingDefaults, ...normalizedExisting];
+  writeStorage(merged);
+  return merged;
+};
+
+const initializeDrivers = () => {
+  const stored = readStorage();
+  if (stored.length > 0) {
+    return ensureSeedDrivers(stored);
+  }
+  const defaults = getDefaultDrivers().map(normalizeDriver);
+  writeStorage(defaults);
+  return defaults;
+};
+
 let state = {
   baseDriverCount: BASE_DRIVER_COUNT,
-  drivers: readStorage().map(normalizeDriver),
+  drivers: initializeDrivers(),
 };
 
 const listeners = new Set();

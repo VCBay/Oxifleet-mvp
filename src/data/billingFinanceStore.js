@@ -198,6 +198,14 @@ const getDefaultState = () => ({
   }),
 });
 
+const mergeById = (existing = [], seeded = []) => {
+  const seen = new Set(existing.map((item) => String(item?.id || "").trim()));
+  const missingSeeded = seeded.filter(
+    (item) => !seen.has(String(item?.id || "").trim())
+  );
+  return [...missingSeeded, ...existing];
+};
+
 const normalizeState = (value = {}) => ({
   invoices: Array.isArray(value.invoices)
     ? value.invoices.map(normalizeInvoice)
@@ -223,14 +231,25 @@ const normalizeState = (value = {}) => ({
   ),
 });
 
+const ensureSeedState = (value = {}) => {
+  const normalized = normalizeState(value);
+  const defaults = normalizeState(getDefaultState());
+  return normalizeState({
+    ...normalized,
+    invoices: mergeById(normalized.invoices, defaults.invoices),
+    creditNotes: mergeById(normalized.creditNotes, defaults.creditNotes),
+    paymentMethods: mergeById(normalized.paymentMethods, defaults.paymentMethods),
+  });
+};
+
 const initializeState = () => {
   const stored = readStorage();
   if (stored) {
-    const normalized = normalizeState(stored);
+    const normalized = ensureSeedState(stored);
     writeStorage(normalized);
     return normalized;
   }
-  const defaults = normalizeState(getDefaultState());
+  const defaults = ensureSeedState(getDefaultState());
   writeStorage(defaults);
   return defaults;
 };
@@ -338,6 +357,21 @@ export const setInvoiceStatus = (invoiceId, status) => {
     invoices: nextInvoices,
   });
   return updatedInvoice;
+};
+
+export const addInvoice = (invoice) => {
+  const nextInvoice = normalizeInvoice({
+    ...invoice,
+    id: invoice?.id || createId("INV"),
+    date: invoice?.date || new Date().toISOString(),
+    status: invoice?.status || "Processing",
+  });
+
+  updateState({
+    ...state,
+    invoices: [nextInvoice, ...state.invoices],
+  });
+  return nextInvoice;
 };
 
 export const subscribeBillingFinance = (listener) => {

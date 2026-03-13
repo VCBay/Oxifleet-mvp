@@ -503,7 +503,7 @@ function DriverServiceRequestPreviewPage() {
                   {requestForm.photos.length === 0 ? (
                     <p className="text-slate-500">No photos uploaded.</p>
                   ) : (
-                    <div className="space-y-1 text-slate-700">
+                    <div className="card-list-scrollbar max-h-[8rem] space-y-1 overflow-y-auto pr-1 text-slate-700">
                       {requestForm.photos.map((file) => (
                         <p key={file.name}>
                           {file.name} ({Math.max(1, Math.round(file.size / 1024))} KB)
@@ -574,7 +574,7 @@ function DriverServiceRequestPreviewPage() {
               </span>
             </div>
             <div className="mt-4 grid gap-6 xl:grid-cols-[340px_1fr]">
-              <div className="max-h-[420px] space-y-2 overflow-y-auto pr-2">
+              <div className="card-list-scrollbar max-h-[420px] space-y-2 overflow-y-auto pr-2">
                 {dummyRequests.map((order) => {
                   const isActive = selectedRequest?.id === order.id;
                   return (
@@ -661,7 +661,7 @@ function DriverServiceRequestPreviewPage() {
                 Close
               </Button>
             </div>
-            <div className="mt-4 grid max-h-[60vh] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="card-list-scrollbar mt-4 grid max-h-[60vh] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
               {stationOptions.map((pos) => {
                 const isSelected = requestForm.preferredPosId === pos.id;
                 return (

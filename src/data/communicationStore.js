@@ -209,6 +209,14 @@ const getDefaultState = () => ({
   ],
 });
 
+const mergeById = (existing = [], seeded = []) => {
+  const seen = new Set(existing.map((item) => String(item?.id || "").trim()));
+  const missingSeeded = seeded.filter(
+    (item) => !seen.has(String(item?.id || "").trim())
+  );
+  return [...missingSeeded, ...existing];
+};
+
 const normalizeState = (value = {}) => ({
   driverMessages: Array.isArray(value.driverMessages)
     ? value.driverMessages.map(normalizeDriverMessage)
@@ -221,14 +229,28 @@ const normalizeState = (value = {}) => ({
     : [],
 });
 
+const ensureSeedState = (value = {}) => {
+  const normalized = normalizeState(value);
+  const defaults = normalizeState(getDefaultState());
+  return {
+    ...normalized,
+    driverMessages: mergeById(normalized.driverMessages, defaults.driverMessages),
+    workshopMessages: mergeById(
+      normalized.workshopMessages,
+      defaults.workshopMessages
+    ),
+    tickets: mergeById(normalized.tickets, defaults.tickets),
+  };
+};
+
 const initializeState = () => {
   const stored = readStorage();
   if (stored) {
-    const normalized = normalizeState(stored);
+    const normalized = ensureSeedState(stored);
     writeStorage(normalized);
     return normalized;
   }
-  const defaults = getDefaultState();
+  const defaults = ensureSeedState(getDefaultState());
   writeStorage(defaults);
   return defaults;
 };

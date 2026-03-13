@@ -217,6 +217,14 @@ const getDefaultState = () => ({
   ],
 });
 
+const mergeById = (existing = [], seeded = []) => {
+  const seen = new Set(existing.map((item) => String(item?.id || "").trim()));
+  const missingSeeded = seeded.filter(
+    (item) => !seen.has(String(item?.id || "").trim())
+  );
+  return [...missingSeeded, ...existing];
+};
+
 const normalizeState = (value = {}) => ({
   members: Array.isArray(value.members)
     ? value.members.map(normalizeMember)
@@ -229,14 +237,25 @@ const normalizeState = (value = {}) => ({
     : [],
 });
 
+const ensureSeedState = (value = {}) => {
+  const normalized = normalizeState(value);
+  const defaults = normalizeState(getDefaultState());
+  return {
+    ...normalized,
+    members: mergeById(normalized.members, defaults.members),
+    activityLogs: mergeById(normalized.activityLogs, defaults.activityLogs),
+    auditTrail: mergeById(normalized.auditTrail, defaults.auditTrail),
+  };
+};
+
 const initializeState = () => {
   const stored = readStorage();
   if (stored) {
-    const normalized = normalizeState(stored);
+    const normalized = ensureSeedState(stored);
     writeStorage(normalized);
     return normalized;
   }
-  const defaults = getDefaultState();
+  const defaults = ensureSeedState(getDefaultState());
   writeStorage(defaults);
   return defaults;
 };

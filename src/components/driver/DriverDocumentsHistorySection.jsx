@@ -40,7 +40,7 @@ function DriverDocumentsHistorySection({
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[340px_1fr]">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
           <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Service history</h3>
-          <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1 sm:max-h-[460px] sm:pr-2">
+          <div className="card-list-scrollbar mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1 sm:max-h-[460px] sm:pr-2">
             {documentsHistoryRows.length === 0 ? (
               <p className="text-xs text-slate-500 sm:text-sm">No service history available.</p>
             ) : (
@@ -140,7 +140,7 @@ function DriverDocumentsHistorySection({
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
         <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Tyre replacement history</h3>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="card-list-scrollbar mt-4 grid max-h-[20rem] gap-3 overflow-y-auto pr-1 md:grid-cols-2">
           {tyreReplacementHistory.length === 0 ? (
             <p className="text-xs text-slate-500 sm:text-sm">No tyre replacement records found.</p>
           ) : (

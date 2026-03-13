@@ -439,7 +439,7 @@ function DriverServiceRequestSection({
                 </Button>
               ) : null}
             </div>
-            <div className="mt-3 grid min-w-0 grid-cols-1 gap-2.5 min-[430px]:grid-cols-2 sm:gap-3 xl:grid-cols-3">
+            <div className="mt-3 grid min-w-0 grid-cols-2 gap-2.5 sm:gap-3">
               {inlineServiceOptions.map((option) =>
                 renderServiceCard(option, {
                   onSelect: () => handleServiceSelect(option.value),
@@ -625,7 +625,7 @@ function DriverServiceRequestSection({
                       Clear all
                     </button>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                  <div className="card-list-scrollbar mt-3 grid max-h-[18rem] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3">
                     {photoPreviews.map((preview) => (
                       <figure
                         className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
@@ -767,7 +767,7 @@ function DriverServiceRequestSection({
           </p>
         ) : (
           <div className="mt-4 grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[340px_1fr]">
-            <div className="max-h-[300px] space-y-2 overflow-y-auto pr-1 sm:max-h-[420px] sm:pr-2">
+            <div className="card-list-scrollbar max-h-[300px] space-y-2 overflow-y-auto pr-1 sm:max-h-[420px] sm:pr-2">
               {driverServiceRequests.map((order) => {
                 const isActive = selectedRequest?.id === order.id;
                 return (
@@ -882,7 +882,7 @@ function DriverServiceRequestSection({
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Lifecycle
                     </p>
-                    <div className="mt-2 space-y-2">
+                    <div className="card-list-scrollbar mt-2 max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                       {(selectedRequest.lifecycle || [])
                         .slice()
                         .reverse()
@@ -922,7 +922,7 @@ function DriverServiceRequestSection({
                 Close
               </Button>
             </div>
-            <div className="mt-4 grid max-h-[60vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3">
+            <div className="card-list-scrollbar mt-4 grid max-h-[60vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3">
               {orderedServiceOptions.map((option) =>
                 renderServiceCard(option, {
                   cardKey: `modal-${option.value}`,
@@ -954,11 +954,24 @@ function DriverServiceRequestSection({
               </Button>
             </div>
             <div className="max-w-sm">
-              <Input
-                onChange={(event) => setStationSearch(event.target.value)}
-                placeholder="Search station, location or capability..."
-                value={stationSearch}
-              />
+              <div className="relative">
+                <Input
+                  className="pr-10"
+                  onChange={(event) => setStationSearch(event.target.value)}
+                  placeholder="Search station, location or capability..."
+                  value={stationSearch}
+                />
+                {stationSearch ? (
+                  <button
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                    onClick={() => setStationSearch("")}
+                    type="button"
+                  >
+                    <X size={14} />
+                  </button>
+                ) : null}
+              </div>
               <div className="mt-1 flex min-h-4 items-center gap-1.5 text-[11px] text-slate-500">
                 {isSearchDebouncing ? (
                   <>
@@ -971,7 +984,7 @@ function DriverServiceRequestSection({
               </div>
             </div>
             <div
-              className="mt-4 grid max-h-[60vh] grid-cols-1 gap-3 overflow-y-auto pr-1 min-[520px]:grid-cols-2 lg:grid-cols-3"
+              className="card-list-scrollbar mt-4 grid max-h-[60vh] grid-cols-1 gap-3 overflow-y-auto pr-1 min-[520px]:grid-cols-2 lg:grid-cols-3"
               onScroll={handleStationModalScroll}
             >
               {isSearchDebouncing ? (

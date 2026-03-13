@@ -2,13 +2,7 @@ import { useMemo, useState } from "react";
 import { Boxes, CheckCircle2, CircleAlert, Link2Off } from "lucide-react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { SearchableSelect } from "./ui/searchable-select";
 
 const tyreInventory = [
   {
@@ -99,6 +93,13 @@ const tyreInventory = [
     etaDays: 8,
     unitPrice: 468,
   },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: "all", label: "All categories" },
+  { value: "all-season", label: "All-season" },
+  { value: "highway", label: "Highway" },
+  { value: "winter", label: "Winter" },
 ];
 
 const manufacturerIntegrationStatus = [
@@ -274,22 +275,21 @@ function POSInventoryAvailabilityControl({
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="grid min-w-0 gap-2">
               <Label>Vehicle</Label>
-              <Select onValueChange={setVehicleId} value={vehicleId || "__none__"}>
-                <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden">
-                  <SelectValue className="block truncate" placeholder="Select vehicle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehicles.length === 0 ? (
-                    <SelectItem value="__none__">No vehicles</SelectItem>
-                  ) : (
-                    vehicles.map((vehicle) => (
-                      <SelectItem key={vehicle.id} value={vehicle.id}>
-                        {vehicle.plate || vehicle.id} - {vehicle.model}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                onValueChange={setVehicleId}
+                options={vehicles.map((vehicle) => ({
+                  value: vehicle.id,
+                  label: `${vehicle.plate || vehicle.id} - ${vehicle.model}`,
+                  description: vehicle.type || vehicle.category,
+                  meta: vehicle.status,
+                }))}
+                value={vehicleId || ""}
+                placeholder="Select vehicle"
+                searchPlaceholder="Search vehicles"
+                emptyLabel="No vehicles"
+                noMatchLabel="No matching vehicles"
+                triggerClassName="w-full min-w-0 max-w-full overflow-hidden"
+              />
             </div>
             <div className="grid gap-2">
               <Label>Tyre size</Label>
@@ -314,17 +314,16 @@ function POSInventoryAvailabilityControl({
             </div>
             <div className="grid gap-2 sm:col-span-2">
               <Label>Category filter</Label>
-              <Select onValueChange={setCategory} value={category}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  <SelectItem value="all-season">All-season</SelectItem>
-                  <SelectItem value="highway">Highway</SelectItem>
-                  <SelectItem value="winter">Winter</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                onValueChange={setCategory}
+                options={CATEGORY_OPTIONS}
+                value={category || ""}
+                placeholder="Category"
+                searchPlaceholder="Search categories"
+                emptyLabel="No categories available"
+                noMatchLabel="No matching categories"
+                triggerClassName="w-full"
+              />
             </div>
           </div>
 
@@ -333,7 +332,7 @@ function POSInventoryAvailabilityControl({
             <p className="mt-1 text-sm text-slate-600">{availabilityResult.message}</p>
           </div>
 
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {availableBySize.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
                 No tyre stock found for selected size/category.
@@ -360,7 +359,7 @@ function POSInventoryAvailabilityControl({
               <CircleAlert size={18} />
               Suggested alternative tyres
             </h2>
-            <div className="mt-4 space-y-2">
+            <div className="card-list-scrollbar mt-4 max-h-[18rem] space-y-2 overflow-y-auto pr-1">
               {alternativeTyres.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                   No alternatives found for current tyre size.
@@ -397,7 +396,7 @@ function POSInventoryAvailabilityControl({
               <CheckCircle2 size={18} />
               Manufacturer integration status
             </h2>
-            <div className="mt-4 space-y-2">
+            <div className="card-list-scrollbar mt-4 max-h-[20rem] space-y-2 overflow-y-auto pr-1">
               {manufacturerIntegrationStatus.map((entry) => (
                 <div key={entry.manufacturer} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
                   <div className="flex items-center justify-between gap-2">

@@ -494,7 +494,7 @@ function ReportingAnalyticsControl() {
           <p className="mt-1 text-sm text-slate-500">
             Total spend in selected range: {formatCurrency(serviceSpending.total)}
           </p>
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {serviceSpending.byService.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                 No service spending data in this range.
@@ -533,7 +533,7 @@ function ReportingAnalyticsControl() {
               </p>
             </div>
           </div>
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[18rem] space-y-2 overflow-y-auto pr-1">
             {maintenanceReport.byVehicle.slice(0, 5).map((entry) => (
               <div
                 key={entry.key}
@@ -584,7 +584,7 @@ function ReportingAnalyticsControl() {
           <h3 className="text-lg font-semibold text-slate-900">
             Manufacturer brand share report
           </h3>
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {manufacturerShare.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                 No vehicle brand data available.
@@ -641,7 +641,7 @@ function ReportingAnalyticsControl() {
           <h3 className="text-lg font-semibold text-slate-900">
             Scheduled recurring reports
           </h3>
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {reportingState.schedules.map((schedule) => (
               <div
                 key={schedule.id}

@@ -314,7 +314,7 @@ function DriverBookingTrackingPanel({
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
         <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Notifications</h2>
-        <div className="mt-4 max-h-[300px] space-y-2 overflow-y-auto pr-1 sm:max-h-[340px] sm:pr-2">
+        <div className="card-list-scrollbar mt-4 max-h-[300px] space-y-2 overflow-y-auto pr-1 sm:max-h-[340px] sm:pr-2">
           {notifications.map((item) => {
             const Icon = iconByNotificationKey[item.iconKey] || Bell;
             return (

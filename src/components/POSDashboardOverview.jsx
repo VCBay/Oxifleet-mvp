@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Store,
   Truck,
+  X,
 } from "lucide-react";
 import {
   Bar,
@@ -354,11 +355,24 @@ function POSDashboardOverview({
           Search by vehicle plate
         </h2>
         <div className="mt-4 grid gap-3">
-          <Input
-            onChange={(event) => setPlateQuery(event.target.value)}
-            placeholder="Enter plate (e.g. TX-8841)"
-            value={plateQuery}
-          />
+          <div className="relative">
+            <Input
+              className="pr-10"
+              onChange={(event) => setPlateQuery(event.target.value)}
+              placeholder="Enter plate (e.g. TX-8841)"
+              value={plateQuery}
+            />
+            {plateQuery ? (
+              <button
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                onClick={() => setPlateQuery("")}
+                type="button"
+              >
+                <X size={14} />
+              </button>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {matchedVehicles.slice(0, 6).map((vehicle) => (
               <button
@@ -407,7 +421,7 @@ function POSDashboardOverview({
             <ShieldCheck size={18} />
             Allowed services list
           </h2>
-          <div className="mt-4 space-y-2 text-sm">
+          <div className="card-list-scrollbar mt-4 max-h-[16rem] space-y-2 overflow-y-auto pr-1 text-sm">
             {primaryPolicy?.allowedServiceTypes?.length ? (
               primaryPolicy.allowedServiceTypes.map((service) => (
                 <div
@@ -517,7 +531,7 @@ function POSDashboardOverview({
             </div>
           </div>
 
-          <div className="mt-4 space-y-2">
+          <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {spareParts.map((part) => (
               <div key={part.id} className="rounded-xl border border-slate-200 bg-white p-3 text-xs">
                 <div className="flex flex-wrap items-center justify-between gap-2">

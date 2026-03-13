@@ -114,12 +114,6 @@ const normalizeOrder = (order = {}) => {
   };
 };
 
-const hasPosOrderLink = (order = {}) => {
-  const title = String(order.requestTitle || "");
-  const notes = String(order.orderDetails?.notes || "");
-  return /POS\s+Order\s+[A-Z0-9-]+/i.test(`${title} ${notes}`);
-};
-
 const getDefaultOrders = () => {
   const now = new Date();
   const minusHours = (hours) =>
@@ -411,19 +405,29 @@ const getDefaultOrders = () => {
   ];
 };
 
+const ensureSeedOrders = (existingOrders) => {
+  const normalizedExisting = existingOrders.map(normalizeOrder);
+  const defaultOrders = getDefaultOrders();
+  const existingIds = new Set(
+    normalizedExisting.map((order) => String(order?.id || "").trim())
+  );
+  const missingDefaults = defaultOrders.filter(
+    (order) => !existingIds.has(String(order?.id || "").trim())
+  );
+
+  if (missingDefaults.length === 0) {
+    return normalizedExisting;
+  }
+
+  const merged = [...missingDefaults, ...normalizedExisting];
+  writeStorage(merged);
+  return merged;
+};
+
 const initializeOrders = () => {
   const stored = readStorage();
   if (stored.length > 0) {
-    const normalized = stored.map(normalizeOrder);
-    const hasLinkedPosOrders = normalized.some(hasPosOrderLink);
-    if (hasLinkedPosOrders) {
-      return normalized;
-    }
-    const defaults = getDefaultOrders();
-    const linkedPosDefaults = defaults.filter(hasPosOrderLink);
-    const merged = [...linkedPosDefaults, ...normalized];
-    writeStorage(merged);
-    return merged;
+    return ensureSeedOrders(stored);
   }
   const defaults = getDefaultOrders();
   writeStorage(defaults);
@@ -651,6 +655,38 @@ export const confirmServiceCompletion = (orderId, { actor, note } = {}) =>
     };
   });
 
+export const submitInvoiceToFleet = (orderId, { actor, note, invoiceId } = {}) =>
+  updateOrderInternal(orderId, (order) => {
+    const now = new Date().toISOString();
+    const submittedBy = String(actor || "POS Manager").trim() || "POS Manager";
+    const trimmedInvoiceId = String(invoiceId || "").trim();
+    const noteText = String(note || "").trim();
+    const defaultNote = trimmedInvoiceId
+      ? `Invoice ${trimmedInvoiceId} sent to fleet for completion confirmation.`
+      : "Invoice sent to fleet for completion confirmation.";
+    return {
+      ...order,
+      status: "Invoice processing",
+      settlement: {
+        ...order.settlement,
+        readyForSettlement: true,
+        completionConfirmedBy: submittedBy,
+        completionConfirmedAt: now,
+        note: noteText || defaultNote,
+      },
+      lifecycle: [
+        ...order.lifecycle,
+        {
+          stage: "Invoice processing",
+          time: now,
+          actor: submittedBy,
+          note: noteText || defaultNote,
+        },
+      ],
+      updatedAt: now,
+    };
+  });
+
 export const acknowledgeSettlementByFleet = (orderId, { actor, note } = {}) =>
   updateOrderInternal(orderId, (order) => {
     const now = new Date().toISOString();
@@ -659,6 +695,7 @@ export const acknowledgeSettlementByFleet = (orderId, { actor, note } = {}) =>
     const noteText = String(note || "").trim();
     return {
       ...order,
+      status: "Completed",
       settlement: {
         ...order.settlement,
         readyForSettlement: false,
@@ -669,10 +706,10 @@ export const acknowledgeSettlementByFleet = (orderId, { actor, note } = {}) =>
       lifecycle: [
         ...order.lifecycle,
         {
-          stage: "Settlement acknowledged",
+          stage: "Completed",
           time: now,
           actor: acknowledgedBy,
-          note: noteText || "Fleet manager acknowledged completion for settlement.",
+          note: noteText || "Fleet manager confirmed invoice and completed service order.",
         },
       ],
       updatedAt: now,

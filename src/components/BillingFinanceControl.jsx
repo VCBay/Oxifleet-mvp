@@ -1,4 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -26,6 +27,49 @@ const formatCurrency = (value) =>
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
+
+const escapeCsvCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+const buildInvoiceCsv = (invoice) => {
+  const summaryHeaders = [
+    "Invoice ID",
+    "Order ID",
+    "Vehicle ID",
+    "Vehicle Model",
+    "Driver",
+    "Location",
+    "Date",
+    "Status",
+    "Total Amount",
+  ];
+
+  const summaryValues = [
+    invoice.id,
+    invoice.orderId,
+    invoice.vehicleId,
+    invoice.vehicleModel,
+    invoice.driverName,
+    invoice.location,
+    invoice.date,
+    invoice.status,
+    Number(invoice.totalAmount) || 0,
+  ];
+
+  const serviceRows = (invoice.services || []).map((line) =>
+    [line.name, Number(line.cost) || 0].map(escapeCsvCell).join(",")
+  );
+
+  return [
+    "Invoice Summary",
+    summaryHeaders.map(escapeCsvCell).join(","),
+    summaryValues.map(escapeCsvCell).join(","),
+    "",
+    "Service Lines",
+    ["Line Item", "Cost"].map(escapeCsvCell).join(","),
+    ...serviceRows,
+    ["Total", Number(invoice.totalAmount) || 0].map(escapeCsvCell).join(","),
+  ].join("\n");
+};
 
 const statusClassName = (status) => {
   if (status === "Paid") {
@@ -227,6 +271,22 @@ function BillingFinanceControl() {
     setExportMessage("Export is available in browser runtime only.");
   };
 
+  const handleDownloadInvoice = (invoice) => {
+    if (!invoice || typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+    const content = buildInvoiceCsv(invoice);
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${invoice.id || "invoice"}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <section className="space-y-6">
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
@@ -271,11 +331,24 @@ function BillingFinanceControl() {
               Consolidated invoices
             </h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <Input
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search by invoice, order, vehicle, driver, location"
-                value={searchQuery}
-              />
+              <div className="relative">
+                <Input
+                  className="pr-10"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search by invoice, order, vehicle, driver, location"
+                  value={searchQuery}
+                />
+                {searchQuery ? (
+                  <button
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                    onClick={() => setSearchQuery("")}
+                    type="button"
+                  >
+                    <X size={14} />
+                  </button>
+                ) : null}
+              </div>
               <Select onValueChange={setStatusFilter} value={statusFilter}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Status filter" />
@@ -289,7 +362,7 @@ function BillingFinanceControl() {
               </Select>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-3 overflow-y-auto pr-1">
               {filteredInvoices.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
                   No invoices found.
@@ -298,37 +371,53 @@ function BillingFinanceControl() {
                 filteredInvoices.map((invoice) => {
                   const isSelected = selectedInvoice?.id === invoice.id;
                   return (
-                    <button
+                    <div
                       key={invoice.id}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                      className={`rounded-2xl border px-4 py-3 transition ${
                         isSelected
                           ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                          : "border-slate-200 bg-slate-50"
                       }`}
-                      onClick={() => setSelectedInvoiceId(invoice.id)}
-                      type="button"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-semibold">
-                          {invoice.id} - {invoice.vehicleId}
+                      <button
+                        className="w-full text-left"
+                        onClick={() => setSelectedInvoiceId(invoice.id)}
+                        type="button"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-semibold">
+                            {invoice.id} - {invoice.vehicleId}
+                          </p>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              isSelected
+                                ? "bg-white/10 text-white"
+                                : statusClassName(invoice.status)
+                            }`}
+                          >
+                            {invoice.status}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs opacity-80">
+                          {invoice.driverName} | {invoice.location}
                         </p>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            isSelected
-                              ? "bg-white/10 text-white"
-                              : statusClassName(invoice.status)
-                          }`}
+                        <p className="mt-1 text-xs opacity-80">
+                          {formatCurrency(invoice.totalAmount)}
+                        </p>
+                      </button>
+                      <div className="mt-2 flex justify-end">
+                        <Button
+                          className={isSelected ? "border-white/30 text-white hover:bg-green-600" : ""}
+                          onClick={() => handleDownloadInvoice(invoice)}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                          style={{  backgroundColor: isSelected ? "green" : undefined }}
                         >
-                          {invoice.status}
-                        </span>
+                          Download invoice
+                        </Button>
                       </div>
-                      <p className="mt-1 text-xs opacity-80">
-                        {invoice.driverName} | {invoice.location}
-                      </p>
-                      <p className="mt-1 text-xs opacity-80">
-                        {formatCurrency(invoice.totalAmount)}
-                      </p>
-                    </button>
+                    </div>
                   );
                 })
               )}
@@ -339,7 +428,7 @@ function BillingFinanceControl() {
             <h3 className="text-lg font-semibold text-slate-900">
               Credit note visibility
             </h3>
-            <div className="mt-4 space-y-2">
+            <div className="card-list-scrollbar mt-4 max-h-[20rem] space-y-2 overflow-y-auto pr-1">
               {billingState.creditNotes.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                   No credit notes available.
@@ -412,7 +501,12 @@ function BillingFinanceControl() {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="flex justify-end">
+                  <Button onClick={() => handleDownloadInvoice(selectedInvoice)} size="sm" type="button" variant="outline">
+                    Download invoice
+                  </Button>
+                </div>
+                <div className="card-list-scrollbar max-h-[18rem] space-y-2 overflow-y-auto pr-1">
                   {selectedInvoice.services.map((line, index) => (
                     <div
                       key={`${selectedInvoice.id}-line-${index}`}
@@ -448,7 +542,7 @@ function BillingFinanceControl() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Vehicle
                 </p>
-                <div className="mt-2 space-y-2">
+                <div className="card-list-scrollbar mt-2 max-h-[16.5rem] space-y-2 overflow-y-auto pr-1">
                   {spendByVehicle.map((item) => (
                     <div
                       key={item.key}
@@ -464,7 +558,7 @@ function BillingFinanceControl() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Driver
                 </p>
-                <div className="mt-2 space-y-2">
+                <div className="card-list-scrollbar mt-2 max-h-[16.5rem] space-y-2 overflow-y-auto pr-1">
                   {spendByDriver.map((item) => (
                     <div
                       key={item.key}
@@ -480,7 +574,7 @@ function BillingFinanceControl() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Location
                 </p>
-                <div className="mt-2 space-y-2">
+                <div className="card-list-scrollbar mt-2 max-h-[16.5rem] space-y-2 overflow-y-auto pr-1">
                   {spendByLocation.map((item) => (
                     <div
                       key={item.key}
@@ -502,7 +596,7 @@ function BillingFinanceControl() {
           <h3 className="text-lg font-semibold text-slate-900">
             Payment methods management
           </h3>
-          <div className="mt-4 space-y-3">
+          <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-3 overflow-y-auto pr-1">
             {billingState.paymentMethods.map((method) => (
               <div
                 key={method.id}

@@ -7,6 +7,7 @@ import {
   Send,
   UserRound,
   Wrench,
+  X,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -361,11 +362,21 @@ function CommunicationControl() {
                   size={14}
                 />
                 <Input
-                  className="h-9 rounded-full border-slate-200 bg-slate-50 pl-9"
+                  className="h-9 rounded-full border-slate-200 bg-slate-50 pl-9 pr-9"
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                   placeholder="Search"
                 />
+                {searchText ? (
+                  <button
+                    aria-label="Clear search"
+                    className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                    onClick={() => setSearchText("")}
+                    type="button"
+                  >
+                    <X size={13} />
+                  </button>
+                ) : null}
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -389,7 +400,7 @@ function CommunicationControl() {
               </div>
             </div>
 
-            <div className="max-h-[590px] space-y-1 overflow-y-auto p-2">
+            <div className="card-list-scrollbar max-h-[590px] space-y-1 overflow-y-auto p-2 pr-1">
               {listRows.length === 0 ? (
                 <div className="m-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-500">
                   No items found.
@@ -513,7 +524,7 @@ function CommunicationControl() {
                   </div>
                 </div>
 
-                <div className="max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4">
+                <div className="card-list-scrollbar max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4 pr-1">
                   {activeDriverThread?.messages?.map((message) => {
                     const mine = String(message.fromRole || "").toLowerCase() !== "driver";
                     return (
@@ -617,7 +628,7 @@ function CommunicationControl() {
                   </div>
                 </div>
 
-                <div className="max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4">
+                <div className="card-list-scrollbar max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4 pr-1">
                   {activeWorkshopThread?.messages?.map((message) => {
                     const mine = String(message.fromRole || "").toLowerCase() !== "workshop";
                     return (

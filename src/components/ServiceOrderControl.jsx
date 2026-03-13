@@ -1,4 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -44,7 +45,7 @@ const matchesStatusFilter = (status, filterKey) => {
     return normalized.includes("rejected");
   }
   if (filterKey === "in_progress") {
-    return normalized.includes("progress");
+    return normalized.includes("progress") || normalized.includes("invoice");
   }
   if (filterKey === "completed") {
     return normalized.includes("completed") || normalized.includes("closed");
@@ -62,6 +63,9 @@ const statusClassName = (status) => {
   }
   if (normalized.includes("progress")) {
     return "bg-sky-100 text-sky-700";
+  }
+  if (normalized.includes("invoice")) {
+    return "bg-indigo-100 text-indigo-700";
   }
   if (normalized.includes("pending")) {
     return "bg-amber-100 text-amber-700";
@@ -204,7 +208,7 @@ function ServiceOrderControl() {
   const handleAcknowledgeSettlement = (orderId) => () => {
     acknowledgeSettlementByFleet(orderId, {
       actor: decisionApprover,
-      note: "Settlement confirmation received from POS.",
+      note: "Invoice received from POS. Fleet confirmed completion.",
     });
   };
 
@@ -246,7 +250,7 @@ function ServiceOrderControl() {
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Pending FM approvals</p>
+                <p className="text-xs text-slate-500">Pending approvals</p>
                 <p className="mt-2 text-2xl font-semibold text-sky-700">
                   {pendingApprovalOrders.length}
                 </p>
@@ -281,11 +285,24 @@ function ServiceOrderControl() {
               All service requests list
             </h3>
             <div className="mt-4 space-y-3">
-              <Input
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search by order, vehicle, type, requester"
-                value={searchQuery}
-              />
+              <div className="relative">
+                <Input
+                  className="pr-10"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search by order, vehicle, type, requester"
+                  value={searchQuery}
+                />
+                {searchQuery ? (
+                  <button
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                    onClick={() => setSearchQuery("")}
+                    type="button"
+                  >
+                    <X size={14} />
+                  </button>
+                ) : null}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {statusTabs.map((tab) => {
                   const isActive = statusFilter === tab.key;
@@ -307,7 +324,7 @@ function ServiceOrderControl() {
               </div>
             </div>
 
-            <div className="mt-4 max-h-[460px] space-y-3 overflow-y-auto pr-1">
+            <div className="card-list-scrollbar mt-4 max-h-[460px] space-y-3 overflow-y-auto pr-1">
               {filteredOrders.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
                   No service requests found.
@@ -357,15 +374,15 @@ function ServiceOrderControl() {
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              Settlement confirmations (FM notifications)
+              Invoice submissions awaiting fleet confirmation
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Completed services confirmed by POS and ready for fleet settlement.
+              POS has sent invoices. Confirm from fleet side to finalize service completion.
             </p>
-            <div className="mt-4 space-y-2">
+            <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
               {settlementReadyOrders.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                  No completion confirmations pending settlement acknowledgment.
+                  No invoice submissions waiting for fleet confirmation.
                 </p>
               ) : (
                 settlementReadyOrders.map((order) => (
@@ -383,11 +400,11 @@ function ServiceOrderControl() {
                         size="sm"
                         variant="outline"
                       >
-                        Acknowledge for settlement
+                        Confirm completion
                       </Button>
                     </div>
                     <p className="mt-1 text-xs text-emerald-700">
-                      Completed by {order?.settlement?.completionConfirmedBy || "POS"} on{" "}
+                      Invoice sent by {order?.settlement?.completionConfirmedBy || "POS"} on{" "}
                       {order?.settlement?.completionConfirmedAt
                         ? new Date(order.settlement.completionConfirmedAt).toLocaleString()
                         : "N/A"}
@@ -526,7 +543,7 @@ function ServiceOrderControl() {
             </h3>
             {selectedOrder ? (
               <div className="mt-4 grid gap-4">
-                <div className="space-y-2">
+                <div className="card-list-scrollbar max-h-[20rem] space-y-2 overflow-y-auto pr-1">
                   {selectedOrder.lifecycle.map((entry, index) => (
                     <div
                       key={`${selectedOrder.id}-lifecycle-${index}`}

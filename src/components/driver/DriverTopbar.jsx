@@ -21,6 +21,8 @@ function DriverTopbar({
   onClearAllNotifications,
   onNotificationAction,
   onOpenSidebar,
+  onToggleSidebarCollapse,
+  isSidebarCollapsed = false,
 }) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef(null);
@@ -50,39 +52,65 @@ function DriverTopbar({
     warning: AlertTriangle,
     emergency: Siren,
   };
+  const pageTitleByMenu = {
+    overview: "Dashboard",
+    service_request: "Service Request",
+    communication: "Communication",
+    booking_tracking: "Booking & Tracking",
+    documents_history: "Documents & History",
+    profile: "Profile",
+  };
+  const activePageTitle = pageTitleByMenu[activeMenu] || "Dashboard";
 
   return (
     <header
       className={`w-full border border-slate-200/70 bg-white shadow-sm ${
         activeMenu === "overview"
-          ? "rounded-none p-4"
-          : "rounded-none p-4"
+          ? "rounded-none px-3 py-2.5 sm:px-4 sm:py-3"
+          : "rounded-none px-3 py-2.5 sm:px-4 sm:py-3"
       }`}
     >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
           {onOpenSidebar ? (
             <button
               aria-label="Open menu"
-              className="grid size-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 lg:hidden"
+              className="grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 lg:hidden"
               onClick={onOpenSidebar}
               type="button"
             >
-              <Menu size={18} />
+              <Menu size={17} />
             </button>
           ) : null}
+          {onToggleSidebarCollapse ? (
+            <button
+              aria-label={
+                isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              className="hidden size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 lg:grid"
+              onClick={onToggleSidebarCollapse}
+              type="button"
+            >
+              <Menu size={17} />
+            </button>
+          ) : null}
+          <div className="min-w-0">
+            <span className="inline-flex max-w-full items-center truncate rounded-full bg-gradient-to-r from-slate-50 to-white px-2.5 py-1 text-[15px] font-semibold text-slate-700 sm:px-3">
+              {activePageTitle}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="relative" ref={notificationRef}>
             <button
               aria-expanded={isNotificationOpen}
               aria-label="Notifications"
-              className="relative grid size-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300"
+              className="relative grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300"
               onClick={() => setIsNotificationOpen((prev) => !prev)}
               type="button"
             >
-              <Bell size={18} />
+              <Bell size={17} />
               {notificationCount > 0 ? (
                 <span className="absolute right-1.5 top-1.5 min-w-[1rem] rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
                   {notificationCount}
@@ -173,11 +201,11 @@ function DriverTopbar({
               </div>
             ) : null}
           </div>
-          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-[#0D0F16] text-xs font-semibold text-white sm:hidden">
+          <div className="grid size-8 shrink-0 place-items-center rounded-full bg-[#0D0F16] text-[11px] font-semibold text-white sm:hidden">
             {profileInitials}
           </div>
-          <div className="hidden max-w-full items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm sm:flex sm:text-sm">
-            <div className="grid size-9 place-items-center rounded-full bg-[#0D0F16] text-xs font-semibold text-white">
+          <div className="hidden max-w-full items-center gap-2.5 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs shadow-sm sm:flex sm:text-sm">
+            <div className="grid size-8 place-items-center rounded-full bg-[#0D0F16] text-[11px] font-semibold text-white">
               {profileInitials}
             </div>
             <div className="min-w-0 leading-tight">

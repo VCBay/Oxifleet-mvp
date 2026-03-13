@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeDollarSign,
@@ -10,6 +10,7 @@ import {
   LogOut,
   Settings2,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import Logo from "../icons/Logo";
 import {
@@ -160,6 +161,11 @@ const monthKey = (value) => {
     return null;
   }
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const toTimestamp = (value) => {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 };
 
 const monthlyComparisonFallback = [
@@ -317,6 +323,8 @@ function POSDashboard() {
     vehicleState.vehicles.length > 0 ? vehicleState.vehicles : fallbackVehicles;
   const [plateQuery, setPlateQuery] = useState(() => vehicles[0]?.plate || "");
   const [notifications, setNotifications] = useState(initialPosNotifications);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
 
   const matchedVehicles = useMemo(() => {
     const q = normalize(plateQuery);
@@ -704,20 +712,20 @@ function POSDashboard() {
     location.pathname.includes("/overview") || location.pathname === "/pos-dashboard";
 
   const pageTitle = isOrderManagementRoute
-    ? "POS Order Management"
+    ? "Order Management"
     : isProfileSettingsRoute
-    ? "POS Profile & Settings"
+    ? "Profile & Settings"
     : isAnalyticsReportsRoute
-    ? "POS Analytics & Reports"
+    ? "Analytics & Reports"
     : isInventoryAvailabilityRoute
-    ? "POS Inventory & Availability"
+    ? "Inventory & Availability"
     : isBillingSettlementRoute
-    ? "POS Billing & Settlement"
+    ? "Billing & Settlement"
     : isApprovalWorkflowRoute
-    ? "POS Approval Workflow"
+    ? "Approval Workflow"
     : isValidationRoute
-    ? "POS Validation"
-    : "POS Dashboard";
+    ? "Validation"
+    : "Dashboard";
   const pageDescription = isOrderManagementRoute
     ? "Create, edit, and submit service orders with draft support."
     : isProfileSettingsRoute
@@ -749,62 +757,263 @@ function POSDashboard() {
     setNotifications([]);
   };
 
+  const approvalLinkedRequests = useMemo(
+    () =>
+      serviceOrderState.orders
+        .map((order) => ({
+          ...order,
+          posOrderId: extractPosOrderId(order),
+        }))
+        .filter((order) => order.posOrderId)
+        .sort(
+          (a, b) =>
+            toTimestamp(b.updatedAt || b.requestedAt) -
+            toTimestamp(a.updatedAt || a.requestedAt)
+        ),
+    [serviceOrderState.orders]
+  );
+
+  const queueOrders = useMemo(
+    () =>
+      serviceOrderState.orders
+        .filter((order) => {
+          const status = normalize(order.status);
+          if (
+            status.includes("rejected") ||
+            status.includes("completed") ||
+            status.includes("closed")
+          ) {
+            return false;
+          }
+          return (
+            status.includes("approved") ||
+            status.includes("pending booking") ||
+            status.includes("scheduled") ||
+            status.includes("progress")
+          );
+        })
+        .sort(
+          (a, b) =>
+            toTimestamp(b.updatedAt || b.requestedAt) -
+            toTimestamp(a.updatedAt || a.requestedAt)
+        ),
+    [serviceOrderState.orders]
+  );
+
+  const actionableNotifications = useMemo(() => {
+    const latestQueueOrderId = queueOrders[0]?.id || "";
+    const latestApprovalResponse =
+      approvalLinkedRequests.find((request) => {
+        const status = normalize(request.status);
+        return status.includes("approved") || status.includes("rejected");
+      }) || null;
+    const latestRejectedRequest =
+      approvalLinkedRequests.find((request) =>
+        normalize(request.status).includes("rejected")
+      ) || null;
+    const latestPaidInvoice =
+      [...billingState.invoices]
+        .filter((invoice) => normalize(invoice.status) === "paid")
+        .sort((a, b) => toTimestamp(b.date) - toTimestamp(a.date))[0] || null;
+
+    return notifications.map((notification) => {
+      if (notification.id === "NTF-001") {
+        return {
+          ...notification,
+          actionLabel: "Schedule booking",
+          actionPath: "/pos-dashboard/approval-workflow",
+          actionQuery: {
+            focus: "queue",
+            queueOrderId: latestQueueOrderId,
+          },
+        };
+      }
+      if (notification.id === "NTF-002") {
+        return {
+          ...notification,
+          actionLabel: "Check response",
+          actionPath: "/pos-dashboard/approval-workflow",
+          actionQuery: {
+            focus: "status",
+            requestId: latestApprovalResponse?.id || "",
+            posOrderId: latestApprovalResponse?.posOrderId || "",
+          },
+        };
+      }
+      if (notification.id === "NTF-003") {
+        return {
+          ...notification,
+          actionLabel: "Re-submit order",
+          actionPath: "/pos-dashboard/approval-workflow",
+          actionQuery: {
+            focus: "resubmit",
+            requestId: latestRejectedRequest?.id || "",
+            posOrderId: latestRejectedRequest?.posOrderId || "",
+          },
+        };
+      }
+      if (notification.id === "NTF-004") {
+        return {
+          ...notification,
+          actionLabel: "View settlement",
+          actionPath: "/pos-dashboard/billing-settlement",
+          actionQuery: {
+            focus: "settlement-history",
+            invoiceId: latestPaidInvoice?.id || "",
+          },
+        };
+      }
+      return {
+        ...notification,
+        actionLabel: notification.actionLabel || "Open",
+        actionPath: notification.actionPath || "/pos-dashboard/overview",
+      };
+    });
+  }, [approvalLinkedRequests, billingState.invoices, notifications, queueOrders]);
+
+  const handleNotificationAction = (notification) => {
+    const actionPath = notification?.actionPath || "/pos-dashboard/overview";
+    const params = new URLSearchParams();
+    Object.entries(notification?.actionQuery || {}).forEach(([key, value]) => {
+      if (value == null || value === "") {
+        return;
+      }
+      params.set(key, String(value));
+    });
+    const query = params.toString();
+    navigate(query ? `${actionPath}?${query}` : actionPath);
+    setIsMobileSidebarOpen(false);
+  };
+
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [location.pathname]);
+
   return (
     <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
-      <div className="flex h-full w-full">
-        <aside className="fixed inset-y-0 left-0 w-72">
-          <div className="flex h-full flex-col bg-[#0D0F16] p-6 text-white shadow-xl">
-            <div className="space-y-5">
-              <Logo className="w-48 text-white" />
-            </div>
+      <div className="flex h-full w-full min-w-0">
+        <div
+          className={`fixed inset-0 z-40 bg-slate-900/45 transition-opacity duration-300 ease-in-out lg:hidden ${
+            isMobileSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
+          <button
+            aria-label="Close menu backdrop"
+            className="h-full w-full"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            type="button"
+          />
+        </div>
 
-            <nav className="mt-8 space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/40">
-                Menu
-              </p>
-              {posMenuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.key}
-                    className={({ isActive }) =>
-                      `flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${
-                        isActive
-                          ? "bg-white/15 text-white"
-                          : "text-slate-300 hover:bg-white/10 hover:text-white"
-                      }`
-                    }
-                    to={item.to}
-                  >
-                    <Icon size={16} />
-                    {item.label}
-                  </NavLink>
-                );
-              })}
-            </nav>
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-in-out ${
+            isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } ${
+            isDesktopSidebarCollapsed
+              ? "lg:w-24 lg:transition-[width] lg:duration-300 lg:ease-in-out"
+              : "lg:w-72 lg:transition-[width] lg:duration-300 lg:ease-in-out"
+          } lg:translate-x-0`}
+        >
+          <div
+            className={`flex h-full flex-col bg-[#0D0F16] text-white shadow-xl ${
+              isDesktopSidebarCollapsed ? "p-3 lg:p-3" : "p-6"
+            }`}
+          >
+            <button
+              aria-label="Close menu"
+              className="absolute right-3 top-3 z-[60] grid size-8 place-items-center rounded-full bg-white/10 text-white lg:hidden"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              type="button"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="sidebar-scrollbar min-h-0 flex-1 space-y-8 overflow-y-auto pr-1">
+              <div className="flex items-center gap-3">
+                <div className={`${isDesktopSidebarCollapsed ? "lg:hidden" : ""}`}>
+                  <Logo className="w-48 text-white" />
+                </div>
+                <div
+                  className={`hidden rounded-2xl border border-white/10 bg-white/5 p-2 shadow-inner ${
+                    isDesktopSidebarCollapsed ? "lg:block" : ""
+                  }`}
+                >
+                  <Logo className="w-11 text-white" />
+                </div>
+              </div>
+
+              <nav className="space-y-2">
+                <p
+                  className={`text-xs font-semibold uppercase tracking-[0.24em] text-white/40 ${
+                    isDesktopSidebarCollapsed ? "lg:hidden" : ""
+                  }`}
+                >
+                  Menu
+                </p>
+                {posMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.key}
+                      className={({ isActive }) =>
+                        `flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${
+                          isDesktopSidebarCollapsed
+                            ? "lg:justify-center lg:gap-0 lg:px-0"
+                            : ""
+                        } ${
+                          isActive
+                            ? "bg-white/15 text-white"
+                            : "text-slate-300 hover:bg-white/10 hover:text-white"
+                        }`
+                      }
+                      title={isDesktopSidebarCollapsed ? item.label : undefined}
+                      to={item.to}
+                      onClick={() => setIsMobileSidebarOpen(false)}
+                    >
+                      <Icon size={16} />
+                      <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
+                        {item.label}
+                      </span>
+                    </NavLink>
+                  );
+                })}
+              </nav>
+            </div>
 
             <div className="mt-auto space-y-2">
               <Button
-                className="w-full justify-start"
+                className={`w-full ${isDesktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-start"}`}
                 onClick={onSignOut}
+                title={isDesktopSidebarCollapsed ? "Sign out" : undefined}
                 type="button"
                 variant="secondary"
               >
-                <LogOut className="mr-2" size={16} />
-                Sign out
+                <LogOut className={isDesktopSidebarCollapsed ? "" : "mr-2"} size={16} />
+                <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>Sign out</span>
               </Button>
             </div>
           </div>
         </aside>
 
-        <section className="ml-72 flex-1 space-y-6 overflow-y-auto px-8 pb-8 pt-0">
-          <div className="-mx-8 sticky top-0 z-40 bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)] pb-4">
+        <section
+          className={`min-w-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-0 sm:px-6 sm:pb-6 ${
+            isDesktopSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"
+          } lg:px-8 lg:pb-8`}
+        >
+          <div className="-mx-4 sticky top-0 z-40 bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)] pb-3 sm:-mx-6 sm:pb-4 lg:-mx-8 lg:pb-4">
             <POSTopbar
               displayEmail={session?.email || "N/A"}
               displayName={session?.name || "POS User"}
-              notifications={notifications}
+              isSidebarCollapsed={isDesktopSidebarCollapsed}
+              notifications={actionableNotifications}
               onClearAllNotifications={clearAllNotifications}
               onClearNotification={clearNotification}
+              onNotificationAction={handleNotificationAction}
+              onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+              onToggleSidebarCollapse={() =>
+                setIsDesktopSidebarCollapsed((prev) => !prev)
+              }
+              pageTitle={pageTitle}
               profileInitials={(session?.name || "POS")
                 .split(/\s+/)
                 .slice(0, 2)

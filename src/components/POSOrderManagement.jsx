@@ -1,15 +1,11 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
-import { FileText, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { FileText, Loader2, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { SearchableSelect } from "./ui/searchable-select";
 import { Textarea } from "./ui/textarea";
 import {
   deletePosOrderDraft,
@@ -19,7 +15,11 @@ import {
   submitPosOrder,
   subscribePosOrders,
 } from "../data/posOrderStore";
-import { createServiceRequest } from "../data/serviceOrderStore";
+import {
+  createServiceRequest,
+  submitInvoiceToFleet,
+} from "../data/serviceOrderStore";
+import { addInvoice } from "../data/billingFinanceStore";
 
 const createLineId = (prefix) =>
   `${prefix}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
@@ -57,7 +57,17 @@ const createInitialForm = (selectedVehicle) => ({
   notes: "",
 });
 
-function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = null }) {
+function POSOrderManagement({
+  vehicles = [],
+  selectedVehicle = null,
+  session = null,
+  completionMode = false,
+  completionRequestId = "",
+  completionPosOrderId = "",
+  completionVehicleId = "",
+  completionServiceType = "",
+}) {
+  const navigate = useNavigate();
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
     getPosOrderState,
@@ -82,6 +92,25 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
   });
   const [selectedDraftId, setSelectedDraftId] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [isCompletionSubmitting, setIsCompletionSubmitting] = useState(false);
+  const [completionPopup, setCompletionPopup] = useState({
+    open: false,
+    title: "",
+    detail: "",
+    invoiceId: "",
+    requestId: "",
+    posOrderId: "",
+    vehicleId: "",
+    serviceType: "",
+    partsCount: 0,
+    labourCount: 0,
+    total: 0,
+    status: "",
+    invoiceDate: "",
+  });
+  const completionInitKeyRef = useRef("");
+  const completionSubmitTimeoutRef = useRef(null);
+  const completionPopupTimeoutRef = useRef(null);
 
   const selectedVehicleModel = useMemo(
     () => vehicles.find((item) => item.id === orderForm.vehicleId) || selectedVehicle || null,
@@ -103,6 +132,94 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
       total: Math.round(partsTotal + labourTotal),
     };
   }, [orderForm.labour, orderForm.parts]);
+
+  const completionInvoiceServices = useMemo(() => {
+    const partLines = orderForm.parts
+      .map((item) => ({
+        name: `Part: ${item.name}`,
+        cost: Math.round(normalizeNumber(item.qty) * normalizeNumber(item.unitCost)),
+      }))
+      .filter((line) => line.cost > 0);
+    const labourLines = orderForm.labour
+      .map((item) => ({
+        name: `Labour: ${item.name}`,
+        cost: Math.round(normalizeNumber(item.hours) * normalizeNumber(item.rate)),
+      }))
+      .filter((line) => line.cost > 0);
+    return [...partLines, ...labourLines];
+  }, [orderForm.labour, orderForm.parts]);
+
+  useEffect(() => {
+    const initKey = completionMode
+      ? `${completionRequestId}|${completionPosOrderId}|${completionVehicleId}|${completionServiceType}`
+      : "";
+    if (!completionMode) {
+      completionInitKeyRef.current = "";
+      return;
+    }
+    if (!initKey || completionInitKeyRef.current === initKey) {
+      return;
+    }
+
+    const sourceOrder =
+      posOrderState.submittedOrders.find((order) => order.id === completionPosOrderId) ||
+      null;
+    const sourceVehicle =
+      vehicles.find((item) => item.id === (sourceOrder?.vehicleId || completionVehicleId)) ||
+      selectedVehicle ||
+      null;
+
+    setOrderForm((prev) => ({
+      ...prev,
+      id: sourceOrder?.id || prev.id,
+      vehicleId: sourceOrder?.vehicleId || completionVehicleId || sourceVehicle?.id || prev.vehicleId,
+      vehiclePlate:
+        sourceOrder?.vehiclePlate ||
+        sourceVehicle?.plate ||
+        prev.vehiclePlate,
+      serviceType:
+        completionServiceType ||
+        sourceOrder?.serviceType ||
+        prev.serviceType,
+      problemType: sourceOrder?.problemType || prev.problemType,
+      description:
+        sourceOrder?.description ||
+        `Completion invoice for ${completionRequestId || "service request"}.`,
+      priority: sourceOrder?.priority || prev.priority,
+      parts: Array.isArray(sourceOrder?.parts) ? sourceOrder.parts : prev.parts,
+      labour: Array.isArray(sourceOrder?.labour) ? sourceOrder.labour : prev.labour,
+      notes:
+        sourceOrder?.notes ||
+        prev.notes ||
+        "Completion invoice prepared from POS workflow.",
+    }));
+    setSelectedDraftId("");
+    setFeedback(
+      `Invoice mode active for ${completionRequestId || "selected request"}. Add/adjust parts and labour, then send invoice to fleet owner.`
+    );
+    completionInitKeyRef.current = initKey;
+  }, [
+    completionMode,
+    completionPosOrderId,
+    completionRequestId,
+    completionServiceType,
+    completionVehicleId,
+    posOrderState.submittedOrders,
+    selectedVehicle,
+    vehicles,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (completionSubmitTimeoutRef.current) {
+        window.clearTimeout(completionSubmitTimeoutRef.current);
+      }
+      if (completionPopupTimeoutRef.current) {
+        window.clearTimeout(completionPopupTimeoutRef.current);
+      }
+    },
+    []
+  );
 
   const loadDraftIntoForm = (draft) => {
     if (!draft) {
@@ -243,6 +360,105 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
     setFeedback(`Order ${submitted.id} submitted.`);
   };
 
+  const goToCompletionDetails = (requestId, posOrderId) => {
+    if (!requestId) {
+      return;
+    }
+    const redirectParams = new URLSearchParams({
+      focus: "status",
+      requestId,
+    });
+    if (posOrderId) {
+      redirectParams.set("posOrderId", posOrderId);
+    }
+    navigate(`/pos-dashboard/approval-workflow?${redirectParams.toString()}`);
+  };
+
+  const submitCompletionInvoice = () => {
+    if (!completionMode) {
+      return;
+    }
+    if (!completionRequestId) {
+      const message = "Completion request is missing. Re-open from Approval Workflow.";
+      setFeedback(message);
+      toast.error("Invoice not submitted", { description: message, duration: 3200 });
+      return;
+    }
+    if (!orderForm.vehicleId) {
+      const message = "Vehicle is required to generate invoice.";
+      setFeedback(message);
+      toast.error("Invoice not submitted", { description: message, duration: 3200 });
+      return;
+    }
+    if (completionInvoiceServices.length === 0 || totals.total <= 0) {
+      const message = "Add at least one parts/labour line with valid cost.";
+      setFeedback(message);
+      toast.error("Invoice not submitted", { description: message, duration: 3200 });
+      return;
+    }
+
+    setIsCompletionSubmitting(true);
+    if (completionSubmitTimeoutRef.current) {
+      window.clearTimeout(completionSubmitTimeoutRef.current);
+    }
+    completionSubmitTimeoutRef.current = window.setTimeout(() => {
+      const createdInvoice = addInvoice({
+        orderId: completionRequestId,
+        vehicleId: orderForm.vehicleId,
+        vehicleModel: selectedVehicleModel?.model || "Unknown vehicle",
+        driverName: session?.name || "POS User",
+        location: "POS Center",
+        status: "Processing",
+        services: completionInvoiceServices,
+        totalAmount: totals.total,
+      });
+
+      const invoiceSubmitted = submitInvoiceToFleet(completionRequestId, {
+        actor: session?.name || "POS User",
+        note: `Invoice ${createdInvoice.id} sent to fleet for completion confirmation.`,
+        invoiceId: createdInvoice.id,
+      });
+
+      if (!invoiceSubmitted) {
+        setIsCompletionSubmitting(false);
+        const message = "Invoice created but unable to move request to invoice processing.";
+        setFeedback(message);
+        toast.error("Invoice status update failed", { description: message, duration: 3400 });
+        return;
+      }
+
+      const detail = `Invoice ${createdInvoice.id} sent to fleet owner. ${completionRequestId} is now Invoice processing.`;
+      setFeedback(detail);
+      setIsCompletionSubmitting(false);
+      setCompletionPopup({
+        open: true,
+        title: "Invoice submitted",
+        detail,
+        invoiceId: createdInvoice.id,
+        requestId: completionRequestId,
+        posOrderId: completionPosOrderId || orderForm.id,
+        vehicleId: orderForm.vehicleId,
+        serviceType: orderForm.serviceType,
+        partsCount: orderForm.parts.length,
+        labourCount: orderForm.labour.length,
+        total: totals.total,
+        status: createdInvoice.status || "Processing",
+        invoiceDate: createdInvoice.date || new Date().toISOString(),
+      });
+      toast.success("Invoice sent to fleet", {
+        description: detail,
+        duration: 3000,
+      });
+
+      if (completionPopupTimeoutRef.current) {
+        window.clearTimeout(completionPopupTimeoutRef.current);
+      }
+      completionPopupTimeoutRef.current = window.setTimeout(() => {
+        goToCompletionDetails(completionRequestId, completionPosOrderId || orderForm.id);
+      }, 1900);
+    }, 850);
+  };
+
   const onDuplicateSubmittedOrder = (orderId) => () => {
     const duplicated = duplicateSubmittedPosOrder(orderId);
     if (!duplicated) {
@@ -328,39 +544,39 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="grid min-w-0 gap-2">
                 <Label>Vehicle</Label>
-                <Select onValueChange={handleVehicleChange} value={orderForm.vehicleId || "__none__"}>
-                  <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden">
-                    <SelectValue className="block truncate" placeholder="Select vehicle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vehicles.length === 0 ? (
-                      <SelectItem value="__none__">No vehicles</SelectItem>
-                    ) : (
-                      vehicles.map((vehicle) => (
-                        <SelectItem key={vehicle.id} value={vehicle.id}>
-                          {vehicle.plate || vehicle.id} - {vehicle.model}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  onValueChange={handleVehicleChange}
+                  options={vehicles.map((vehicle) => ({
+                    value: vehicle.id,
+                    label: `${vehicle.plate || vehicle.id} - ${vehicle.model}`,
+                    description: vehicle.type || vehicle.category,
+                    meta: vehicle.status,
+                  }))}
+                  value={orderForm.vehicleId || ""}
+                  placeholder="Select vehicle"
+                  searchPlaceholder="Search vehicles"
+                  emptyLabel="No vehicles"
+                  noMatchLabel="No matching vehicles"
+                  triggerClassName="w-full min-w-0 max-w-full overflow-hidden"
+                />
               </div>
               <div className="grid gap-2">
                 <Label>Priority</Label>
-                <Select
+                <SearchableSelect
                   onValueChange={(value) => setOrderForm((prev) => ({ ...prev, priority: value }))}
-                  value={orderForm.priority}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Normal">Normal</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Emergency">Emergency</SelectItem>
-                  </SelectContent>
-                </Select>
+                  options={[
+                    { value: "Low", label: "Low" },
+                    { value: "Normal", label: "Normal" },
+                    { value: "High", label: "High" },
+                    { value: "Emergency", label: "Emergency" },
+                  ]}
+                  value={orderForm.priority || ""}
+                  placeholder="Priority"
+                  searchPlaceholder="Search priorities"
+                  emptyLabel="No priority options"
+                  noMatchLabel="No matching priorities"
+                  triggerClassName="w-full"
+                />
               </div>
               <div className="grid gap-2">
                 <Label>Service type</Label>
@@ -432,7 +648,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
                 </Button>
               </div>
 
-              <div className="mt-3 space-y-2">
+              <div className="card-list-scrollbar mt-3 max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                 {orderForm.parts.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
                     No parts added.
@@ -502,7 +718,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
                 </Button>
               </div>
 
-              <div className="mt-3 space-y-2">
+              <div className="card-list-scrollbar mt-3 max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                 {orderForm.labour.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
                     No labour items added.
@@ -544,7 +760,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
             </h3>
             <div className="mt-3 grid gap-2">
               <Input accept="image/*,.pdf,.doc,.docx" multiple onChange={onFilesSelected} type="file" />
-              <div className="space-y-1">
+              <div className="card-list-scrollbar max-h-[8rem] space-y-1 overflow-y-auto pr-1">
                 {orderForm.attachments.length === 0 ? (
                   <p className="text-xs text-slate-500">No files attached.</p>
                 ) : (
@@ -565,6 +781,55 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
               />
             </div>
           </div>
+
+          {completionMode ? (
+            <div className="rounded-3xl border border-emerald-200/70 bg-emerald-50/40 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-900">
+                Generate service invoice
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Add final replaced parts and labour above, then send invoice to fleet
+                owner for completion confirmation.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-emerald-200 bg-white p-3 text-xs">
+                  <p className="text-slate-500">Service request</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {completionRequestId || "N/A"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-white p-3 text-xs">
+                  <p className="text-slate-500">POS order</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {completionPosOrderId || orderForm.id || "N/A"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-white p-3 text-xs">
+                  <p className="text-slate-500">Invoice total</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    ${totals.total}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <Button
+                  className="bg-emerald-600 text-white hover:bg-emerald-500"
+                  disabled={isCompletionSubmitting}
+                  onClick={submitCompletionInvoice}
+                  type="button"
+                >
+                  {isCompletionSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      Submitting invoice...
+                    </>
+                  ) : (
+                    "Send invoice to fleet owner"
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
@@ -591,9 +856,11 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
               <Button onClick={saveDraft} type="button" variant="outline">
                 Save draft
               </Button>
-              <Button onClick={submitOrder} type="button">
-                Submit order
-              </Button>
+              {!completionMode ? (
+                <Button onClick={submitOrder} type="button">
+                  Submit order
+                </Button>
+              ) : null}
               <Button
                 onClick={() => {
                   setOrderForm(createInitialForm(selectedVehicle));
@@ -615,7 +882,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
             <p className="mt-1 text-sm text-slate-500">
               Resume and edit saved drafts before submission.
             </p>
-            <div className="mt-4 space-y-2">
+            <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
               {posOrderState.draftOrders.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
                   No draft orders.
@@ -676,7 +943,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
             <p className="mt-1 text-sm text-slate-500">
               Clone submitted orders as new drafts.
             </p>
-            <div className="mt-4 space-y-2">
+            <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
               {posOrderState.submittedOrders.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
                   No submitted orders yet.
@@ -721,6 +988,92 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
           ) : null}
         </div>
       </div>
+
+      {isCompletionSubmitting ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35 p-4 backdrop-blur-[1px]">
+          <div className="w-full max-w-xs rounded-2xl border border-slate-200 bg-white px-4 py-5 text-center shadow-2xl">
+            <span className="inline-flex size-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <Loader2 className="size-5 animate-spin" />
+            </span>
+            <p className="mt-3 text-sm font-semibold text-slate-900">
+              Sending invoice...
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Preparing billing lines and sharing with fleet owner.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {completionPopup.open ? (
+        <div className="fixed inset-0 z-[61] flex items-center justify-center bg-slate-950/45 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-emerald-200 bg-white p-5 shadow-2xl">
+            <p className="text-lg font-semibold text-slate-900">{completionPopup.title}</p>
+            <p className="mt-1 text-sm text-slate-600">{completionPopup.detail}</p>
+
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Invoice ID</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {completionPopup.invoiceId || "N/A"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Request ID</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {completionPopup.requestId || "N/A"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Vehicle</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {completionPopup.vehicleId || "N/A"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Service</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {completionPopup.serviceType || "N/A"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Lines</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  Parts {completionPopup.partsCount} • Labour {completionPopup.labourCount}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Invoice Total</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  ${completionPopup.total}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {completionPopup.status} • {formatDateTime(completionPopup.invoiceDate)}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <p className="text-xs text-slate-500">Redirecting to approval details...</p>
+              <Button
+                onClick={() => {
+                  if (completionPopupTimeoutRef.current) {
+                    window.clearTimeout(completionPopupTimeoutRef.current);
+                  }
+                  goToCompletionDetails(
+                    completionPopup.requestId,
+                    completionPopup.posOrderId
+                  );
+                }}
+                size="sm"
+                type="button"
+              >
+                Open details now
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {detailsModal.open && modalOrder ? (
         <div
@@ -827,7 +1180,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
             <div className="mt-5 grid gap-6 xl:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <h4 className="text-sm font-semibold text-slate-900">Parts items</h4>
-                <div className="mt-3 space-y-2">
+                <div className="card-list-scrollbar mt-3 max-h-[14rem] space-y-2 overflow-y-auto pr-1">
                   {modalParts.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
                       No parts items.
@@ -851,7 +1204,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
 
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <h4 className="text-sm font-semibold text-slate-900">Labour items</h4>
-                <div className="mt-3 space-y-2">
+                <div className="card-list-scrollbar mt-3 max-h-[14rem] space-y-2 overflow-y-auto pr-1">
                   {modalLabour.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
                       No labour items.
@@ -876,7 +1229,7 @@ function POSOrderManagement({ vehicles = [], selectedVehicle = null, session = n
 
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
               <h4 className="text-sm font-semibold text-slate-900">Attachments</h4>
-              <div className="mt-3 space-y-2">
+              <div className="card-list-scrollbar mt-3 max-h-[10rem] space-y-2 overflow-y-auto pr-1">
                 {modalAttachments.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
                     No attachments added.

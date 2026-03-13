@@ -672,7 +672,7 @@ function SettingsProfileControl() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="card-list-scrollbar max-h-[24rem] space-y-3 overflow-y-auto pr-1">
             {tickets.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                 No support requests available.
