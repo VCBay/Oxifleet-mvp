@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { FileText, Loader2, X } from "lucide-react";
+import { FileText, Loader2, Trash2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
@@ -42,6 +42,54 @@ const formatDateTime = (value) => {
     minute: "2-digit",
   });
 };
+
+const createAttachmentId = () =>
+  `ATT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
+const normalizeAttachmentMeta = (file) => ({
+  name: file.name,
+  size: file.size,
+  type: file.type || "application/octet-stream",
+});
+
+const isImageAttachment = (type) => String(type || "").toLowerCase().startsWith("image/");
+
+const toPreviewFromMeta = (meta) => ({
+  id: createAttachmentId(),
+  name: meta.name,
+  size: meta.size,
+  type: meta.type || "application/octet-stream",
+  isImage: isImageAttachment(meta.type),
+  url: "",
+});
+
+const toPreviewFromFile = (file) => {
+  const meta = normalizeAttachmentMeta(file);
+  const isImage = isImageAttachment(meta.type);
+  return {
+    id: createAttachmentId(),
+    ...meta,
+    isImage,
+    url: isImage ? URL.createObjectURL(file) : "",
+  };
+};
+
+const toMetaFromPreview = (preview) => ({
+  name: preview.name,
+  size: preview.size,
+  type: preview.type || "application/octet-stream",
+});
+
+const revokeAttachmentPreviewUrls = (items = []) => {
+  items.forEach((item) => {
+    if (typeof item?.url === "string" && item.url.startsWith("blob:")) {
+      URL.revokeObjectURL(item.url);
+    }
+  });
+};
+
+const formatAttachmentSize = (size) =>
+  `${Math.max(1, Math.round(Number(size || 0) / 1024))} KB`;
 
 const createInitialForm = (selectedVehicle) => ({
   id: "",
@@ -93,6 +141,7 @@ function POSOrderManagement({
   const [selectedDraftId, setSelectedDraftId] = useState("");
   const [feedback, setFeedback] = useState("");
   const [isCompletionSubmitting, setIsCompletionSubmitting] = useState(false);
+  const [attachmentPreviews, setAttachmentPreviews] = useState([]);
   const [completionPopup, setCompletionPopup] = useState({
     open: false,
     title: "",
@@ -111,6 +160,31 @@ function POSOrderManagement({
   const completionInitKeyRef = useRef("");
   const completionSubmitTimeoutRef = useRef(null);
   const completionPopupTimeoutRef = useRef(null);
+  const attachmentInputRef = useRef(null);
+  const attachmentPreviewsRef = useRef([]);
+
+  const clearAttachmentInput = () => {
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = "";
+    }
+  };
+
+  const updateAttachmentPreviews = (nextPreviews) => {
+    setAttachmentPreviews((prev) => {
+      revokeAttachmentPreviewUrls(prev);
+      return nextPreviews;
+    });
+  };
+
+  const applyAttachmentMeta = (attachments = []) => {
+    const safeAttachments = Array.isArray(attachments) ? attachments : [];
+    updateAttachmentPreviews(safeAttachments.map(toPreviewFromMeta));
+    clearAttachmentInput();
+    setOrderForm((prev) => ({
+      ...prev,
+      attachments: safeAttachments,
+    }));
+  };
 
   const selectedVehicleModel = useMemo(
     () => vehicles.find((item) => item.id === orderForm.vehicleId) || selectedVehicle || null,
@@ -168,6 +242,9 @@ function POSOrderManagement({
       vehicles.find((item) => item.id === (sourceOrder?.vehicleId || completionVehicleId)) ||
       selectedVehicle ||
       null;
+    const sourceAttachments = Array.isArray(sourceOrder?.attachments)
+      ? sourceOrder.attachments
+      : [];
 
     setOrderForm((prev) => ({
       ...prev,
@@ -188,11 +265,14 @@ function POSOrderManagement({
       priority: sourceOrder?.priority || prev.priority,
       parts: Array.isArray(sourceOrder?.parts) ? sourceOrder.parts : prev.parts,
       labour: Array.isArray(sourceOrder?.labour) ? sourceOrder.labour : prev.labour,
+      attachments: sourceAttachments,
       notes:
         sourceOrder?.notes ||
         prev.notes ||
         "Completion invoice prepared from POS workflow.",
     }));
+    updateAttachmentPreviews(sourceAttachments.map(toPreviewFromMeta));
+    clearAttachmentInput();
     setSelectedDraftId("");
     setFeedback(
       `Invoice mode active for ${completionRequestId || "selected request"}. Add/adjust parts and labour, then send invoice to fleet owner.`
@@ -217,14 +297,20 @@ function POSOrderManagement({
       if (completionPopupTimeoutRef.current) {
         window.clearTimeout(completionPopupTimeoutRef.current);
       }
+      revokeAttachmentPreviewUrls(attachmentPreviewsRef.current);
     },
     []
   );
+
+  useEffect(() => {
+    attachmentPreviewsRef.current = attachmentPreviews;
+  }, [attachmentPreviews]);
 
   const loadDraftIntoForm = (draft) => {
     if (!draft) {
       return;
     }
+    const draftAttachments = Array.isArray(draft.attachments) ? draft.attachments : [];
     setOrderForm({
       id: draft.id,
       vehicleId: draft.vehicleId || "",
@@ -235,9 +321,11 @@ function POSOrderManagement({
       priority: draft.priority || "Normal",
       parts: Array.isArray(draft.parts) ? draft.parts : [],
       labour: Array.isArray(draft.labour) ? draft.labour : [],
-      attachments: Array.isArray(draft.attachments) ? draft.attachments : [],
+      attachments: draftAttachments,
       notes: draft.notes || "",
     });
+    updateAttachmentPreviews(draftAttachments.map(toPreviewFromMeta));
+    clearAttachmentInput();
     setSelectedDraftId(draft.id);
   };
 
@@ -308,14 +396,38 @@ function POSOrderManagement({
 
   const onFilesSelected = (event) => {
     const files = Array.from(event.target.files || []);
-    const attachments = files.map((file) => ({
-      name: file.name,
-      size: file.size,
-      type: file.type || "application/octet-stream",
-    }));
+    const previews = files.map(toPreviewFromFile);
     setOrderForm((prev) => ({
       ...prev,
-      attachments,
+      attachments: previews.map(toMetaFromPreview),
+    }));
+    updateAttachmentPreviews(previews);
+  };
+
+  const removeAttachmentById = (attachmentId) => {
+    setAttachmentPreviews((prev) => {
+      const target = prev.find((item) => item.id === attachmentId);
+      if (target?.url?.startsWith("blob:")) {
+        URL.revokeObjectURL(target.url);
+      }
+      const next = prev.filter((item) => item.id !== attachmentId);
+      setOrderForm((formPrev) => ({
+        ...formPrev,
+        attachments: next.map(toMetaFromPreview),
+      }));
+      if (next.length === 0) {
+        clearAttachmentInput();
+      }
+      return next;
+    });
+  };
+
+  const clearAttachments = () => {
+    updateAttachmentPreviews([]);
+    clearAttachmentInput();
+    setOrderForm((prev) => ({
+      ...prev,
+      attachments: [],
     }));
   };
 
@@ -355,6 +467,7 @@ function POSOrderManagement({
       },
     });
 
+    applyAttachmentMeta([]);
     setOrderForm(createInitialForm(selectedVehicle));
     setSelectedDraftId("");
     setFeedback(`Order ${submitted.id} submitted.`);
@@ -476,6 +589,7 @@ function POSOrderManagement({
     }
     if (selectedDraftId === draftId) {
       setSelectedDraftId("");
+      applyAttachmentMeta([]);
       setOrderForm(createInitialForm(selectedVehicle));
     }
     setFeedback("Draft removed.");
@@ -758,19 +872,70 @@ function POSOrderManagement({
             <h3 className="text-lg font-semibold text-slate-900">
               Upload images/documents
             </h3>
-            <div className="mt-3 grid gap-2">
-              <Input accept="image/*,.pdf,.doc,.docx" multiple onChange={onFilesSelected} type="file" />
-              <div className="card-list-scrollbar max-h-[8rem] space-y-1 overflow-y-auto pr-1">
-                {orderForm.attachments.length === 0 ? (
-                  <p className="text-xs text-slate-500">No files attached.</p>
-                ) : (
-                  orderForm.attachments.map((file) => (
-                    <p key={`${file.name}-${file.size}`} className="text-xs text-slate-700">
-                      {file.name} ({Math.max(1, Math.round(file.size / 1024))} KB)
+            <div className="mt-3 grid gap-3">
+              <Input
+                accept="image/*,.pdf,.doc,.docx"
+                multiple
+                onChange={onFilesSelected}
+                ref={attachmentInputRef}
+                type="file"
+              />
+              {attachmentPreviews.length > 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-slate-800">
+                      Uploaded files ({attachmentPreviews.length})
                     </p>
-                  ))
-                )}
-              </div>
+                    <button
+                      className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
+                      onClick={clearAttachments}
+                      type="button"
+                    >
+                      <Trash2 size={12} />
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="card-list-scrollbar mt-3 grid max-h-[18rem] grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {attachmentPreviews.map((preview) => (
+                      <figure
+                        className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                        key={preview.id}
+                      >
+                        {preview.isImage && preview.url ? (
+                          <img
+                            alt={preview.name}
+                            className="h-24 w-full object-cover sm:h-28"
+                            loading="lazy"
+                            src={preview.url}
+                          />
+                        ) : (
+                          <div className="flex h-24 w-full items-center justify-center border-b border-slate-200 bg-slate-100 sm:h-28">
+                            <FileText className="size-5 text-slate-500" />
+                          </div>
+                        )}
+                        <button
+                          aria-label={`Remove ${preview.name}`}
+                          className="absolute right-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full bg-slate-900/80 text-white opacity-100 transition hover:bg-rose-600 sm:opacity-0 sm:group-hover:opacity-100"
+                          onClick={() => removeAttachmentById(preview.id)}
+                          type="button"
+                        >
+                          <X size={12} />
+                        </button>
+                        <figcaption className="border-t border-slate-200 px-2 py-1.5">
+                          <p className="truncate text-[11px] font-medium text-slate-800" title={preview.name}>
+                            {preview.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500">{formatAttachmentSize(preview.size)}</p>
+                        </figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+                  No files attached.
+                </p>
+              )}
               <Textarea
                 onChange={(event) =>
                   setOrderForm((prev) => ({ ...prev, notes: event.target.value }))
@@ -863,6 +1028,7 @@ function POSOrderManagement({
               ) : null}
               <Button
                 onClick={() => {
+                  applyAttachmentMeta([]);
                   setOrderForm(createInitialForm(selectedVehicle));
                   setSelectedDraftId("");
                   setFeedback("Form reset.");
