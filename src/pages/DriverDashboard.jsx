@@ -49,6 +49,9 @@ import {
   BOOKING_BASE_COST_BY_CATEGORY as baseCostByProblem,
   DRIVER_SERVICE_CATEGORIES as simpleIssueOptions,
   POINT_S_STATIONS,
+  doesCategoryRequireDescription,
+  doesCategoryRequirePhotos,
+  doesCategoryRequireSubtype,
   getCategoryPolicyKeywords,
   getNearestPointSStationsForCategory,
 } from "../data/driverBookingCatalog";
@@ -259,17 +262,6 @@ const slotTemplates = [
   { id: "15:30", label: "15:30 - 16:15" },
   { id: "16:30", label: "16:30 - 17:15" },
 ];
-
-const toDateInputValue = (value) => {
-  const parsed = toDate(value) || new Date();
-  return parsed.toISOString().slice(0, 10);
-};
-
-const getTomorrowDateInput = () => {
-  const value = new Date();
-  value.setDate(value.getDate() + 1);
-  return toDateInputValue(value);
-};
 
 const getNearestPosForProblem = (problemType) => {
   if (!String(problemType || "").trim()) {
@@ -698,6 +690,7 @@ function DriverDashboard() {
 
   const [requestForm, setRequestForm] = useState({
     problemType: "",
+    problemSubtype: "",
     description: "",
     emergency: false,
     photos: [],
@@ -744,15 +737,34 @@ function DriverDashboard() {
     [requestForm.preferredSlotId, slotAvailability]
   );
   const isServiceRequestFormReady = useMemo(
-    () =>
-      Boolean(String(requestForm.problemType || "").trim()) &&
-      Boolean(requestForm.preferredPosId) &&
-      Boolean(requestForm.preferredDate) &&
-      Boolean(selectedSlot),
+    () => {
+      const hasProblemType = Boolean(String(requestForm.problemType || "").trim());
+      const hasSubtype = !doesCategoryRequireSubtype(requestForm.problemType)
+        || Boolean(String(requestForm.problemSubtype || "").trim());
+      const hasDescription = !doesCategoryRequireDescription(
+        requestForm.problemType,
+        requestForm.problemSubtype,
+      ) || Boolean(String(requestForm.description || "").trim());
+      const hasPhotos = !doesCategoryRequirePhotos(requestForm.problemType)
+        || requestForm.photos.length > 0;
+
+      return (
+        hasProblemType &&
+        hasSubtype &&
+        hasDescription &&
+        hasPhotos &&
+        Boolean(requestForm.preferredPosId) &&
+        Boolean(requestForm.preferredDate) &&
+        Boolean(selectedSlot)
+      );
+    },
     [
+      requestForm.description,
       requestForm.preferredDate,
       requestForm.preferredPosId,
       requestForm.problemType,
+      requestForm.problemSubtype,
+      requestForm.photos.length,
       selectedSlot,
     ]
   );
@@ -1121,7 +1133,10 @@ function DriverDashboard() {
     const allowedTypes = Array.isArray(policy.allowedServiceTypes)
       ? policy.allowedServiceTypes.map((item) => String(item || "").toLowerCase())
       : [];
-    const requestedTypeKeywords = getCategoryPolicyKeywords(requestForm.problemType);
+    const requestedTypeKeywords = getCategoryPolicyKeywords(
+      requestForm.problemType,
+      requestForm.problemSubtype,
+    );
     const typeAllowed =
       allowedTypes.length === 0 ||
       allowedTypes.some((allowed) =>
@@ -1162,6 +1177,7 @@ function DriverDashboard() {
     matchingPolicies,
     requestForm.emergency,
     requestForm.problemType,
+    requestForm.problemSubtype,
   ]);
 
   const onSignOut = () => {
@@ -1182,11 +1198,14 @@ function DriverDashboard() {
       selectedPos?.name || tenant?.workshopLead || "Point S station (unassigned)";
     const slotLabel = selectedSlot?.label || "Not selected";
     const preferredDateLabel = formatDate(requestForm.preferredDate);
+    const serviceLabel = requestForm.problemSubtype
+      ? `${requestForm.problemType} - ${requestForm.problemSubtype}`
+      : requestForm.problemType;
     const order = createServiceRequest({
       vehicleId: vehicle.id || "N/A",
       vehicleModel: vehicle.model || "Assigned Fleet Vehicle",
-      serviceType: requestForm.problemType,
-      requestTitle: `${requestForm.problemType} request`,
+      serviceType: serviceLabel,
+      requestTitle: `${serviceLabel} request`,
       requestedBy: displayName,
       priority: emergency ? "Emergency" : "Normal",
       emergency,
@@ -1194,12 +1213,14 @@ function DriverDashboard() {
       orderDetails: {
         description:
           requestForm.description ||
-          `${requestForm.problemType} reported by driver. Preferred slot: ${slotLabel} on ${preferredDateLabel}.`,
+          `${serviceLabel} reported by driver. Preferred slot: ${slotLabel} on ${preferredDateLabel}.`,
         vendor: selectedPosName,
         estimatedCost: `$${estimatedCost.total}`,
         location: selectedPos?.address || tenant?.region || "N/A",
         notes: [
           `Tenant: ${tenant?.name || "N/A"}`,
+          `Category: ${requestForm.problemType || "N/A"}`,
+          `Subcategory: ${requestForm.problemSubtype || "N/A"}`,
           `Preferred Point S station: ${selectedPosName} (${selectedPos?.distanceKm ?? "N/A"} km, ETA ${
             selectedPos?.etaMin ?? "N/A"
           } min)`,
@@ -1225,6 +1246,36 @@ function DriverDashboard() {
     }
     if (!String(requestForm.problemType || "").trim()) {
       const message = "Select a service category first.";
+      setWizardFeedback(message);
+      toast.error("Request not sent", { description: message, duration: 3200 });
+      return;
+    }
+    if (
+      doesCategoryRequireSubtype(requestForm.problemType) &&
+      !String(requestForm.problemSubtype || "").trim()
+    ) {
+      const message = "Select a service option before continuing.";
+      setWizardFeedback(message);
+      toast.error("Request not sent", { description: message, duration: 3200 });
+      return;
+    }
+    if (
+      doesCategoryRequireDescription(
+        requestForm.problemType,
+        requestForm.problemSubtype,
+      ) &&
+      !String(requestForm.description || "").trim()
+    ) {
+      const message = "Add the required issue details before continuing.";
+      setWizardFeedback(message);
+      toast.error("Request not sent", { description: message, duration: 3200 });
+      return;
+    }
+    if (
+      doesCategoryRequirePhotos(requestForm.problemType) &&
+      requestForm.photos.length === 0
+    ) {
+      const message = "Upload at least one photo for the damage report.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
       return;
@@ -1279,6 +1330,7 @@ function DriverDashboard() {
 
       setRequestForm({
         problemType: "",
+        problemSubtype: "",
         description: "",
         emergency: false,
         photos: [],
