@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeDollarSign,
@@ -45,6 +45,7 @@ import {
   subscribeBillingFinance,
 } from "../data/billingFinanceStore";
 import POSTopbar from "../components/pos/POSTopbar";
+import { useTranslation } from "../i18n/useTranslation";
 
 const fallbackVehicles = [
   {
@@ -73,49 +74,49 @@ const fallbackVehicles = [
 const posMenuItems = [
   {
     key: "overview",
-    label: "Dashboard",
+    labelKey: "pos.menu.overview",
     to: "/pos-dashboard/overview",
     icon: LayoutDashboard,
   },
   {
     key: "order-management",
-    label: "Order Management",
+    labelKey: "pos.menu.order-management",
     to: "/pos-dashboard/order-management",
     icon: ClipboardList,
   },
   {
     key: "validation",
-    label: "Validation",
+    labelKey: "pos.menu.validation",
     to: "/pos-dashboard/validation",
     icon: ShieldAlert,
   },
     {
     key: "analytics-reports",
-    label: "Analytics & Reports",
+    labelKey: "pos.menu.analytics-reports",
     to: "/pos-dashboard/analytics-reports",
     icon: ChartColumnBig,
   },
   {
     key: "approval-workflow",
-    label: "Approval Workflow",
+    labelKey: "pos.menu.approval-workflow",
     to: "/pos-dashboard/approval-workflow",
     icon: FileText,
   },
   {
     key: "billing-settlement",
-    label: "Billing & Settlement",
+    labelKey: "pos.menu.billing-settlement",
     to: "/pos-dashboard/billing-settlement",
     icon: BadgeDollarSign,
   },
   {
     key: "inventory-availability",
-    label: "Inventory & Availability",
+    labelKey: "pos.menu.inventory-availability",
     to: "/pos-dashboard/inventory-availability",
     icon: ChartNoAxesColumnIncreasing,
   },
   {
     key: "profile-settings",
-    label: "Profile & Settings",
+    labelKey: "pos.menu.profile-settings",
     to: "/pos-dashboard/profile-settings",
     icon: Settings2,
   },
@@ -124,27 +125,27 @@ const posMenuItems = [
 const initialPosNotifications = [
   {
     id: "NTF-001",
-    title: "New booking received",
-    detail: "A new service booking is waiting in order queue.",
-    time: "2 min ago",
+    titleKey: "pos.notifications.newBookingTitle",
+    detailKey: "pos.notifications.newBookingDetail",
+    minutesAgo: 2,
   },
   {
     id: "NTF-002",
-    title: "Approval responses",
-    detail: "Fleet manager responded to recent approval requests.",
-    time: "8 min ago",
+    titleKey: "pos.notifications.approvalResponsesTitle",
+    detailKey: "pos.notifications.approvalResponsesDetail",
+    minutesAgo: 8,
   },
   {
     id: "NTF-003",
-    title: "Rejection alerts",
-    detail: "One request was rejected and needs correction.",
-    time: "18 min ago",
+    titleKey: "pos.notifications.rejectionAlertsTitle",
+    detailKey: "pos.notifications.rejectionAlertsDetail",
+    minutesAgo: 18,
   },
   {
     id: "NTF-004",
-    title: "Payment processed alerts",
-    detail: "A settlement payment has been processed successfully.",
-    time: "31 min ago",
+    titleKey: "pos.notifications.paymentProcessedTitle",
+    detailKey: "pos.notifications.paymentProcessedDetail",
+    minutesAgo: 31,
   },
 ];
 
@@ -279,6 +280,7 @@ const policyMatchesVehicle = (policy, vehicle, fleetName) => {
 };
 
 function POSDashboard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -712,20 +714,20 @@ function POSDashboard() {
     location.pathname.includes("/overview") || location.pathname === "/pos-dashboard";
 
   const pageTitle = isOrderManagementRoute
-    ? "Order Management"
+    ? t("pos.menu.order-management", "Order Management")
     : isProfileSettingsRoute
-    ? "Profile & Settings"
+    ? t("pos.menu.profile-settings", "Profile & Settings")
     : isAnalyticsReportsRoute
-    ? "Analytics & Reports"
+    ? t("pos.menu.analytics-reports", "Analytics & Reports")
     : isInventoryAvailabilityRoute
-    ? "Inventory & Availability"
+    ? t("pos.menu.inventory-availability", "Inventory & Availability")
     : isBillingSettlementRoute
-    ? "Billing & Settlement"
+    ? t("pos.menu.billing-settlement", "Billing & Settlement")
     : isApprovalWorkflowRoute
-    ? "Approval Workflow"
+    ? t("pos.menu.approval-workflow", "Approval Workflow")
     : isValidationRoute
-    ? "Validation"
-    : "Dashboard";
+    ? t("pos.menu.validation", "Validation")
+    : t("pos.menu.overview", "Dashboard");
   const pageDescription = isOrderManagementRoute
     ? "Create, edit, and submit service orders with draft support."
     : isProfileSettingsRoute
@@ -817,10 +819,18 @@ function POSDashboard() {
         .sort((a, b) => toTimestamp(b.date) - toTimestamp(a.date))[0] || null;
 
     return notifications.map((notification) => {
+      const localizedNotification = {
+        ...notification,
+        title: t(notification.titleKey, notification.title || notification.id),
+        detail: t(notification.detailKey, notification.detail || ""),
+        time: t("pos.notifications.minutesAgo", "{{count}} min ago", {
+          count: notification.minutesAgo,
+        }),
+      };
       if (notification.id === "NTF-001") {
         return {
-          ...notification,
-          actionLabel: "Schedule booking",
+          ...localizedNotification,
+          actionLabel: t("actions.open", "Open"),
           actionPath: "/pos-dashboard/approval-workflow",
           actionQuery: {
             focus: "queue",
@@ -830,8 +840,8 @@ function POSDashboard() {
       }
       if (notification.id === "NTF-002") {
         return {
-          ...notification,
-          actionLabel: "Check response",
+          ...localizedNotification,
+          actionLabel: t("actions.open", "Open"),
           actionPath: "/pos-dashboard/approval-workflow",
           actionQuery: {
             focus: "status",
@@ -842,8 +852,8 @@ function POSDashboard() {
       }
       if (notification.id === "NTF-003") {
         return {
-          ...notification,
-          actionLabel: "Re-submit order",
+          ...localizedNotification,
+          actionLabel: t("actions.open", "Open"),
           actionPath: "/pos-dashboard/approval-workflow",
           actionQuery: {
             focus: "resubmit",
@@ -854,8 +864,8 @@ function POSDashboard() {
       }
       if (notification.id === "NTF-004") {
         return {
-          ...notification,
-          actionLabel: "View settlement",
+          ...localizedNotification,
+          actionLabel: t("actions.open", "Open"),
           actionPath: "/pos-dashboard/billing-settlement",
           actionQuery: {
             focus: "settlement-history",
@@ -864,12 +874,12 @@ function POSDashboard() {
         };
       }
       return {
-        ...notification,
-        actionLabel: notification.actionLabel || "Open",
+        ...localizedNotification,
+        actionLabel: notification.actionLabel || t("actions.open", "Open"),
         actionPath: notification.actionPath || "/pos-dashboard/overview",
       };
     });
-  }, [approvalLinkedRequests, billingState.invoices, notifications, queueOrders]);
+  }, [approvalLinkedRequests, billingState.invoices, notifications, queueOrders, t]);
 
   const handleNotificationAction = (notification) => {
     const actionPath = notification?.actionPath || "/pos-dashboard/overview";
@@ -884,10 +894,6 @@ function POSDashboard() {
     navigate(query ? `${actionPath}?${query}` : actionPath);
     setIsMobileSidebarOpen(false);
   };
-
-  useEffect(() => {
-    setIsMobileSidebarOpen(false);
-  }, [location.pathname]);
 
   return (
     <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
@@ -948,10 +954,11 @@ function POSDashboard() {
                     isDesktopSidebarCollapsed ? "lg:hidden" : ""
                   }`}
                 >
-                  Menu
+                  {t("common.menu", "Menu")}
                 </p>
                 {posMenuItems.map((item) => {
                   const Icon = item.icon;
+                  const label = t(item.labelKey, item.key);
                   return (
                     <NavLink
                       key={item.key}
@@ -966,13 +973,13 @@ function POSDashboard() {
                             : "text-slate-300 hover:bg-white/10 hover:text-white"
                         }`
                       }
-                      title={isDesktopSidebarCollapsed ? item.label : undefined}
+                      title={isDesktopSidebarCollapsed ? label : undefined}
                       to={item.to}
                       onClick={() => setIsMobileSidebarOpen(false)}
                     >
                       <Icon size={16} />
                       <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                        {item.label}
+                        {label}
                       </span>
                     </NavLink>
                   );
@@ -984,12 +991,18 @@ function POSDashboard() {
               <Button
                 className={`w-full ${isDesktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-start"}`}
                 onClick={onSignOut}
-                title={isDesktopSidebarCollapsed ? "Sign out" : undefined}
+                title={
+                  isDesktopSidebarCollapsed
+                    ? t("actions.signOut", "Sign out")
+                    : undefined
+                }
                 type="button"
                 variant="secondary"
               >
                 <LogOut className={isDesktopSidebarCollapsed ? "" : "mr-2"} size={16} />
-                <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>Sign out</span>
+                <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
+                  {t("actions.signOut", "Sign out")}
+                </span>
               </Button>
             </div>
           </div>

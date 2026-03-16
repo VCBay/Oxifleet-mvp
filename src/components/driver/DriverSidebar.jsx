@@ -11,14 +11,15 @@ import {
 } from "lucide-react";
 import Logo from "../../icons/Logo";
 import { Button } from "../ui/button";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const menuItems = [
-  { key: "overview", label: "Dashboard", Icon: Truck },
-  { key: "service_request", label: "Service Request", Icon: Wrench },
-  { key: "communication", label: "Communication", Icon: MessageSquare },
-  { key: "booking_tracking", label: "Booking & Tracking", Icon: CalendarClock },
-  { key: "documents_history", label: "Documents & History", Icon: FileText },
-  { key: "profile", label: "Profile", Icon: User },
+  { key: "overview", labelKey: "driver.sidebar.overview", Icon: Truck },
+  { key: "service_request", labelKey: "driver.sidebar.service_request", Icon: Wrench },
+  { key: "communication", labelKey: "driver.sidebar.communication", Icon: MessageSquare },
+  { key: "booking_tracking", labelKey: "driver.sidebar.booking_tracking", Icon: CalendarClock },
+  { key: "documents_history", labelKey: "driver.sidebar.documents_history", Icon: FileText },
+  { key: "profile", labelKey: "driver.sidebar.profile", Icon: User },
 ];
 
 function DriverSidebar({
@@ -31,6 +32,7 @@ function DriverSidebar({
   isMobile = false,
   className = "",
 }) {
+  const { t } = useTranslation();
   const sidebarWidthClass = isMobile ? "w-72" : isCollapsed ? "w-24" : "w-72";
 
   return (
@@ -44,7 +46,11 @@ function DriverSidebar({
           <div className="space-y-3">
             {showCollapseToggle ? (
               <button
-                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-label={
+                  isCollapsed
+                    ? t("actions.expandSidebar", "Expand sidebar")
+                    : t("actions.collapseSidebar", "Collapse sidebar")
+                }
                 className={`grid size-8 place-items-center rounded-xl border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white ${isCollapsed ? "mx-auto" : "ml-auto"}`}
                 onClick={onToggleCollapse}
                 type="button"
@@ -70,6 +76,7 @@ function DriverSidebar({
           <nav className="space-y-2 text-sm">
             {menuItems.map((item) => {
               const MenuIcon = item.Icon;
+              const label = t(item.labelKey, item.key);
               return (
                 <button
                   className={`flex w-full items-center rounded-2xl transition ${
@@ -83,11 +90,11 @@ function DriverSidebar({
                   }`}
                   key={item.key}
                   onClick={() => onMenuClick(item.key)}
-                  title={isCollapsed ? item.label : undefined}
+                  title={isCollapsed ? label : undefined}
                   type="button"
                 >
                   <MenuIcon size={18} />
-                  {!isCollapsed ? item.label : null}
+                  {!isCollapsed ? label : null}
                 </button>
               );
             })}
@@ -98,12 +105,12 @@ function DriverSidebar({
           <Button
             className={`w-full ${isCollapsed ? "justify-center px-0" : "justify-start"}`}
             onClick={onSignOut}
-            title={isCollapsed ? "Sign out" : undefined}
+            title={isCollapsed ? t("actions.signOut", "Sign out") : undefined}
             type="button"
             variant="secondary"
           >
             <LogOut className={isCollapsed ? "" : "mr-2"} size={16} />
-            {!isCollapsed ? "Sign out" : null}
+            {!isCollapsed ? t("actions.signOut", "Sign out") : null}
           </Button>
         </div>
       </div>

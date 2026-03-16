@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Area,
@@ -41,6 +41,7 @@ import SettingsProfileControl from "../components/SettingsProfileControl";
 import DriverManagement from "../components/DriverManagement";
 import FleetTopbar from "../components/fleet/FleetTopbar";
 import { Button } from "../components/ui/button";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   Dialog,
   DialogClose,
@@ -96,19 +97,6 @@ const fleetMenuRouteMap = {
   communication: "communication",
   team_access_control: "team-access-control",
   settings_profile: "settings-profile",
-};
-
-const fleetMenuLabelMap = {
-  dashboard: "Dashboard",
-  vehicles: "Vehicles",
-  drivers: "Drivers",
-  vehicle_policy: "Vehicle Policy",
-  service_order_control: "Service & Order Control",
-  billing_finance: "Billing & Finance",
-  reporting_analytics: "Reporting & Analytics",
-  communication: "Communication",
-  team_access_control: "Team & Access Control",
-  settings_profile: "Settings & Profile",
 };
 
 const parseFleetMenuFromPath = (pathname) => {
@@ -168,6 +156,7 @@ const fleetKpiTone = (status) => {
 };
 
 function Dashboard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const user = getSession();
@@ -220,7 +209,10 @@ function Dashboard() {
     false
   );
   const [driverSearchQuery, setDriverSearchQuery] = useState("");
-  const activePageTitle = fleetMenuLabelMap[activeMenu] || "Dashboard";
+  const activePageTitle = t(
+    `fleet.menu.${activeMenu}`,
+    activeMenu === "dashboard" ? "Dashboard" : activeMenu,
+  );
   const [driverForm, setDriverForm] = useState({
     id: "",
     name: "",
@@ -543,12 +535,6 @@ function Dashboard() {
     serviceOrderState.orders,
   ]);
 
-  useEffect(() => {
-    setClearedFleetNotificationIds((prev) =>
-      prev.filter((id) => fleetNotifications.some((item) => item.id === id))
-    );
-  }, [fleetNotifications]);
-
   const visibleFleetNotifications = useMemo(
     () =>
       fleetNotifications.filter(
@@ -799,7 +785,7 @@ function Dashboard() {
                     isDesktopSidebarCollapsed ? "lg:hidden" : ""
                   }`}
                 >
-                  Menu
+                  {t("common.menu", "Menu")}
                 </p>
                 <nav className="space-y-2 text-sm">
                   <button
@@ -811,12 +797,16 @@ function Dashboard() {
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("dashboard")}
-                    title={isDesktopSidebarCollapsed ? "Dashboard" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.dashboard", "Dashboard")
+                        : undefined
+                    }
                     type="button"
                   >
                     <LayoutGrid size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Dashboard
+                      {t("fleet.menu.dashboard", "Dashboard")}
                     </span>
                   </button>
                   <button
@@ -828,12 +818,16 @@ function Dashboard() {
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("vehicles")}
-                    title={isDesktopSidebarCollapsed ? "Vehicles" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.vehicles", "Vehicles")
+                        : undefined
+                    }
                     type="button"
                   >
                     <Van size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Vehicles
+                      {t("fleet.menu.vehicles", "Vehicles")}
                     </span>
                   </button>
                   <button
@@ -845,12 +839,16 @@ function Dashboard() {
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("drivers")}
-                    title={isDesktopSidebarCollapsed ? "Drivers" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.drivers", "Drivers")
+                        : undefined
+                    }
                     type="button"
                   >
                     <User size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Drivers
+                      {t("fleet.menu.drivers", "Drivers")}
                     </span>
                   </button>
 
@@ -863,12 +861,16 @@ function Dashboard() {
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("vehicle_policy")}
-                    title={isDesktopSidebarCollapsed ? "Vehicle Policy" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.vehicle_policy", "Vehicle Policy")
+                        : undefined
+                    }
                     type="button"
                   >
                     <User size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Vehicle Policy
+                      {t("fleet.menu.vehicle_policy", "Vehicle Policy")}
                     </span>
                   </button>
 
@@ -882,13 +884,15 @@ function Dashboard() {
                     }`}
                     onClick={() => handleMenuNavigate("service_order_control")}
                     title={
-                      isDesktopSidebarCollapsed ? "Service & Order Control" : undefined
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.service_order_control", "Service & Order Control")
+                        : undefined
                     }
                     type="button"
                   >
                     <FileUp size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Service &amp; Order Control
+                      {t("fleet.menu.service_order_control", "Service & Order Control")}
                     </span>
                   </button>
 
@@ -901,12 +905,16 @@ function Dashboard() {
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("billing_finance")}
-                    title={isDesktopSidebarCollapsed ? "Billing & Finance" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.billing_finance", "Billing & Finance")
+                        : undefined
+                    }
                     type="button"
                   >
                     <CircleDollarSign size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Billing &amp; Finance
+                      {t("fleet.menu.billing_finance", "Billing & Finance")}
                     </span>
                   </button>
 
@@ -920,13 +928,15 @@ function Dashboard() {
                     }`}
                     onClick={() => handleMenuNavigate("reporting_analytics")}
                     title={
-                      isDesktopSidebarCollapsed ? "Reporting & Analytics" : undefined
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.reporting_analytics", "Reporting & Analytics")
+                        : undefined
                     }
                     type="button"
                   >
                     <Search size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Reporting &amp; Analytics
+                      {t("fleet.menu.reporting_analytics", "Reporting & Analytics")}
                     </span>
                   </button>
 
@@ -939,12 +949,16 @@ function Dashboard() {
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("communication")}
-                    title={isDesktopSidebarCollapsed ? "Communication" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.communication", "Communication")
+                        : undefined
+                    }
                     type="button"
                   >
                     <Bell size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Communication
+                      {t("fleet.menu.communication", "Communication")}
                     </span>
                   </button>
 
@@ -982,7 +996,7 @@ function Dashboard() {
                     isDesktopSidebarCollapsed ? "lg:hidden" : ""
                   }`}
                 >
-                  General
+                  {t("common.general", "General")}
                 </p>
                 <nav className="space-y-2 text-sm">
                   {/* <button
@@ -1004,13 +1018,15 @@ function Dashboard() {
                     }`}
                     onClick={() => handleMenuNavigate("team_access_control")}
                     title={
-                      isDesktopSidebarCollapsed ? "Team & Access Control" : undefined
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.team_access_control", "Team & Access Control")
+                        : undefined
                     }
                     type="button"
                   >
                     <Users size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Team &amp; Access Control
+                      {t("fleet.menu.team_access_control", "Team & Access Control")}
                     </span>
                   </button>
 
@@ -1023,12 +1039,16 @@ function Dashboard() {
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("settings_profile")}
-                    title={isDesktopSidebarCollapsed ? "Settings & Profile" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.settings_profile", "Settings & Profile")
+                        : undefined
+                    }
                     type="button"
                   >
                     <Settings size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Settings &amp; Profile
+                      {t("fleet.menu.settings_profile", "Settings & Profile")}
                     </span>
                   </button>
 
@@ -1051,12 +1071,16 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     }`}
                     onClick={handleSignOut}
-                    title={isDesktopSidebarCollapsed ? "Sign out" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("actions.signOut", "Sign out")
+                        : undefined
+                    }
                     type="button"
                   >
                     <LogOut size={18} />
                     <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Sign out
+                      {t("actions.signOut", "Sign out")}
                     </span>
                   </button>
                 </nav>
@@ -1954,4 +1978,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-

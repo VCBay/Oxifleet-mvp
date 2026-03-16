@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, Menu, X } from "lucide-react";
+import LanguageSwitch from "../LanguageSwitch";
+import { useTranslation } from "../../i18n/useTranslation";
 
 function POSTopbar({
   displayName,
@@ -14,6 +16,7 @@ function POSTopbar({
   onToggleSidebarCollapse,
   isSidebarCollapsed = false,
 }) {
+  const { t } = useTranslation();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef(null);
   const notificationItems = Array.isArray(notifications) ? notifications : [];
@@ -38,7 +41,7 @@ function POSTopbar({
         <div className="flex min-w-0 items-center gap-2.5">
           {onOpenSidebar ? (
             <button
-              aria-label="Open menu"
+              aria-label={t("actions.openMenu", "Open menu")}
               className="grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 lg:hidden"
               onClick={onOpenSidebar}
               type="button"
@@ -49,7 +52,9 @@ function POSTopbar({
           {onToggleSidebarCollapse ? (
             <button
               aria-label={
-                isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                isSidebarCollapsed
+                  ? t("actions.expandSidebar", "Expand sidebar")
+                  : t("actions.collapseSidebar", "Collapse sidebar")
               }
               className="hidden size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 lg:grid"
               onClick={onToggleSidebarCollapse}
@@ -69,7 +74,7 @@ function POSTopbar({
           <div className="relative" ref={notificationRef}>
             <button
               aria-expanded={isNotificationOpen}
-              aria-label="Notifications"
+              aria-label={t("common.notifications", "Notifications")}
               className="relative grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300"
               onClick={() => setIsNotificationOpen((prev) => !prev)}
               type="button"
@@ -86,7 +91,7 @@ function POSTopbar({
               <div className="fixed inset-x-3 top-24 z-50 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[min(92vw,24rem)]">
                 <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-2">
                   <p className="text-sm font-semibold text-slate-900">
-                    Notifications
+                    {t("common.notifications", "Notifications")}
                   </p>
                   <button
                     className="rounded-full px-2 py-1 text-[11px] font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
@@ -94,14 +99,14 @@ function POSTopbar({
                     onClick={() => onClearAllNotifications?.()}
                     type="button"
                   >
-                    Clear all
+                    {t("actions.clearAll", "Clear all")}
                   </button>
                 </div>
 
                 <div className="sidebar-scrollbar mt-3 max-h-[min(62vh,24rem)] space-y-2 overflow-y-auto pr-1 sm:max-h-[22rem]">
                   {notificationCount === 0 ? (
                     <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
-                      No new notifications.
+                      {t("common.noNewNotifications", "No new notifications.")}
                     </p>
                   ) : (
                     notificationItems.map((item) => (
@@ -142,7 +147,7 @@ function POSTopbar({
                             }}
                             type="button"
                           >
-                            {item.actionLabel || "Open"}
+                            {item.actionLabel || t("actions.open", "Open")}
                           </button>
                           {/* <button
                             className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 transition hover:bg-slate-100"
@@ -159,6 +164,8 @@ function POSTopbar({
               </div>
             ) : null}
           </div>
+
+          <LanguageSwitch />
 
           <div className="grid size-8 shrink-0 place-items-center rounded-full bg-[#0D0F16] text-[11px] font-semibold text-white sm:hidden">
             {profileInitials}
