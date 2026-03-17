@@ -1,6 +1,9 @@
 import pointSStationsMaster from "./pointSStationsMaster.json";
 
-const normalizeValue = (value) => String(value || "").trim().toLowerCase();
+const normalizeValue = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 export const DRIVER_SERVICE_CATEGORIES = [
   {
@@ -88,8 +91,89 @@ export const BOOKING_BASE_COST_BY_CATEGORY = {
   "General service": 390,
 };
 
+export const DRIVER_SERVICE_CATEGORY_DETAILS = {
+  Reifen: {
+    selectionLabel: "Tyre service type",
+    selectionHint: "Choose the tyre-related service needed for your vehicle.",
+    detailFieldLabel: "Explain the tyre issue",
+    detailPlaceholder:
+      "Add details about the tyre condition, warning, axle position, or urgency.",
+    subOptions: [
+      {
+        value: "Tyre change (seasonal change)",
+        label: "Tyre change (seasonal change)",
+      },
+      {
+        value: "New tyre installation",
+        label: "New tyre installation",
+      },
+      {
+        value: "Tyre damage",
+        label: "Tyre damage",
+      },
+      {
+        value: "Tyre remounting",
+        label: "Tyre remounting",
+        requiresExplanation: true,
+      },
+      {
+        value: "TPMS problem",
+        label: "TPMS problem",
+        requiresExplanation: true,
+      },
+      {
+        value: "Air pressure loss",
+        label: "Air pressure loss",
+        requiresExplanation: true,
+      },
+    ],
+  },
+  Service: {
+    selectionLabel: "Service type",
+    selectionHint: "Choose the service needed before selecting a Point S station.",
+    detailFieldLabel: "Additional notes",
+    detailPlaceholder:
+      "Add any relevant service notes, mileage, or symptoms if needed.",
+    subOptions: [
+      { value: "Inspection", label: "Inspection" },
+      { value: "Oil change", label: "Oil change" },
+      {
+        value: "Vehicle inspection (HU/AU)",
+        label: "Vehicle inspection (HU/AU)",
+      },
+      { value: "UVV inspection", label: "UVV inspection" },
+      { value: "Wheel alignment", label: "Wheel alignment" },
+      {
+        value: "Windshield wiper service",
+        label: "Windshield wiper service",
+      },
+      { value: "Brakes", label: "Brakes" },
+    ],
+  },
+  "Technisches Problem": {
+    selectionLabel: "Technical problem details",
+    selectionHint:
+      "Describe the issue in the field below or upload a picture of the error message.",
+    detailFieldLabel: "What technical problem does your vehicle have?",
+    detailPlaceholder:
+      "Describe the warning light, error message, symptoms, or when the issue started.",
+    requiresDescription: true,
+  },
+  Schadensmeldung: {
+    selectionLabel: "Damage report details",
+    selectionHint:
+      "Fill out the damage details below and upload clear pictures of the damage.",
+    detailFieldLabel: "Damage details",
+    detailPlaceholder:
+      "Describe what happened, where the damage is located, and whether the vehicle is still drivable.",
+    requiresDescription: true,
+    requiresPhotos: true,
+  },
+};
+
 const safeText = (value) => String(value || "").trim();
-const containsAny = (text, keywords) => keywords.some((keyword) => text.includes(keyword));
+const containsAny = (text, keywords) =>
+  keywords.some((keyword) => text.includes(keyword));
 const toSeed = (value, fallbackIndex) => {
   const parsed = Number.parseInt(String(value || "").replace(/[^\d]/g, ""), 10);
   if (Number.isFinite(parsed) && parsed > 0) {
@@ -121,11 +205,14 @@ const buildCapabilities = (stationRow, seed) => {
   const searchableText = normalizeValue(
     `${stationRow.name1 || ""} ${stationRow.name2 || ""} ${stationRow.name3 || ""} ${
       stationRow.street || ""
-    }`
+    }`,
   );
   const capabilities = new Set(["tyre", "service", "general"]);
 
-  if (containsAny(searchableText, technicalCapabilityKeywords) || seed % 3 === 0) {
+  if (
+    containsAny(searchableText, technicalCapabilityKeywords) ||
+    seed % 3 === 0
+  ) {
     capabilities.add("technical");
   }
   if (containsAny(searchableText, damageCapabilityKeywords) || seed % 5 === 0) {
@@ -140,12 +227,17 @@ const formatAddress = (stationRow) => {
   const location = [safeText(stationRow.postalCode), safeText(stationRow.city)]
     .filter(Boolean)
     .join(" ");
-  return [street, location || "Unknown city", "Germany"].filter(Boolean).join(", ");
+  return [street, location || "Unknown city", "Germany"]
+    .filter(Boolean)
+    .join(", ");
 };
 
 const buildPointSStation = (stationRow, index, usedIds) => {
   const seed = toSeed(stationRow.customerNumber, index);
-  const customerRef = safeText(stationRow.customerNumber).replace(/[^\w-]/g, "");
+  const customerRef = safeText(stationRow.customerNumber).replace(
+    /[^\w-]/g,
+    "",
+  );
   const baseId = `POINTS-${customerRef || `IDX-${index + 1}`}`;
   let id = baseId;
   if (usedIds.has(id)) {
@@ -168,6 +260,7 @@ const buildPointSStation = (stationRow, index, usedIds) => {
     distanceKm,
     etaMin: Math.max(8, Math.round(distanceKm * 2.1 + 4)),
     capabilities: buildCapabilities(stationRow, seed),
+    type: stationRow.type,
   };
 };
 
@@ -178,14 +271,16 @@ export const POINT_S_STATIONS = (() => {
   return (pointSStationsMaster || [])
     .filter((row) => {
       const participation = normalizeValue(row?.fleetParticipation);
-      return !participation || participation === "ja" || participation === "yes";
+      return (
+        !participation || participation === "ja" || participation === "yes"
+      );
     })
     .map((row, index) => buildPointSStation(row || {}, index, usedIds))
     .sort((a, b) => a.distanceKm - b.distanceKm);
 })();
 
 const serviceCategoryByValue = new Map(
-  DRIVER_SERVICE_CATEGORIES.map((item) => [normalizeValue(item.value), item])
+  DRIVER_SERVICE_CATEGORIES.map((item) => [normalizeValue(item.value), item]),
 );
 
 const policyKeywordByCapability = {
@@ -208,11 +303,40 @@ export const getCategoryCapability = (problemType) => {
   return match?.capability || "service";
 };
 
-export const getCategoryPolicyKeywords = (problemType) => {
+export const getCategoryDetails = (problemType) =>
+  DRIVER_SERVICE_CATEGORY_DETAILS[String(problemType || "").trim()] || null;
+
+export const getCategorySubOptions = (problemType) =>
+  getCategoryDetails(problemType)?.subOptions || [];
+
+export const doesCategoryRequireSubtype = (problemType) =>
+  getCategorySubOptions(problemType).length > 0;
+
+export const doesCategoryRequireDescription = (problemType, problemSubtype) => {
+  const category = getCategoryDetails(problemType);
+  if (!category) {
+    return false;
+  }
+  if (category.requiresDescription) {
+    return true;
+  }
+  const subtype = category.subOptions?.find(
+    (item) => item.value === problemSubtype,
+  );
+  return Boolean(subtype?.requiresExplanation);
+};
+
+export const doesCategoryRequirePhotos = (problemType) =>
+  Boolean(getCategoryDetails(problemType)?.requiresPhotos);
+
+export const getCategoryPolicyKeywords = (problemType, problemSubtype = "") => {
   const normalizedProblemType = normalizeValue(problemType);
+  const normalizedSubtype = normalizeValue(problemSubtype);
   const capability = getCategoryCapability(problemType);
   const keywords = policyKeywordByCapability[capability] || [];
-  return Array.from(new Set([normalizedProblemType, ...keywords])).filter(Boolean);
+  return Array.from(
+    new Set([normalizedProblemType, normalizedSubtype, ...keywords]),
+  ).filter(Boolean);
 };
 
 export const getNearestPointSStationsForCategory = (problemType) => {
@@ -220,6 +344,6 @@ export const getNearestPointSStationsForCategory = (problemType) => {
   return POINT_S_STATIONS.filter(
     (station) =>
       station.capabilities.includes(targetCapability) ||
-      station.capabilities.includes("general")
+      station.capabilities.includes("general"),
   ).sort((a, b) => a.distanceKm - b.distanceKm);
 };
