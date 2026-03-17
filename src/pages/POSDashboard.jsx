@@ -2,17 +2,23 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeDollarSign,
+  ChevronLeft,
+  ArrowLeft,
+  ChevronRight,
   ChartColumnBig,
   ChartNoAxesColumnIncreasing,
   ClipboardList,
   FileText,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Settings2,
   ShieldAlert,
   X,
+  ArrowRight,
 } from "lucide-react";
 import Logo from "../icons/Logo";
+import OxifleetEmblemWhite from "../icons/Oxifleet-Emblem-White.svg";
 import {
   clearSession,
   getSession,
@@ -112,6 +118,12 @@ const posMenuItems = [
     label: "Inventory & Availability",
     to: "/pos-dashboard/inventory-availability",
     icon: ChartNoAxesColumnIncreasing,
+  },
+  {
+    key: "communication",
+    label: "Communication",
+    to: "/pos-dashboard/communication",
+    icon: MessageSquare,
   },
   {
     key: "profile-settings",
@@ -707,12 +719,15 @@ function POSDashboard() {
   const isBillingSettlementRoute = location.pathname.includes("/billing-settlement");
   const isInventoryAvailabilityRoute = location.pathname.includes("/inventory-availability");
   const isAnalyticsReportsRoute = location.pathname.includes("/analytics-reports");
+  const isCommunicationRoute = location.pathname.includes("/communication");
   const isProfileSettingsRoute = location.pathname.includes("/profile-settings");
   const isOverviewRoute =
     location.pathname.includes("/overview") || location.pathname === "/pos-dashboard";
 
   const pageTitle = isOrderManagementRoute
     ? "Order Management"
+    : isCommunicationRoute
+    ? "Communication"
     : isProfileSettingsRoute
     ? "Profile & Settings"
     : isAnalyticsReportsRoute
@@ -728,6 +743,8 @@ function POSDashboard() {
     : "Dashboard";
   const pageDescription = isOrderManagementRoute
     ? "Create, edit, and submit service orders with draft support."
+    : isCommunicationRoute
+    ? "Chat with multiple drivers and fleet owners in a single communication workspace."
     : isProfileSettingsRoute
     ? "Manage workshop profile, staff, working hours, and POS location configuration."
     : isAnalyticsReportsRoute
@@ -890,7 +907,7 @@ function POSDashboard() {
   }, [location.pathname]);
 
   return (
-    <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
+    <main className="pos-dashboard-theme h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
       <div className="flex h-full w-full min-w-0">
         <div
           className={`fixed inset-0 z-40 bg-slate-900/45 transition-opacity duration-300 ease-in-out lg:hidden ${
@@ -927,6 +944,16 @@ function POSDashboard() {
             >
               <X size={16} />
             </button>
+            <button
+              aria-label={
+                isDesktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              className="absolute -right-3 top-3 z-[65] hidden size-6 place-items-center rounded-full border border-[#cec6df] bg-[#ddd6ea] text-[#3b276d] shadow-sm transition hover:bg-[#d1c7e4] lg:grid"
+              onClick={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
+              type="button"
+            >
+              {isDesktopSidebarCollapsed ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
+            </button>
 
             <div className="sidebar-scrollbar min-h-0 flex-1 space-y-8 overflow-y-auto pr-1">
               <div className="flex items-center gap-3">
@@ -934,11 +961,15 @@ function POSDashboard() {
                   <Logo className="w-48 text-white" />
                 </div>
                 <div
-                  className={`hidden rounded-2xl border border-white/10 bg-white/5 p-2 shadow-inner ${
+                  className={`hidden rounded-2xl border-white/10 bg-white/5 p-2 shadow-inner ${
                     isDesktopSidebarCollapsed ? "lg:block" : ""
                   }`}
                 >
-                  <Logo className="w-11 text-white" />
+                  <img
+                    alt="Oxifleet emblem"
+                    className="h-8 w-8 object-contain"
+                    src={OxifleetEmblemWhite}
+                  />
                 </div>
               </div>
 
@@ -956,14 +987,16 @@ function POSDashboard() {
                     <NavLink
                       key={item.key}
                       className={({ isActive }) =>
-                        `flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${
+                        `flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-sm transition ${
                           isDesktopSidebarCollapsed
-                            ? "lg:justify-center lg:gap-0 lg:px-0"
+                            ? "lg:justify-center lg:gap-0 lg:px-0 lg:py-2.5"
                             : ""
                         } ${
                           isActive
-                            ? "bg-white/15 text-white"
-                            : "text-slate-300 hover:bg-white/10 hover:text-white"
+                            ? isDesktopSidebarCollapsed
+                              ? "border-[#5f47a8] bg-[#2A1656] text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                              : "border-[#5f47a8] bg-[#2A1656] text-white shadow-sm"
+                            : "border-transparent text-slate-300 hover:bg-white/10 hover:text-white"
                         }`
                       }
                       title={isDesktopSidebarCollapsed ? item.label : undefined}
@@ -981,16 +1014,30 @@ function POSDashboard() {
             </div>
 
             <div className="mt-auto space-y-2">
-              <Button
+              {/* <Button
                 className={`w-full ${isDesktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-start"}`}
                 onClick={onSignOut}
                 title={isDesktopSidebarCollapsed ? "Sign out" : undefined}
                 type="button"
-                variant="secondary"
+                // variant="secondary"
               >
                 <LogOut className={isDesktopSidebarCollapsed ? "" : "mr-2"} size={16} />
                 <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>Sign out</span>
-              </Button>
+              </Button> */}
+
+               <button
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white ${
+                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                    }`}
+                    onClick={onSignOut}
+                    title={isDesktopSidebarCollapsed ? "Sign out" : undefined}
+                    type="button"
+                  >
+                    <LogOut size={18} />
+                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
+                      Sign out
+                    </span>
+                  </button>
             </div>
           </div>
         </aside>
@@ -1000,19 +1047,15 @@ function POSDashboard() {
             isDesktopSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"
           } lg:px-8 lg:pb-8`}
         >
-          <div className="-mx-4 sticky top-0 z-40 bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)] pb-3 sm:-mx-6 sm:pb-4 lg:-mx-8 lg:pb-4">
+          <div className="-mx-4 top-0 z-40 sm:-mx-6 lg:-mx-8">
             <POSTopbar
               displayEmail={session?.email || "N/A"}
               displayName={session?.name || "POS User"}
-              isSidebarCollapsed={isDesktopSidebarCollapsed}
               notifications={actionableNotifications}
               onClearAllNotifications={clearAllNotifications}
               onClearNotification={clearNotification}
               onNotificationAction={handleNotificationAction}
               onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-              onToggleSidebarCollapse={() =>
-                setIsDesktopSidebarCollapsed((prev) => !prev)
-              }
               pageTitle={pageTitle}
               profileInitials={(session?.name || "POS")
                 .split(/\s+/)
@@ -1022,12 +1065,12 @@ function POSDashboard() {
             />
           </div>
 
-          {isOverviewRoute ? (
+          {/* {isOverviewRoute ? (
             <header className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
               <h1 className="text-2xl font-semibold text-slate-900">{pageTitle}</h1>
               <p className="mt-1 text-sm text-slate-500">{pageDescription}</p>
             </header>
-          ) : null}
+          ) : null} */}
 
           <Outlet
             context={{

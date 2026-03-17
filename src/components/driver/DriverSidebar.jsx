@@ -1,7 +1,7 @@
 import {
   CalendarClock,
-  ChevronsLeft,
-  ChevronsRight,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   LogOut,
   MessageSquare,
@@ -10,6 +10,7 @@ import {
   Wrench,
 } from "lucide-react";
 import Logo from "../../icons/Logo";
+import OxifleetEmblemWhite from "../../icons/Oxifleet-Emblem-White.svg";
 import { Button } from "../ui/button";
 
 const menuItems = [
@@ -38,25 +39,30 @@ function DriverSidebar({
       className={`inset-y-0 left-0 ${isMobile ? "absolute" : "fixed transition-[width] duration-300"} ${sidebarWidthClass} ${className} z-index-1000`}
     >
       <div
-        className={`flex h-full flex-col bg-[#0D0F16] text-white shadow-xl ${isCollapsed ? "p-3" : "p-6"}`}
+        className={`relative flex h-full flex-col bg-[#0D0F16] text-white shadow-xl ${isCollapsed ? "p-3" : "p-6"}`}
       >
+        {showCollapseToggle ? (
+          <button
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="absolute -right-3 top-3 z-[65] hidden size-6 place-items-center rounded-full border border-[#cec6df] bg-[#ddd6ea] text-[#3b276d] shadow-sm transition hover:bg-[#d1c7e4] lg:grid"
+            onClick={onToggleCollapse}
+            type="button"
+          >
+            {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+        ) : null}
+
         <div className="space-y-8">
           <div className="space-y-3">
-            {showCollapseToggle ? (
-              <button
-                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                className={`grid size-8 place-items-center rounded-xl border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white ${isCollapsed ? "mx-auto" : "ml-auto"}`}
-                onClick={onToggleCollapse}
-                type="button"
-              >
-                {isCollapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
-              </button>
-            ) : null}
 
             {isCollapsed ? (
               <div className="mx-auto space-y-1">
-                <div className="grid place-items-center rounded-2xl border border-white/10 bg-white/5 p-2 shadow-inner">
-                  <Logo className="w-11 text-white" />
+                <div className="grid place-items-center rounded-2xl border-white/10 bg-white/5 p-2 shadow-inner">
+                  <img
+                    alt="Oxifleet emblem"
+                    className="h-8 w-8 object-contain"
+                    src={OxifleetEmblemWhite}
+                  />
                 </div>
                 {/* <p className="text-center text-[9px] font-semibold uppercase tracking-[0.22em] text-white/60">
                   Driver
@@ -72,14 +78,16 @@ function DriverSidebar({
               const MenuIcon = item.Icon;
               return (
                 <button
-                  className={`flex w-full items-center rounded-2xl transition ${
+                  className={`flex w-full items-center rounded-2xl border transition ${
                     isCollapsed
                       ? "justify-center px-0 py-2.5"
                       : "gap-3 px-3 py-2 text-left"
                   } ${
                     activeMenu === item.key
-                      ? "bg-white/10 font-semibold text-white"
-                      : "text-white/70 hover:bg-white/10 hover:text-white"
+                      ? isCollapsed
+                        ? "border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                        : "border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                      : "border-transparent text-white/70 hover:bg-white/10 hover:text-white"
                   }`}
                   key={item.key}
                   onClick={() => onMenuClick(item.key)}

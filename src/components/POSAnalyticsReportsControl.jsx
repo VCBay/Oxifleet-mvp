@@ -1,5 +1,12 @@
 import { useMemo, useSyncExternalStore } from "react";
 import {
+  BadgeDollarSign,
+  ClipboardList,
+  FileText,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
+import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -9,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { figmaChartCardStyle, figmaChartTheme } from "../lib/chartTheme";
 import {
   getPosOrderState,
   subscribePosOrders,
@@ -46,9 +54,9 @@ const monthKey = (value) => {
 };
 
 const formatCurrency = (value) =>
-  new Intl.NumberFormat("en-US", {
+  new Intl.NumberFormat("en-IE", {
     style: "currency",
-    currency: "USD",
+    currency: "EUR",
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
@@ -74,9 +82,9 @@ const getApprovalState = (status) => {
 };
 
 const orderMetricMeta = {
-  total: { label: "Total Orders", color: "#2563eb" },
-  approved: { label: "Approved", color: "#10b981" },
-  rejected: { label: "Rejected", color: "#ef4444" },
+  total: { label: "Total Orders", color: "#24114D" },
+  approved: { label: "Approved", color: "#6133C0" },
+  rejected: { label: "Rejected", color: "#A7A0B8" },
 };
 
 const ordersPerPeriodFallback = [
@@ -119,28 +127,46 @@ const renderOrdersPeriodTooltip = ({ active, payload, label }) => {
   const totalCount = rows.reduce((sum, row) => sum + row.value, 0);
 
   return (
-    <div className="min-w-[196px] rounded-2xl border border-slate-700/50 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">
+    <div
+      className="min-w-[196px] rounded-lg px-3 py-2 shadow-xl backdrop-blur-sm"
+      style={{
+        background: figmaChartTheme.tooltipBackground,
+        border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
+      }}
+    >
+      <p
+        className="text-[11px] uppercase tracking-[0.18em]"
+        style={{ color: figmaChartTheme.tooltipLabel }}
+      >
         Orders Period
       </p>
-      <p className="mt-1 text-sm font-semibold">{label}</p>
+      <p className="mt-1 text-sm font-semibold" style={{ color: figmaChartTheme.tooltipTitle }}>
+        {label}
+      </p>
       <div className="mt-2 space-y-1.5">
         {rows.map((row) => (
           <div className="flex items-center justify-between gap-3" key={row.key}>
-            <div className="flex items-center gap-2 text-xs text-slate-200">
+            <div className="flex items-center gap-2 text-xs" style={{ color: figmaChartTheme.tooltipLabel }}>
               <span
                 className="inline-block size-2 rounded-full"
                 style={{ backgroundColor: row.color }}
               />
               {row.label}
             </div>
-            <p className="text-xs font-semibold text-white">{row.value}</p>
+            <p className="text-xs font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+              {row.value}
+            </p>
           </div>
         ))}
       </div>
-      <div className="mt-2 border-t border-slate-600/70 pt-1.5 text-[11px] text-slate-300">
+      <div
+        className="mt-2 border-t pt-1.5 text-[11px]"
+        style={{ borderColor: figmaChartTheme.tooltipBorder, color: figmaChartTheme.tooltipLabel }}
+      >
         Total touchpoints:{" "}
-        <span className="font-semibold text-white">{totalCount}</span>
+        <span className="font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+          {totalCount}
+        </span>
       </div>
     </div>
   );
@@ -393,58 +419,118 @@ function POSAnalyticsReportsControl() {
       .slice(0, 8);
   }, [serviceOrderState.orders]);
 
+  const revenueOverviewCards = [
+    {
+      key: "totalRevenue",
+      title: "Revenue",
+      value: revenueSummary.totalRevenue,
+      icon: BadgeDollarSign,
+    },
+    {
+      key: "paidRevenue",
+      title: "Paid",
+      value: revenueSummary.paidRevenue,
+      icon: ShieldCheck,
+    },
+    {
+      key: "processingRevenue",
+      title: "Process",
+      value: revenueSummary.processingRevenue,
+      icon: ClipboardList,
+    },
+    {
+      key: "unpaidRevenue",
+      title: "Unpaid",
+      value: revenueSummary.unpaidRevenue,
+      icon: ShieldAlert,
+    },
+    {
+      key: "averageInvoice",
+      title: "Average",
+      value: revenueSummary.averageInvoice,
+      icon: FileText,
+    },
+  ].map((card) => ({
+    ...card,
+    trendPercent: 15,
+    lastMonthValue: Math.max(0, Math.round(Number(card.value || 0) * 0.85)),
+  }));
+
   return (
     <section className="space-y-6">
-
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Revenue summary</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
-            {formatCurrency(revenueSummary.totalRevenue)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Paid revenue</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-600">
-            {formatCurrency(revenueSummary.paidRevenue)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Processing revenue</p>
-          <p className="mt-2 text-2xl font-semibold text-amber-600">
-            {formatCurrency(revenueSummary.processingRevenue)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Unpaid revenue</p>
-          <p className="mt-2 text-2xl font-semibold text-rose-600">
-            {formatCurrency(revenueSummary.unpaidRevenue)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Avg invoice</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
-            {formatCurrency(revenueSummary.averageInvoice)}
-          </p>
-        </div>
+        {revenueOverviewCards.map(({ icon: Icon, ...card }) => (
+          <article
+            key={card.key}
+            className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-700 sm:text-sm">
+                <Icon className="text-slate-700" size={14} />
+                {card.title}
+              </p>
+                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
+                +{card.trendPercent}% ↑
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <p className="mt-2 text-4xl font-semibold leading-none text-[#24114D]">
+                {formatCurrency(card.value)}
+              </p>
+              {/* <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
+                +{card.trendPercent}% ↑
+              </span> */}
+            </div>
+            <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
+              Last month: {formatCurrency(card.lastMonthValue)}
+            </p>
+          </article>
+        ))}
       </section>
 
-       <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Orders per period</h2>
+      <section className="p-6 shadow-sm" style={figmaChartCardStyle}>
+        <h2
+          className="text-lg font-semibold"
+          style={{ color: figmaChartTheme.title }}
+        >
+          Orders per period
+        </h2>
         <div className="mt-4 h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={ordersPerPeriod}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="month" stroke="#64748b" />
-              <YAxis stroke="#64748b" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={figmaChartTheme.grid}
+              />
+              <XAxis
+                dataKey="month"
+                stroke={figmaChartTheme.axis}
+                tick={{ fill: figmaChartTheme.axis }}
+              />
+              <YAxis
+                stroke={figmaChartTheme.axis}
+                tick={{ fill: figmaChartTheme.axis }}
+              />
               <Tooltip
                 content={renderOrdersPeriodTooltip}
-                cursor={{ fill: "rgba(15, 23, 42, 0.06)" }}
+                cursor={{ fill: figmaChartTheme.cursorFill }}
               />
               <Legend />
-              <Bar dataKey="total" fill="#2563eb" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="approved" fill="#10b981" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="rejected" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="total"
+                fill={figmaChartTheme.linePrimary}
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar
+                dataKey="approved"
+                fill={figmaChartTheme.lineSecondary}
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar
+                dataKey="rejected"
+                fill={figmaChartTheme.lineTertiary}
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -452,7 +538,9 @@ function POSAnalyticsReportsControl() {
 
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Rejection rate</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Rejection rate
+          </h2>
           <p className="mt-2 text-3xl font-semibold text-rose-600">
             {rejectionRateSummary.rejectionRate}%
           </p>
@@ -482,7 +570,9 @@ function POSAnalyticsReportsControl() {
         </div>
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Top serviced vehicles</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Top serviced vehicles
+          </h2>
           <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
             {topServicedVehicles.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
@@ -499,7 +589,9 @@ function POSAnalyticsReportsControl() {
                   </p>
                   <p className="text-slate-600">
                     Services: {vehicle.services} | Last:{" "}
-                    {new Date(vehicle.latestServiceAt).toLocaleDateString("en-US")}
+                    {new Date(vehicle.latestServiceAt).toLocaleDateString(
+                      "en-US",
+                    )}
                   </p>
                 </div>
               ))
@@ -509,7 +601,9 @@ function POSAnalyticsReportsControl() {
       </section>
 
       <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Fleet-wise performance</h2>
+        <h2 className="text-lg font-semibold text-slate-900">
+          Fleet-wise performance
+        </h2>
         <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
           {fleetWisePerformance.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
@@ -524,8 +618,8 @@ function POSAnalyticsReportsControl() {
                 <div>
                   <p className="font-semibold text-slate-900">{fleet.fleet}</p>
                   <p className="text-slate-600">
-                    Orders {fleet.orders} | Approved {fleet.approved} | Rejected {fleet.rejected} |
-                    Pending {fleet.pending}
+                    Orders {fleet.orders} | Approved {fleet.approved} | Rejected{" "}
+                    {fleet.rejected} | Pending {fleet.pending}
                   </p>
                 </div>
                 <div className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">

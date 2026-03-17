@@ -268,7 +268,7 @@ function DriverServiceRequestPreviewPage() {
   };
 
   return (
-    <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
+    <main className="driver-dashboard-theme h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
       <div className="flex h-full w-full">
         <DriverSidebar
           activeMenu="service_request"

@@ -23,6 +23,7 @@ import {
   YAxis,
 } from "recharts";
 import { useIsMobile } from "../../hooks/use-mobile";
+import { figmaChartCardStyle, figmaChartTheme } from "../../lib/chartTheme";
 
 const healthBandColor = (score) => {
   if (score >= 85) {
@@ -58,23 +59,41 @@ const renderHealthTooltip = ({ active, payload }) => {
   const score = Number(point?.score) || 0;
   const tone = healthBandColor(score);
   return (
-    <div className="min-w-[220px] rounded-2xl border border-slate-700/60 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300">
+    <div
+      className="min-w-[220px] rounded-lg px-3 py-2 shadow-xl backdrop-blur-sm"
+      style={{
+        background: figmaChartTheme.tooltipBackground,
+        border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
+      }}
+    >
+      <p
+        className="text-[11px] uppercase tracking-[0.16em]"
+        style={{ color: figmaChartTheme.tooltipLabel }}
+      >
         Vehicle Health
       </p>
-      <p className="mt-1 text-sm font-semibold">{point?.name || "Metric"}</p>
-      <div className="mt-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+      <p className="mt-1 text-sm font-semibold" style={{ color: figmaChartTheme.tooltipTitle }}>
+        {point?.name || "Metric"}
+      </p>
+      <div
+        className="mt-2 rounded-md px-3 py-2"
+        style={{ border: `0.5px solid ${figmaChartTheme.tooltipBorder}` }}
+      >
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-slate-300">Status</p>
+          <p className="text-xs" style={{ color: figmaChartTheme.tooltipLabel }}>
+            Status
+          </p>
           <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-slate-900"
+            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
             style={{ backgroundColor: tone }}
           >
             {healthBandLabel(score)}
           </span>
         </div>
-        <p className="mt-1 text-base font-semibold">{score}%</p>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-700">
+        <p className="mt-1 text-base font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+          {score}%
+        </p>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-300">
           <div className="h-full rounded-full" style={{ backgroundColor: tone, width: `${score}%` }} />
         </div>
       </div>
@@ -93,29 +112,57 @@ const renderSpendTrendTooltip = ({ active, payload, label }) => {
   const perCheck = checks > 0 ? Math.round(spend / checks) : spend;
 
   return (
-    <div className="min-w-[230px] rounded-2xl border border-slate-700/60 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300">
+    <div
+      className="min-w-[230px] rounded-lg px-3 py-2 shadow-xl backdrop-blur-sm"
+      style={{
+        background: figmaChartTheme.tooltipBackground,
+        border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
+      }}
+    >
+      <p
+        className="text-[11px] uppercase tracking-[0.16em]"
+        style={{ color: figmaChartTheme.tooltipLabel }}
+      >
         Service Spend Trend
       </p>
-      <p className="mt-1 text-sm font-semibold">{label}</p>
+      <p className="mt-1 text-sm font-semibold" style={{ color: figmaChartTheme.tooltipTitle }}>
+        {label}
+      </p>
       <div className="mt-2 space-y-1.5">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-200">
-            <span className="inline-block size-2 rounded-full bg-slate-200" />
+          <div className="flex items-center gap-2 text-xs" style={{ color: figmaChartTheme.tooltipLabel }}>
+            <span
+              className="inline-block size-2 rounded-full"
+              style={{ backgroundColor: figmaChartTheme.linePrimary }}
+            />
             Spend
           </div>
-          <p className="text-xs font-semibold">${spend}</p>
+          <p className="text-xs font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+            ${spend}
+          </p>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-200">
-            <span className="inline-block size-2 rounded-full bg-cyan-300" />
+          <div className="flex items-center gap-2 text-xs" style={{ color: figmaChartTheme.tooltipLabel }}>
+            <span
+              className="inline-block size-2 rounded-full"
+              style={{ backgroundColor: figmaChartTheme.lineSecondary }}
+            />
             Service checks
           </div>
-          <p className="text-xs font-semibold">{checks}</p>
+          <p className="text-xs font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+            {checks}
+          </p>
         </div>
-        <div className="mt-1 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5">
-          <p className="text-[10px] uppercase tracking-wide text-slate-300">Cost per check</p>
-          <p className="text-xs font-semibold">${perCheck}</p>
+        <div
+          className="mt-1 rounded-md px-2 py-1.5"
+          style={{ border: `0.5px solid ${figmaChartTheme.tooltipBorder}` }}
+        >
+          <p className="text-[10px] uppercase tracking-wide" style={{ color: figmaChartTheme.tooltipLabel }}>
+            Cost per check
+          </p>
+          <p className="text-xs font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+            ${perCheck}
+          </p>
         </div>
       </div>
     </div>
@@ -310,13 +357,13 @@ function DriverOverviewSection({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+        <div className="p-4 shadow-sm sm:p-6" style={figmaChartCardStyle}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+              <h2 className="text-base font-semibold sm:text-lg" style={{ color: figmaChartTheme.title }}>
                 Service spend trend (6 months)
               </h2>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs" style={{ color: figmaChartTheme.subtitle }}>
                 Same operational data, redesigned for quicker reading.
               </p>
             </div>
@@ -349,31 +396,27 @@ function DriverOverviewSection({
                     y1="0"
                     y2="1"
                   >
-                    <stop offset="0%" stopColor="#0f172a" stopOpacity={0.48} />
-                    <stop offset="70%" stopColor="#0f172a" stopOpacity={0.12} />
-                    <stop
-                      offset="100%"
-                      stopColor="#0f172a"
-                      stopOpacity={0.02}
-                    />
+                    <stop offset="0%" stopColor={figmaChartTheme.areaStart} stopOpacity={1} />
+                    <stop offset="60%" stopColor={figmaChartTheme.areaMid} stopOpacity={1} />
+                    <stop offset="100%" stopColor={figmaChartTheme.areaEnd} stopOpacity={1} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
-                  stroke="#e2e8f0"
+                  stroke={figmaChartTheme.grid}
                   strokeDasharray="3 3"
                   vertical={false}
                 />
                 <XAxis
                   axisLine={false}
                   dataKey="label"
-                  stroke="#64748b"
-                  tick={{ fill: "#64748b", fontSize: isMobile ? 10 : 11 }}
+                  stroke={figmaChartTheme.axis}
+                  tick={{ fill: figmaChartTheme.axis, fontSize: isMobile ? 10 : 11 }}
                   tickLine={false}
                 />
                 <YAxis
                   axisLine={false}
-                  stroke="#64748b"
-                  tick={{ fill: "#64748b", fontSize: isMobile ? 10 : 11 }}
+                  stroke={figmaChartTheme.axis}
+                  tick={{ fill: figmaChartTheme.axis, fontSize: isMobile ? 10 : 11 }}
                   tickFormatter={(value) => `$${value}`}
                   tickLine={false}
                   width={isMobile ? 34 : 44}
@@ -384,30 +427,33 @@ function DriverOverviewSection({
                   yAxisId="checks"
                 />
                 <ReferenceLine
-                  label={{ fill: "#64748b", fontSize: 10, value: "Avg" }}
-                  stroke="#94a3b8"
+                  label={{ fill: figmaChartTheme.axis, fontSize: 10, value: "Avg" }}
+                  stroke={figmaChartTheme.grid}
                   strokeDasharray="4 4"
                   y={averageSpend}
                 />
-                <Tooltip content={renderSpendTrendTooltip} />
+                <Tooltip
+                  content={renderSpendTrendTooltip}
+                  cursor={{ fill: figmaChartTheme.cursorFill }}
+                />
                 <Area
                   activeDot={{
                     r: 6,
-                    fill: "#0f172a",
-                    stroke: "#e2e8f0",
+                    fill: figmaChartTheme.linePrimary,
+                    stroke: figmaChartTheme.grid,
                     strokeWidth: 2,
                   }}
                   dataKey="spend"
                   fill="url(#driverSpendGradient)"
                   fillOpacity={1}
-                  stroke="#0f172a"
+                  stroke={figmaChartTheme.linePrimary}
                   strokeWidth={2.4}
                   type="monotone"
                 />
                 <Line
                   dataKey="checks"
-                  dot={{ fill: "#06b6d4", r: 3 }}
-                  stroke="#06b6d4"
+                  dot={{ fill: figmaChartTheme.lineSecondary, r: 3 }}
+                  stroke={figmaChartTheme.lineSecondary}
                   strokeDasharray="5 3"
                   strokeWidth={2}
                   type="monotone"
@@ -418,9 +464,9 @@ function DriverOverviewSection({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+        <div className="p-4 shadow-sm sm:p-6" style={figmaChartCardStyle}>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+            <h2 className="text-base font-semibold sm:text-lg" style={{ color: figmaChartTheme.title }}>
               Vehicle health index
             </h2>
             <div
@@ -454,30 +500,30 @@ function DriverOverviewSection({
                 layout="vertical"
                 margin={{ left: isMobile ? 8 : 30, right: isMobile ? 8 : 14 }}
               >
-                <CartesianGrid stroke="#dbe6f3" strokeDasharray="3 3" />
+                <CartesianGrid stroke={figmaChartTheme.grid} strokeDasharray="3 3" />
                 <XAxis
                   domain={[0, 100]}
-                  stroke="#64748b"
+                  stroke={figmaChartTheme.axis}
                   ticks={[0, 25, 50, 75, 100]}
-                  tick={{ fill: "#64748b", fontSize: isMobile ? 10 : 11 }}
+                  tick={{ fill: figmaChartTheme.axis, fontSize: isMobile ? 10 : 11 }}
                   type="number"
                 />
                 <YAxis
                   dataKey="name"
-                  stroke="#64748b"
-                  tick={{ fill: "#64748b", fontSize: isMobile ? 10 : 11 }}
+                  stroke={figmaChartTheme.axis}
+                  tick={{ fill: figmaChartTheme.axis, fontSize: isMobile ? 10 : 11 }}
                   type="category"
                   width={isMobile ? 86 : 110}
                 />
                 <Tooltip content={renderHealthTooltip} />
                 <ReferenceLine
-                  label={{ fill: "#475569", fontSize: 10, value: "Benchmark" }}
-                  stroke="#94a3b8"
+                  label={{ fill: figmaChartTheme.axis, fontSize: 10, value: "Benchmark" }}
+                  stroke={figmaChartTheme.grid}
                   strokeDasharray="4 4"
                   x={75}
                 />
                 <Bar
-                  background={{ fill: "#e2e8f0", radius: [8, 8, 8, 8] }}
+                  background={{ fill: "#ECEAF2", radius: [8, 8, 8, 8] }}
                   barSize={isMobile ? 14 : 18}
                   dataKey="score"
                   radius={[8, 8, 8, 8]}
@@ -491,7 +537,7 @@ function DriverOverviewSection({
                   {!isMobile ? (
                     <LabelList
                       dataKey="score"
-                      fill="#0f172a"
+                      fill={figmaChartTheme.title}
                       formatter={(value) => `${value}%`}
                       position="right"
                       style={{ fontSize: 11, fontWeight: 700 }}

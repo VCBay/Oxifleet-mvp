@@ -105,9 +105,11 @@ function POSProfileSettingsControl({ session = null }) {
   const communicationState = useSyncExternalStore(
     subscribeCommunication,
     getCommunicationState,
-    getCommunicationState
+    getCommunicationState,
   );
-  const [workshopProfile, setWorkshopProfile] = useState(defaultWorkshopProfile);
+  const [workshopProfile, setWorkshopProfile] = useState(
+    defaultWorkshopProfile,
+  );
   const [staffMembers, setStaffMembers] = useState(initialStaffMembers);
   const [staffDraft, setStaffDraft] = useState({
     name: "",
@@ -116,7 +118,9 @@ function POSProfileSettingsControl({ session = null }) {
     status: "Active",
   });
   const [workingHours, setWorkingHours] = useState(defaultWorkingHours);
-  const [locationSettings, setLocationSettings] = useState(defaultLocationSettings);
+  const [locationSettings, setLocationSettings] = useState(
+    defaultLocationSettings,
+  );
   const [feedback, setFeedback] = useState("");
   const [fleetMessageDraft, setFleetMessageDraft] = useState("");
   const [fleetMessageMeta, setFleetMessageMeta] = useState({
@@ -139,8 +143,12 @@ function POSProfileSettingsControl({ session = null }) {
   };
 
   const staffSummary = useMemo(() => {
-    const active = staffMembers.filter((member) => member.status === "Active").length;
-    const onLeave = staffMembers.filter((member) => member.status === "On leave").length;
+    const active = staffMembers.filter(
+      (member) => member.status === "Active",
+    ).length;
+    const onLeave = staffMembers.filter(
+      (member) => member.status === "On leave",
+    ).length;
     return {
       total: staffMembers.length,
       active,
@@ -150,8 +158,17 @@ function POSProfileSettingsControl({ session = null }) {
 
   const workshopIdentity = useMemo(
     () =>
-      String(workshopProfile.workshopName || locationSettings.locationName || session?.name || "Workshop Desk").trim(),
-    [locationSettings.locationName, session?.name, workshopProfile.workshopName]
+      String(
+        workshopProfile.workshopName ||
+          locationSettings.locationName ||
+          session?.name ||
+          "Workshop Desk",
+      ).trim(),
+    [
+      locationSettings.locationName,
+      session?.name,
+      workshopProfile.workshopName,
+    ],
   );
 
   const fleetConversation = useMemo(
@@ -159,14 +176,16 @@ function POSProfileSettingsControl({ session = null }) {
       communicationState.workshopMessages
         .filter(
           (message) =>
-            String(message.workshop || "").trim().toLowerCase() ===
-            workshopIdentity.toLowerCase()
+            String(message.workshop || "")
+              .trim()
+              .toLowerCase() === workshopIdentity.toLowerCase(),
         )
         .sort(
           (a, b) =>
-            (new Date(a.sentAt).getTime() || 0) - (new Date(b.sentAt).getTime() || 0)
+            (new Date(a.sentAt).getTime() || 0) -
+            (new Date(b.sentAt).getTime() || 0),
         ),
-    [communicationState.workshopMessages, workshopIdentity]
+    [communicationState.workshopMessages, workshopIdentity],
   );
 
   const addStaffMember = () => {
@@ -198,7 +217,7 @@ function POSProfileSettingsControl({ session = null }) {
 
   const updateWorkingDay = (day) => (patch) => {
     setWorkingHours((prev) =>
-      prev.map((item) => (item.day === day ? { ...item, ...patch } : item))
+      prev.map((item) => (item.day === day ? { ...item, ...patch } : item)),
     );
   };
 
@@ -236,7 +255,9 @@ function POSProfileSettingsControl({ session = null }) {
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs text-slate-500">Staff count</p>
-          <p className="mt-2 text-lg font-semibold text-slate-900">{staffSummary.total}</p>
+          <p className="mt-2 text-lg font-semibold text-slate-900">
+            {staffSummary.total}
+          </p>
           <p className="text-xs text-slate-500">
             Active {staffSummary.active} | On leave {staffSummary.onLeave}
           </p>
@@ -246,7 +267,9 @@ function POSProfileSettingsControl({ session = null }) {
           <p className="mt-2 text-lg font-semibold text-slate-900">
             {locationSettings.locationName}
           </p>
-          <p className="text-xs text-slate-500">{locationSettings.city}, {locationSettings.state}</p>
+          <p className="text-xs text-slate-500">
+            {locationSettings.city}, {locationSettings.state}
+          </p>
         </div>
       </section>
 
@@ -418,7 +441,9 @@ function POSProfileSettingsControl({ session = null }) {
 
       <section className="grid gap-6 2xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Working hours</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Working hours
+          </h2>
           <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-2 overflow-y-auto pr-1">
             {workingHours.map((item) => (
               <div
@@ -450,7 +475,9 @@ function POSProfileSettingsControl({ session = null }) {
                   <input
                     checked={item.closed}
                     onChange={(event) =>
-                      updateWorkingDay(item.day)({ closed: event.target.checked })
+                      updateWorkingDay(item.day)({
+                        closed: event.target.checked,
+                      })
                     }
                     type="checkbox"
                   />
@@ -579,90 +606,12 @@ function POSProfileSettingsControl({ session = null }) {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Fleet communication</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Send workshop updates to fleet and receive their responses in the same thread.
-          </p>
-          <div className="mt-4 grid gap-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SearchableSelect
-                onValueChange={(value) =>
-                  setFleetMessageMeta((prev) => ({ ...prev, channel: value }))
-                }
-                options={CHANNEL_OPTIONS}
-                value={fleetMessageMeta.channel || ""}
-                placeholder="Channel"
-                searchPlaceholder="Search channels"
-                emptyLabel="No channels"
-                noMatchLabel="No matching channel"
-                triggerClassName="w-full"
-              />
-              <SearchableSelect
-                onValueChange={(value) =>
-                  setFleetMessageMeta((prev) => ({ ...prev, urgency: value }))
-                }
-                options={URGENCY_OPTIONS}
-                value={fleetMessageMeta.urgency || ""}
-                placeholder="Urgency"
-                searchPlaceholder="Search urgency"
-                emptyLabel="No urgency levels"
-                noMatchLabel="No matching urgency"
-                triggerClassName="w-full"
-              />
-            </div>
-            <Textarea
-              onChange={(event) => setFleetMessageDraft(event.target.value)}
-              placeholder="Write update for fleet control"
-              rows={4}
-              value={fleetMessageDraft}
-            />
-            <Button onClick={sendFleetMessage} type="button">
-              <Send className="mr-2" size={14} />
-              Send to fleet
-            </Button>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Fleet conversation</h2>
-          <p className="mt-1 text-sm text-slate-500">{workshopIdentity}</p>
-          <div className="card-list-scrollbar mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
-            {fleetConversation.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No fleet communication yet.
-              </p>
-            ) : (
-              fleetConversation.map((message) => {
-                const inbound = String(message.fromRole || "").toLowerCase() === "fleet";
-                return (
-                  <div
-                    className={`flex ${inbound ? "justify-start" : "justify-end"}`}
-                    key={message.id}
-                  >
-                    <div
-                      className={`max-w-[86%] rounded-2xl px-3 py-2 text-xs ${
-                        inbound
-                          ? "border border-slate-200 bg-slate-50 text-slate-700"
-                          : "bg-slate-900 text-white"
-                      }`}
-                    >
-                      <p className={`${inbound ? "text-slate-500" : "text-slate-300"}`}>
-                        {message.sentBy} | {formatDateTime(message.sentAt)}
-                      </p>
-                      <p className="mt-1">{message.message}</p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </section>
-
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={saveAllSettings} type="button">
+        <Button
+          onClick={saveAllSettings}
+          type="button"
+          className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+        >
           Save profile & settings
         </Button>
         {feedback ? (

@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BadgeDollarSign,
   ChartColumnBig,
   ChartNoAxesColumnIncreasing,
+  ChevronDown,
   ClipboardList,
   FileText,
   Search,
@@ -15,18 +17,18 @@ import {
   X,
 } from "lucide-react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { Input } from "./ui/input";
+import { figmaChartCardStyle, figmaChartTheme } from "../lib/chartTheme";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -35,54 +37,32 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
-const requestComparisonMeta = {
-  completed: { label: "Completed", color: "#10b981" },
-  pending: { label: "Pending", color: "#f59e0b" },
-};
-
 const renderRequestComparisonTooltip = ({ active, payload, label }) => {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
-  const rows = payload
-    .filter((item) => Number.isFinite(Number(item.value)))
-    .map((item) => {
-      const key = String(item.dataKey || "");
-      const meta = requestComparisonMeta[key] || {
-        label: key || "Metric",
-        color: item.color || "#334155",
-      };
-      return {
-        key,
-        label: meta.label,
-        color: meta.color,
-        value: Number(item.value) || 0,
-      };
-    });
-
-  const total = rows.reduce((sum, row) => sum + row.value, 0);
+  const rows = payload.filter((item) => Number.isFinite(Number(item.value)));
+  const completed = Math.round(Number(rows.find((row) => row.dataKey === "completed")?.value) || 0);
+  const pending = Math.round(Number(rows.find((row) => row.dataKey === "pending")?.value) || 0);
 
   return (
-    <div className="min-w-[200px] rounded-2xl border border-slate-700/50 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">Requests Comparison</p>
-      <p className="mt-1 text-sm font-semibold">{label}</p>
-      <div className="mt-2 space-y-1.5">
-        {rows.map((row) => (
-          <div className="flex items-center justify-between gap-3" key={row.key}>
-            <div className="flex items-center gap-2 text-xs text-slate-200">
-              <span
-                className="inline-block size-2 rounded-full"
-                style={{ backgroundColor: row.color }}
-              />
-              {row.label}
-            </div>
-            <p className="text-xs font-semibold text-white">{row.value}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 border-t border-slate-600/70 pt-1.5 text-[11px] text-slate-300">
-        Total requests: <span className="font-semibold text-white">{total}</span>
+    <div
+      className="rounded-lg px-3 py-2 shadow-xl backdrop-blur-sm"
+      style={{
+        background: figmaChartTheme.tooltipBackground,
+        border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
+      }}
+    >
+      <div className="space-y-1">
+        <p className="text-2xl font-semibold leading-none text-[#24114D]">
+          {completed}%{" "}
+          <span className="ml-1 text-xs font-medium text-slate-500">{label}</span>
+        </p>
+        <p className="text-2xl font-semibold leading-none text-[#643AC7]">
+          {pending}%{" "}
+          <span className="ml-1 text-xs font-medium text-slate-500">{label}</span>
+        </p>
       </div>
     </div>
   );
@@ -94,15 +74,22 @@ const renderEstimatedCostTooltip = ({ active, payload, label }) => {
   }
 
   const cost = Number(payload[0]?.value) || 0;
+  const costInK = `${Math.round(cost / 1000)}K`;
 
   return (
-    <div className="min-w-[200px] rounded-2xl border border-slate-700/50 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">Estimated Cost Trend</p>
-      <p className="mt-1 text-sm font-semibold">{label}</p>
-      <div className="mt-2 rounded-xl border border-slate-600/70 bg-white/5 px-3 py-2">
-        <p className="text-xs text-slate-300">Estimated Cost</p>
-        <p className="text-base font-semibold text-white">{formatCurrency(cost)}</p>
-      </div>
+    <div
+      className="rounded-md px-2.5 py-1.5 shadow-lg backdrop-blur-sm"
+      style={{
+        background: figmaChartTheme.tooltipBackground,
+        border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
+      }}
+    >
+      <p className="text-xs font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+        {costInK}{" "}
+        <span className="ml-1 text-[10px] font-normal" style={{ color: figmaChartTheme.tooltipLabel }}>
+          {label}
+        </span>
+      </p>
     </div>
   );
 };
@@ -233,31 +220,99 @@ function POSDashboardOverview({
     },
   ];
 
+  const summaryCards = [
+    {
+      key: "total",
+      title: "Total requests",
+      value: Number(requestSummary.total) || 10,
+      icon: ClipboardList,
+    },
+    {
+      key: "completed",
+      title: "Completed",
+      value: Number(requestSummary.completed) || 8,
+      icon: ShieldCheck,
+    },
+    {
+      key: "pending",
+      title: "Pending",
+      value: Number(requestSummary.pending) || 2,
+      icon: ShieldAlert,
+    },
+    {
+      key: "inProgress",
+      title: "In progress",
+      value: Number(requestSummary.inProgress) || 1,
+      icon: Truck,
+    },
+    {
+      key: "approvalRequired",
+      title: "Approval pen.",
+      value: Number(requestSummary.approvalRequired) || 0,
+      icon: FileText,
+    },
+  ].map((card) => {
+    const lastMonthValue = Math.max(0, card.value - Math.round(card.value * 0.15));
+    return {
+      ...card,
+      trendPercent: 15,
+      lastMonthValue,
+    };
+  });
+  const requestComparisonData = useMemo(() => {
+    const safeRows = Array.isArray(monthlyComparison) ? monthlyComparison : [];
+    const maxValue = Math.max(
+      1,
+      ...safeRows.flatMap((row) => [Number(row.completed) || 0, Number(row.pending) || 0])
+    );
+    return safeRows.map((row) => ({
+      ...row,
+      completed: Math.round(((Number(row.completed) || 0) / maxValue) * 100),
+      pending: Math.round(((Number(row.pending) || 0) / maxValue) * 100),
+    }));
+  }, [monthlyComparison]);
+  const estimatedChartData = (monthlyComparison?.length ? monthlyComparison : []).map((row) => ({
+    ...row,
+    monthLabel: row.month,
+    estimatedCost: Number(row.estimatedCost) || 0,
+  }));
+  const latestEstimated = estimatedChartData[estimatedChartData.length - 1]?.estimatedCost || 0;
+  const previousEstimated = estimatedChartData[estimatedChartData.length - 2]?.estimatedCost || 0;
+  const estimatedTrendPercent =
+    previousEstimated > 0 ? Math.round(((latestEstimated - previousEstimated) / previousEstimated) * 100) : 0;
+
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Total requests</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{requestSummary.total}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Completed</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-600">{requestSummary.completed}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Pending</p>
-          <p className="mt-2 text-2xl font-semibold text-amber-600">{requestSummary.pending}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">In progress</p>
-          <p className="mt-2 text-2xl font-semibold text-sky-600">{requestSummary.inProgress}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Approval required</p>
-          <p className="mt-2 text-2xl font-semibold text-violet-700">
-            {requestSummary.approvalRequired}
-          </p>
-        </div>
+        {summaryCards.map(({ icon: Icon, ...card }) => (
+          <article
+            key={card.key}
+            className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-700 sm:text-sm">
+                <Icon className="text-slate-700" size={14} />
+                {card.title}
+              </p>
+              {/* <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
+                +{card.trendPercent}% ?
+              </span> */}
+            </div>
+             <div className="flex items-center justify-between gap-2">
+
+            <p className="mt-2 text-4xl font-semibold leading-none text-[#24114D]">
+              {card.value}
+            </p>
+
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
+                +{card.trendPercent}% ?
+              </span>
+             </div>
+            <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
+              Last month: {card.lastMonthValue}
+            </p>
+          </article>
+        ))}
       </section>
 
       {/* <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
@@ -301,49 +356,101 @@ function POSDashboardOverview({
       </section> */}
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Requests comparison (completed vs pending)
-          </h2>
+        <div className="p-6 shadow-sm" style={figmaChartCardStyle}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold" style={{ color: figmaChartTheme.title }}>
+                Requests comparison
+              </h2>
+              <p className="mt-1 text-sm text-slate-400">Total request distribution by period.</p>
+            </div>
+            {/* <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md border border-[#D3CFDB] bg-[#F9F9F9] px-2.5 py-1 text-sm font-medium text-[#1D0E3E]"
+            >
+              Week
+              <ChevronDown size={14} />
+            </button> */}
+          </div>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyComparison}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="month" stroke="#64748b" />
-                <YAxis stroke="#64748b" />
+              <BarChart data={requestComparisonData} barGap={4} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke={figmaChartTheme.grid} vertical={false} />
+                <XAxis dataKey="month" stroke={figmaChartTheme.axis} tick={{ fill: figmaChartTheme.axis }} />
+                <YAxis
+                  domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
+                  tickFormatter={(value) => `${value}%`}
+                  stroke={figmaChartTheme.axis}
+                  tick={{ fill: figmaChartTheme.axis }}
+                />
                 <Tooltip
                   content={renderRequestComparisonTooltip}
-                  cursor={{ fill: "rgba(15, 23, 42, 0.06)" }}
+                  cursor={{ fill: figmaChartTheme.cursorFill }}
                 />
-                <Legend />
-                <Bar dataKey="completed" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="pending" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="completed"
+                  fill="#D7D4E2"
+                  radius={[6, 6, 0, 0]}
+                  barSize={16}
+                  activeBar={{ fill: "#3B206F", radius: [6, 6, 0, 0] }}
+                />
+                <Bar
+                  dataKey="pending"
+                  fill="#E3DFF2"
+                  radius={[6, 6, 0, 0]}
+                  barSize={16}
+                  activeBar={{ fill: "#A99DE8", radius: [6, 6, 0, 0] }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Estimated cost trend</h2>
+        <div className="p-6 shadow-sm" style={figmaChartCardStyle}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold" style={{ color: figmaChartTheme.title }}>
+              Estimated cost trend
+            </h2>
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+              {estimatedTrendPercent >= 0 ? "+" : ""}
+              {estimatedTrendPercent}%
+            </span>
+          </div>
+          {/* <p className="mt-1 text-xs text-slate-500">Four-week spend for maintenance and parts.</p> */}
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyComparison}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="month" stroke="#64748b" />
-                <YAxis stroke="#64748b" />
+              <AreaChart data={estimatedChartData} margin={{ top: 10, right: 8, left: -8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="estimatedCostFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6133C0" stopOpacity={0.36} />
+                    <stop offset="95%" stopColor="#6133C0" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={figmaChartTheme.grid} vertical={false} />
+                <XAxis dataKey="monthLabel" stroke={figmaChartTheme.axis} tick={{ fill: figmaChartTheme.axis }} />
+                <YAxis
+                  stroke={figmaChartTheme.axis}
+                  tick={{ fill: figmaChartTheme.axis }}
+                  ticks={[0, 4000, 8000, 12000, 16000]}
+                  domain={[0, 16000]}
+                  tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`}
+                />
                 <Tooltip
                   content={renderEstimatedCostTooltip}
-                  cursor={{ stroke: "rgba(15, 23, 42, 0.25)", strokeWidth: 1 }}
+                  cursor={{ stroke: figmaChartTheme.tooltipBorder, strokeDasharray: "4 4" }}
                 />
-                <Legend />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="estimatedCost"
-                  stroke="#0f172a"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
+                  stroke="#24114D"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#estimatedCostFill)"
+                  dot={false}
+                  activeDot={{ r: 3, fill: "#24114D", stroke: "#FFFFFF", strokeWidth: 1.5 }}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -604,3 +711,5 @@ function POSDashboardOverview({
 }
 
 export default POSDashboardOverview;
+
+

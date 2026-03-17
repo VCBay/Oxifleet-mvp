@@ -43,6 +43,14 @@ const formatDateTime = (value) => {
   });
 };
 
+const EURO_CURRENCY_FORMATTER = new Intl.NumberFormat("en-IE", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+});
+
+const formatEuro = (value) => EURO_CURRENCY_FORMATTER.format(normalizeNumber(value));
+
 const createAttachmentId = () =>
   `ATT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
@@ -461,7 +469,7 @@ function POSOrderManagement({
       orderDetails: {
         description: submitted.description || "POS-created service order.",
         vendor: "POS Booking Desk",
-        estimatedCost: `$${submitted.total}`,
+        estimatedCost: formatEuro(submitted.total),
         location: "POS Center",
         notes: `Parts ${submitted.parts.length}, Labour ${submitted.labour.length}, Attachments ${submitted.attachments.length}`,
       },
@@ -776,12 +784,14 @@ function POSOrderManagement({
                       <div>
                         <p className="font-semibold text-slate-800">{item.name}</p>
                         <p className="text-slate-600">
-                          Qty {item.qty} x ${item.unitCost}
+                          Qty {item.qty} x {formatEuro(item.unitCost)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-slate-900">
-                          ${Math.round(normalizeNumber(item.qty) * normalizeNumber(item.unitCost))}
+                          {formatEuro(
+                            Math.round(normalizeNumber(item.qty) * normalizeNumber(item.unitCost))
+                          )}
                         </p>
                         <button
                           className="rounded-md border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-700"
@@ -846,12 +856,14 @@ function POSOrderManagement({
                       <div>
                         <p className="font-semibold text-slate-800">{item.name}</p>
                         <p className="text-slate-600">
-                          {item.hours} hr x ${item.rate}
+                          {item.hours} hr x {formatEuro(item.rate)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-slate-900">
-                          ${Math.round(normalizeNumber(item.hours) * normalizeNumber(item.rate))}
+                          {formatEuro(
+                            Math.round(normalizeNumber(item.hours) * normalizeNumber(item.rate))
+                          )}
                         </p>
                         <button
                           className="rounded-md border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-700"
@@ -972,13 +984,13 @@ function POSOrderManagement({
                 <div className="rounded-xl border border-emerald-200 bg-white p-3 text-xs">
                   <p className="text-slate-500">Invoice total</p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
-                    ${totals.total}
+                    {formatEuro(totals.total)}
                   </p>
                 </div>
               </div>
               <div className="mt-4">
                 <Button
-                  className="bg-emerald-600 text-white hover:bg-emerald-500"
+                  className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                   disabled={isCompletionSubmitting}
                   onClick={submitCompletionInvoice}
                   type="button"
@@ -1006,15 +1018,19 @@ function POSOrderManagement({
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <p className="text-slate-500">Parts total</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">${totals.partsTotal}</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  {formatEuro(totals.partsTotal)}
+                </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <p className="text-slate-500">Labour total</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">${totals.labourTotal}</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  {formatEuro(totals.labourTotal)}
+                </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <p className="text-slate-500">Order total</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">${totals.total}</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">{formatEuro(totals.total)}</p>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -1022,7 +1038,11 @@ function POSOrderManagement({
                 Save draft
               </Button>
               {!completionMode ? (
-                <Button onClick={submitOrder} type="button">
+                <Button
+                  className="h-[36px] w-[136px] rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+                  onClick={submitOrder}
+                  type="button"
+                >
                   Submit order
                 </Button>
               ) : null}
@@ -1076,6 +1096,7 @@ function POSOrderManagement({
                         size="sm"
                         type="button"
                         variant="secondary"
+                        className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                       >
                         View
                       </Button>
@@ -1121,7 +1142,8 @@ function POSOrderManagement({
                       {order.id} - {order.serviceType}
                     </p>
                     <p className="mt-1 text-slate-600">
-                      {order.vehiclePlate || order.vehicleId || "Vehicle N/A"} | ${order.total}
+                      {order.vehiclePlate || order.vehicleId || "Vehicle N/A"} |{" "}
+                      {formatEuro(order.total)}
                     </p>
                     <div className="mt-2 flex gap-2">
                       <Button
@@ -1129,6 +1151,7 @@ function POSOrderManagement({
                         size="sm"
                         type="button"
                         variant="secondary"
+                        className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                       >
                         View
                       </Button>
@@ -1211,7 +1234,7 @@ function POSOrderManagement({
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">Invoice Total</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
-                  ${completionPopup.total}
+                  {formatEuro(completionPopup.total)}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {completionPopup.status} • {formatDateTime(completionPopup.invoiceDate)}
@@ -1283,18 +1306,20 @@ function POSOrderManagement({
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <p className="text-slate-500">Parts total</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
-                  ${modalOrder.partsTotal || 0}
+                  {formatEuro(modalOrder.partsTotal || 0)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <p className="text-slate-500">Labour total</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
-                  ${modalOrder.labourTotal || 0}
+                  {formatEuro(modalOrder.labourTotal || 0)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <p className="text-slate-500">Order total</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">${modalOrder.total || 0}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {formatEuro(modalOrder.total || 0)}
+                </p>
               </div>
             </div>
 
@@ -1359,9 +1384,9 @@ function POSOrderManagement({
                       >
                         <p className="font-semibold text-slate-900">{item.name}</p>
                         <p className="text-slate-600">
-                          Qty {item.qty} x ${item.unitCost}
+                          Qty {item.qty} x {formatEuro(item.unitCost)}
                         </p>
-                        <p className="font-semibold text-slate-900">${item.total}</p>
+                        <p className="font-semibold text-slate-900">{formatEuro(item.total)}</p>
                       </div>
                     ))
                   )}
@@ -1383,9 +1408,9 @@ function POSOrderManagement({
                       >
                         <p className="font-semibold text-slate-900">{item.name}</p>
                         <p className="text-slate-600">
-                          {item.hours} hr x ${item.rate}
+                          {item.hours} hr x {formatEuro(item.rate)}
                         </p>
-                        <p className="font-semibold text-slate-900">${item.total}</p>
+                        <p className="font-semibold text-slate-900">{formatEuro(item.total)}</p>
                       </div>
                     ))
                   )}

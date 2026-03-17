@@ -6,6 +6,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,6 +15,9 @@ import {
 import {
   CalendarClock,
   Bell,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
   FileUp,
   HelpCircle,
@@ -30,6 +34,7 @@ import {
 } from "lucide-react";
 import { clearSession, getSession } from "../auth/session";
 import Logo from "../icons/Logo";
+import OxifleetEmblemWhite from "../icons/Oxifleet-Emblem-White.svg";
 import VehicleManagement from "../components/VehicleManagement";
 import VehiclePolicyManagement from "../components/VehiclePolicyManagement";
 import ServiceOrderControl from "../components/ServiceOrderControl";
@@ -84,6 +89,7 @@ import {
   getBillingFinanceState,
   subscribeBillingFinance,
 } from "../data/billingFinanceStore";
+import { figmaChartCardStyle, figmaChartTheme } from "../lib/chartTheme";
 
 const fleetMenuRouteMap = {
   dashboard: "overview",
@@ -127,12 +133,32 @@ const renderFleetSpendTooltip = ({ active, payload, label }) => {
   }
   const spend = Number(payload[0]?.value) || 0;
   return (
-    <div className="min-w-[200px] rounded-2xl border border-slate-700/60 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
-      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300">Service Spend</p>
-      <p className="mt-1 text-sm font-semibold">{label}</p>
-      <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
-        <p className="text-[10px] uppercase tracking-wide text-slate-300">Weekly spend</p>
-        <p className="mt-1 text-sm font-semibold">${spend.toLocaleString()}</p>
+    <div
+      className="min-w-[200px] rounded-lg px-3 py-2 shadow-xl backdrop-blur-sm"
+      style={{
+        background: figmaChartTheme.tooltipBackground,
+        border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
+      }}
+    >
+      <p
+        className="text-[10px] uppercase tracking-[0.16em]"
+        style={{ color: figmaChartTheme.tooltipLabel }}
+      >
+        Service Spend
+      </p>
+      <p className="mt-1 text-sm font-semibold" style={{ color: figmaChartTheme.tooltipTitle }}>
+        {label}
+      </p>
+      <div
+        className="mt-2 rounded-md px-2.5 py-2"
+        style={{ border: `0.5px solid ${figmaChartTheme.tooltipBorder}` }}
+      >
+        <p className="text-[10px] uppercase tracking-wide" style={{ color: figmaChartTheme.tooltipLabel }}>
+          Weekly spend
+        </p>
+        <p className="mt-1 text-sm font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+          ${spend.toLocaleString()}
+        </p>
       </div>
     </div>
   );
@@ -142,16 +168,43 @@ const renderFleetUtilizationTooltip = ({ active, payload, label }) => {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
-  const rate = Number(payload[0]?.value) || 0;
-  const state = rate >= 85 ? "High" : rate >= 70 ? "Stable" : "Needs focus";
-  const tone = rate >= 85 ? "text-emerald-300" : rate >= 70 ? "text-sky-300" : "text-amber-300";
+  const rows = payload
+    .filter((item) => Number.isFinite(Number(item.value)))
+    .map((item) => ({
+      key: String(item.dataKey || ""),
+      value: Number(item.value) || 0,
+      date:
+        item?.payload?.dateLabel ||
+        (item?.payload?.day ? `${item.payload.day} 11 Feb` : "Wed 11 Feb"),
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  const primary = rows[0];
+  const secondary = rows[1];
+
   return (
-    <div className="min-w-[200px] rounded-2xl border border-slate-700/60 bg-[#0F172A] px-3 py-2 text-white shadow-2xl">
-      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300">Utilization</p>
-      <p className="mt-1 text-sm font-semibold">{label}</p>
-      <div className="mt-2 flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
-        <p className="text-xs text-slate-200">{rate}% active</p>
-        <p className={`text-xs font-semibold ${tone}`}>{state}</p>
+    <div
+      className="min-w-[124px] rounded-md px-3 py-2 shadow-xl backdrop-blur-sm"
+      style={{
+        background: "rgba(255,255,255,0.92)",
+        border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
+      }}
+    >
+      <div className="flex items-center gap-1.5 text-xs">
+        <span className="font-medium" style={{ color: figmaChartTheme.tooltipValue }}>
+          {primary?.value ?? 0}%
+        </span>
+        <span className="text-[10px]" style={{ color: figmaChartTheme.tooltipLabel }}>
+          {primary?.date || `${label} 11 Feb`}
+        </span>
+      </div>
+      <div className="mt-1 flex items-center gap-1.5 text-xs">
+        <span className="font-medium" style={{ color: figmaChartTheme.tooltipValue }}>
+          {secondary?.value ?? 0}%
+        </span>
+        <span className="text-[10px]" style={{ color: figmaChartTheme.tooltipLabel }}>
+          {secondary?.date || `${label} 11 Feb`}
+        </span>
       </div>
     </div>
   );
@@ -325,20 +378,13 @@ function Dashboard() {
   ];
 
   const utilization = [
-    { day: "Mon-1", rate: 82 },
-    { day: "Tue-1", rate: 74 },
-    { day: "Wed-1", rate: 88 },
-    { day: "Thu-1", rate: 79 },
-    { day: "Fri-1", rate: 91 },
-    { day: "Sat-1", rate: 67 },
-    { day: "Sun-1", rate: 71 },
-    { day: "Mon-2", rate: 84 },
-    { day: "Tue-2", rate: 78 },
-    { day: "Wed-2", rate: 86 },
-    { day: "Thu-2", rate: 80 },
-    { day: "Fri-2", rate: 93 },
-    { day: "Sat-2", rate: 69 },
-    { day: "Sun-2", rate: 73 },
+    { day: "Mon", primary: 86, secondary: 70, dateLabel: "Mon 11 Feb", focus: false },
+    { day: "Tue", primary: 80, secondary: 74, dateLabel: "Tue 11 Feb", focus: false },
+    { day: "Wed", primary: 77, secondary: 40, dateLabel: "Wed 11 Feb", focus: true },
+    { day: "Thu", primary: 71, secondary: 56, dateLabel: "Thu 11 Feb", focus: false },
+    { day: "Fri", primary: 76, secondary: 64, dateLabel: "Fri 11 Feb", focus: false },
+    { day: "Sat", primary: 93, secondary: 88, dateLabel: "Sat 11 Feb", focus: false },
+    { day: "Sun", primary: 100, secondary: 84, dateLabel: "Sun 11 Feb", focus: false },
   ];
 
   const assignmentVehicles =
@@ -745,7 +791,7 @@ function Dashboard() {
     : null;
 
   return (
-    <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)]">
+    <main className="fleet-dashboard-theme h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)]">
       <div className="flex h-full w-full min-w-0">
         {isMobileSidebarOpen ? (
           <button
@@ -766,7 +812,7 @@ function Dashboard() {
           } lg:translate-x-0`}
         >
           <div
-            className={`flex h-full flex-col bg-[#0D0F16] p-6 text-white shadow-xl ${
+            className={`relative flex h-full flex-col bg-[#0D0F16] p-6 text-white shadow-xl ${
               isDesktopSidebarCollapsed ? "lg:p-3" : "lg:p-6"
             }`}
           >
@@ -778,6 +824,16 @@ function Dashboard() {
             >
               <X size={16} />
             </button>
+            <button
+              aria-label={
+                isDesktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              className="absolute -right-3 top-3 z-[65] hidden size-6 place-items-center rounded-full border border-[#cec6df] bg-[#ddd6ea] text-[#3b276d] shadow-sm transition hover:bg-[#d1c7e4] lg:grid"
+              onClick={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
+              type="button"
+            >
+              {isDesktopSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            </button>
 
             <div className="sidebar-scrollbar min-h-0 flex-1 space-y-10 overflow-y-auto pr-1">
               <div className="flex items-center gap-3">
@@ -785,11 +841,15 @@ function Dashboard() {
                   <Logo className="w-48 text-white" />
                 </div>
                 <div
-                  className={`hidden rounded-2xl border border-white/10 bg-white/5 p-2 shadow-inner ${
+                  className={`hidden rounded-2xl border-white/10 bg-white/5 p-2 shadow-inner ${
                     isDesktopSidebarCollapsed ? "lg:block" : ""
                   }`}
                 >
-                  <Logo className="w-11 text-white" />
+                  <img
+                    alt="Oxifleet emblem"
+                    className="h-8 w-8 object-contain"
+                    src={OxifleetEmblemWhite}
+                  />
                 </div>
               </div>
 
@@ -807,7 +867,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "dashboard"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("dashboard")}
@@ -824,7 +884,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "vehicles"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("vehicles")}
@@ -841,7 +901,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "drivers"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("drivers")}
@@ -859,7 +919,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "vehicle_policy"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("vehicle_policy")}
@@ -877,7 +937,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "service_order_control"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("service_order_control")}
@@ -897,7 +957,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "billing_finance"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("billing_finance")}
@@ -915,7 +975,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "reporting_analytics"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("reporting_analytics")}
@@ -935,7 +995,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "communication"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("communication")}
@@ -951,7 +1011,7 @@ function Dashboard() {
                   {/* <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
                       activeMenu === "team_access_control"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("team_access_control")}
@@ -964,7 +1024,7 @@ function Dashboard() {
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
                       activeMenu === "settings_profile"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("settings_profile")}
@@ -999,7 +1059,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "team_access_control"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("team_access_control")}
@@ -1019,7 +1079,7 @@ function Dashboard() {
                       isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
                     } ${
                       activeMenu === "settings_profile"
-                        ? "bg-white/10 font-semibold text-white"
+                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("settings_profile")}
@@ -1559,19 +1619,15 @@ function Dashboard() {
             </DialogContent>
           </Dialog>
 
-          <div className="-mx-4 sticky top-0 z-40 bg-[linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)] pb-3 sm:-mx-6 sm:pb-4 lg:-mx-8 lg:pb-4">
+          <div className="-mx-4 sticky top-0 z-40 pb-3 sm:-mx-6 sm:pb-4 lg:-mx-8 lg:pb-4">
             <FleetTopbar
               displayEmail={user?.email || "john@oxifleet.com"}
               displayName={user?.name || "John Doe"}
-              isSidebarCollapsed={isDesktopSidebarCollapsed}
               notifications={visibleFleetNotifications}
               onClearAllNotifications={clearAllFleetNotifications}
               onClearNotification={clearFleetNotification}
               onNotificationAction={handleFleetNotificationAction}
               onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-              onToggleSidebarCollapse={() =>
-                setIsDesktopSidebarCollapsed((prev) => !prev)
-              }
               pageTitle={activePageTitle}
               profileInitials={user?.name ? user.name.slice(0, 2).toUpperCase() : "JD"}
             />
@@ -1693,16 +1749,25 @@ function Dashboard() {
               </section>
 
           <section className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200/70 bg-white/95 p-4 shadow-sm backdrop-blur-sm sm:p-6">
+            <div
+              className="p-4 shadow-sm backdrop-blur-sm sm:p-6"
+              style={figmaChartCardStyle}
+            >
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
+                <h2 className="text-sm font-semibold sm:text-lg" style={{ color: figmaChartTheme.title }}>
                   Service spend
                 </h2>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
+                <span
+                  className="rounded-full px-3 py-1 text-xs font-semibold"
+                  style={{
+                    background: figmaChartTheme.positivePillBackground,
+                    color: figmaChartTheme.positivePillText,
+                  }}
+                >
                   +12%
                 </span>
               </div>
-              <p className="mt-1 text-[11px] text-slate-500 sm:text-sm">
+              <p className="mt-1 text-[11px] sm:text-sm" style={{ color: figmaChartTheme.subtitle }}>
                 Rolling four-week spend for maintenance and parts.
               </p>
               <div className="mt-3 h-44 sm:mt-4 sm:h-56">
@@ -1721,32 +1786,46 @@ function Dashboard() {
                       >
                         <stop
                           offset="10%"
-                          stopColor="#0f172a"
-                          stopOpacity={0.4}
+                          stopColor={figmaChartTheme.areaStart}
+                          stopOpacity={1}
                         />
                         <stop
-                          offset="90%"
-                          stopColor="#0f172a"
-                          stopOpacity={0.05}
+                          offset="60%"
+                          stopColor={figmaChartTheme.areaMid}
+                          stopOpacity={1}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor={figmaChartTheme.areaEnd}
+                          stopOpacity={1}
                         />
                       </linearGradient>
                     </defs>
                     <CartesianGrid
-                      stroke="#e2e8f0"
+                      stroke={figmaChartTheme.grid}
                       strokeDasharray="3 3"
                       vertical={false}
                     />
-                    <XAxis dataKey="week" tickLine={false} axisLine={false} />
+                    <XAxis
+                      dataKey="week"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
+                    />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
+                      tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
                       tickFormatter={(value) => `$${value / 1000}k`}
                     />
-                    <Tooltip content={renderFleetSpendTooltip} />
+                    <Tooltip
+                      content={renderFleetSpendTooltip}
+                      cursor={{ fill: figmaChartTheme.cursorFill }}
+                    />
                     <Area
                       type="monotone"
                       dataKey="spend"
-                      stroke="#0f172a"
+                      stroke={figmaChartTheme.linePrimary}
                       strokeWidth={3}
                       fill="url(#spendFill)"
                     />
@@ -1755,38 +1834,78 @@ function Dashboard() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-200/70 bg-white/95 p-4 shadow-sm backdrop-blur-sm sm:p-6">
+            <div
+              className="p-4 shadow-sm backdrop-blur-sm sm:p-6"
+              style={{ ...figmaChartCardStyle, border: "1px solid #D3CFDB", minHeight: "342px" }}
+            >
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                  Utilization rate
+                <h2 className="text-sm font-semibold sm:text-lg" style={{ color: figmaChartTheme.title }}>
+                  Shipments Statistics
                 </h2>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                  88% avg
-                </span>
+                <button
+                  className="inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-sm font-medium"
+                  style={{
+                    background: "#F9F9F9",
+                    border: `0.5px solid ${figmaChartTheme.cardBorder}`,
+                    color: figmaChartTheme.title,
+                  }}
+                  type="button"
+                >
+                  Week
+                  <ChevronDown size={14} strokeWidth={1.75} />
+                </button>
               </div>
-              <p className="mt-1 text-[11px] text-slate-500 sm:text-sm">
-                Percentage of vehicles active per day.
+              <p className="mt-1 text-xs sm:text-xs" style={{ color: "#9E9FA2" }}>
+                Total number of deliveries 50K
               </p>
-              <div className="mt-3 h-44 sm:mt-4 sm:h-56">
+              <div className="mt-3 h-48 sm:mt-4 sm:h-56">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={utilization} margin={{ left: -12, right: 8 }}>
+                  <BarChart data={utilization} barGap={2} barSize={16} margin={{ left: -14, right: 8, top: 4 }}>
                     <CartesianGrid
-                      stroke="#e2e8f0"
-                      strokeDasharray="3 3"
+                      stroke={figmaChartTheme.grid}
+                      strokeDasharray="2 4"
                       vertical={false}
                     />
-                    <XAxis dataKey="day" tickLine={false} axisLine={false} />
-                    <YAxis
+                    <XAxis
+                      dataKey="day"
                       tickLine={false}
                       axisLine={false}
+                      tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      ticks={[0, 25, 50, 75, 100]}
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
                       tickFormatter={(value) => `${value}%`}
                     />
-                    <Tooltip content={renderFleetUtilizationTooltip} />
-                    <Bar
-                      dataKey="rate"
-                      fill="#0D0F16"
-                      radius={[10, 10, 0, 0]}
+                    <Tooltip
+                      content={renderFleetUtilizationTooltip}
+                      cursor={{ fill: "rgba(36, 17, 77, 0.04)" }}
                     />
+                    <Bar
+                      dataKey="primary"
+                      radius={[6, 6, 0, 0]}
+                    >
+                      {utilization.map((entry) => (
+                        <Cell
+                          key={`primary-${entry.day}`}
+                          fill={entry.focus ? figmaChartTheme.linePrimary : "rgba(167, 160, 184, 0.45)"}
+                        />
+                      ))}
+                    </Bar>
+                    <Bar
+                      dataKey="secondary"
+                      radius={[6, 6, 0, 0]}
+                    >
+                      {utilization.map((entry) => (
+                        <Cell
+                          key={`secondary-${entry.day}`}
+                          fill={entry.focus ? "#A397EE" : "rgba(163, 151, 238, 0.5)"}
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1954,4 +2073,5 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
 

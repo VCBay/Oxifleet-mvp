@@ -302,6 +302,59 @@ function POSApprovalWorkflowControl({
     [approvalRequests]
   );
 
+  const approvalOverviewCards = useMemo(() => {
+    const cards = [
+      {
+        key: "total",
+        title: "Total requests",
+        value: approvalRequests.length,
+        icon: History,
+        valueClassName: "text-slate-900",
+      },
+      {
+        key: "pending",
+        title: "Pending approval",
+        value: statusSummary.pending,
+        icon: Clock3,
+        valueClassName: "text-amber-600",
+      },
+      {
+        key: "approved",
+        title: "Approved",
+        value: statusSummary.approved,
+        icon: CheckCircle2,
+        valueClassName: "text-emerald-600",
+      },
+      {
+        key: "rejected",
+        title: "Rejected",
+        value: statusSummary.rejected,
+        icon: X,
+        valueClassName: "text-rose-600",
+      },
+      {
+        key: "resubmitted",
+        title: "Re-submitted",
+        value: statusSummary.resubmitted,
+        icon: Send,
+        valueClassName: "text-violet-700",
+      },
+    ];
+
+    const denominator = Math.max(1, approvalRequests.length);
+    return cards.map((card) => ({
+      ...card,
+      trendPercent: Math.round((Number(card.value || 0) / denominator) * 100),
+      lastMonthValue: Math.max(0, Math.round(Number(card.value || 0) * 0.85)),
+    }));
+  }, [
+    approvalRequests.length,
+    statusSummary.approved,
+    statusSummary.pending,
+    statusSummary.rejected,
+    statusSummary.resubmitted,
+  ]);
+
   const sendApprovalRequest = () => {
     if (!selectedPosOrder) {
       setFeedback("Select a submitted order first.");
@@ -634,26 +687,32 @@ function POSApprovalWorkflowControl({
   return (
     <section className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Total approval requests</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{approvalRequests.length}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Pending approval</p>
-          <p className="mt-2 text-2xl font-semibold text-amber-600">{statusSummary.pending}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Approved</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-600">{statusSummary.approved}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Rejected</p>
-          <p className="mt-2 text-2xl font-semibold text-rose-600">{statusSummary.rejected}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Re-submitted</p>
-          <p className="mt-2 text-2xl font-semibold text-violet-700">{statusSummary.resubmitted}</p>
-        </div>
+        {approvalOverviewCards.map(({ icon: Icon, ...card }) => (
+          <article
+            key={card.key}
+            className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-700 sm:text-sm">
+                <Icon className="text-slate-700" size={14} />
+                {card.title}
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <p
+                className={`mt-2 text-4xl font-semibold leading-none ${card.valueClassName}`}
+              >
+                {card.value}
+              </p>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
+                +{card.trendPercent}% ↑
+              </span>
+            </div>
+            <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
+              Last month: {card.lastMonthValue}
+            </p>
+          </article>
+        ))}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
@@ -665,8 +724,9 @@ function POSApprovalWorkflowControl({
             POS service queue (driver to completion flow)
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Receive fleet-approved requests, check calendar and stock, confirm appointment,
-            run service, and send invoice to fleet for final completion.
+            Receive fleet-approved requests, check calendar and stock, confirm
+            appointment, run service, and send invoice to fleet for final
+            completion.
           </p>
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[1.15fr_1fr]">
@@ -693,7 +753,9 @@ function POSApprovalWorkflowControl({
                       className={`mt-1 inline-block size-2 rounded-full ${queueStatusDotClass(option.status)}`}
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-900">{option.label}</p>
+                      <p className="truncate text-sm font-medium text-slate-900">
+                        {option.label}
+                      </p>
                       <p className="truncate text-[11px] text-slate-500">
                         {option.status} · {option.description}
                       </p>
@@ -709,7 +771,9 @@ function POSApprovalWorkflowControl({
                     {selectedQueueOrder.id} - {selectedQueueOrder.requestTitle}
                   </p>
                   <p className="mt-1 text-slate-600">
-                    {selectedQueueOrder.vehicleId} | {selectedQueueOrder.orderDetails?.vendor || "Unassigned vendor"}
+                    {selectedQueueOrder.vehicleId} |{" "}
+                    {selectedQueueOrder.orderDetails?.vendor ||
+                      "Unassigned vendor"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
                     Current status: {selectedQueueOrder.status}
@@ -730,12 +794,16 @@ function POSApprovalWorkflowControl({
 
             <div className="space-y-3">
               <div className="grid gap-2">
-                <Label htmlFor="appointment-datetime">Appointment date and time</Label>
+                <Label htmlFor="appointment-datetime">
+                  Appointment date and time
+                </Label>
                 <Input
                   id="appointment-datetime"
                   type="datetime-local"
                   value={appointmentAtLocal}
-                  onChange={(event) => setAppointmentAtLocal(event.target.value)}
+                  onChange={(event) =>
+                    setAppointmentAtLocal(event.target.value)
+                  }
                 />
               </div>
 
@@ -756,7 +824,9 @@ function POSApprovalWorkflowControl({
                     type="checkbox"
                     className="size-4 accent-slate-900"
                     checked={calendarChecked}
-                    onChange={(event) => setCalendarChecked(event.target.checked)}
+                    onChange={(event) =>
+                      setCalendarChecked(event.target.checked)
+                    }
                   />
                   Calendar checked
                 </label>
@@ -791,13 +861,13 @@ function POSApprovalWorkflowControl({
                   Start service
                 </Button>
                 <Button
-                  className="bg-emerald-600 text-white hover:bg-emerald-500 disabled:bg-emerald-600 disabled:text-white"
+                  className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)] disabled:bg-emerald-600 disabled:text-white"
                   disabled={!canConfirmCompletion}
                   onClick={completeService}
                   type="button"
                 >
                   <CheckCircle2 className="mr-2" size={14} />
-                  Send invoice to fleet owner
+                  Confirm completion
                 </Button>
               </div>
             </div>
@@ -840,7 +910,12 @@ function POSApprovalWorkflowControl({
                 value={approvalNote}
               />
             </div>
-            <Button onClick={sendApprovalRequest} type="button">
+            <Button
+              onClick={sendApprovalRequest}
+              type="button"
+              disabled={!selectedPosOrder || isActionLoading}
+              className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+            >
               Send approval request
             </Button>
           </div>
@@ -867,7 +942,12 @@ function POSApprovalWorkflowControl({
                 value={correctionNote}
               />
             </div>
-            <Button onClick={reSubmitCorrectedOrder} type="button" variant="outline">
+            <Button
+              onClick={reSubmitCorrectedOrder}
+              type="button"
+              variant="outline"
+              disabled={!correctionNote || isActionLoading}
+            >
               Re-submit corrected order
             </Button>
           </div>
@@ -878,7 +958,9 @@ function POSApprovalWorkflowControl({
         className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
         ref={statusSectionRef}
       >
-        <h2 className="text-lg font-semibold text-slate-900">View approval status</h2>
+        <h2 className="text-lg font-semibold text-slate-900">
+          View approval status
+        </h2>
         <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
           {posOrderStatusRows.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
@@ -938,7 +1020,9 @@ function POSApprovalWorkflowControl({
                 <p className="text-slate-600">
                   {new Date(entry.time).toLocaleString("en-US")}
                 </p>
-                {entry.note ? <p className="mt-1 text-slate-700">{entry.note}</p> : null}
+                {entry.note ? (
+                  <p className="mt-1 text-slate-700">{entry.note}</p>
+                ) : null}
               </div>
             ))
           )}
@@ -972,7 +1056,9 @@ function POSApprovalWorkflowControl({
                 <p className="text-sm font-semibold text-slate-900">
                   {actionPopup.title}
                 </p>
-                <p className="mt-0.5 text-xs text-slate-600">{actionPopup.detail}</p>
+                <p className="mt-0.5 text-xs text-slate-600">
+                  {actionPopup.detail}
+                </p>
               </div>
             </div>
           </div>
@@ -996,11 +1082,12 @@ function POSApprovalWorkflowControl({
                   Approval details
                 </p>
                 <h3 className="mt-1 text-xl font-semibold text-slate-900">
-                  {modalPosOrder?.id || detailsModal.posOrderId || "POS Order"} -{" "}
-                  {modalPosOrder?.serviceType || "N/A"}
+                  {modalPosOrder?.id || detailsModal.posOrderId || "POS Order"}{" "}
+                  - {modalPosOrder?.serviceType || "N/A"}
                 </h3>
                 <p className="mt-1 text-sm text-slate-600">
-                  Request: {modalRequest?.id || "Not requested"} | Status: {modalStatus}
+                  Request: {modalRequest?.id || "Not requested"} | Status:{" "}
+                  {modalStatus}
                 </p>
               </div>
               <button
@@ -1018,7 +1105,7 @@ function POSApprovalWorkflowControl({
                 <p className="text-slate-500">Approval status</p>
                 <span
                   className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(
-                    modalStatus
+                    modalStatus,
                   )}`}
                 >
                   {modalStatus}
@@ -1046,25 +1133,35 @@ function POSApprovalWorkflowControl({
 
             <div className="mt-5 grid gap-6 xl:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <h4 className="text-sm font-semibold text-slate-900">POS order context</h4>
+                <h4 className="text-sm font-semibold text-slate-900">
+                  POS order context
+                </h4>
                 <div className="mt-3 space-y-1.5 text-xs text-slate-700">
                   <p>
                     Vehicle:{" "}
                     <span className="font-semibold">
-                      {modalPosOrder?.vehiclePlate || modalPosOrder?.vehicleId || "N/A"}
+                      {modalPosOrder?.vehiclePlate ||
+                        modalPosOrder?.vehicleId ||
+                        "N/A"}
                     </span>
                   </p>
                   <p>
                     Service type:{" "}
-                    <span className="font-semibold">{modalPosOrder?.serviceType || "N/A"}</span>
+                    <span className="font-semibold">
+                      {modalPosOrder?.serviceType || "N/A"}
+                    </span>
                   </p>
                   <p>
                     Problem type:{" "}
-                    <span className="font-semibold">{modalPosOrder?.problemType || "N/A"}</span>
+                    <span className="font-semibold">
+                      {modalPosOrder?.problemType || "N/A"}
+                    </span>
                   </p>
                   <p>
                     Submitted by:{" "}
-                    <span className="font-semibold">{modalPosOrder?.submittedBy || "N/A"}</span>
+                    <span className="font-semibold">
+                      {modalPosOrder?.submittedBy || "N/A"}
+                    </span>
                   </p>
                   <p>
                     Submitted at:{" "}
@@ -1121,9 +1218,13 @@ function POSApprovalWorkflowControl({
             </div>
 
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
-              <h4 className="text-sm font-semibold text-slate-900">Approval lifecycle</h4>
+              <h4 className="text-sm font-semibold text-slate-900">
+                Approval lifecycle
+              </h4>
               <div className="card-list-scrollbar mt-3 max-h-[16rem] space-y-2 overflow-y-auto pr-1">
-                {!modalRequest || !Array.isArray(modalRequest.lifecycle) || modalRequest.lifecycle.length === 0 ? (
+                {!modalRequest ||
+                !Array.isArray(modalRequest.lifecycle) ||
+                modalRequest.lifecycle.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
                     No lifecycle entries available.
                   </p>
@@ -1136,9 +1237,13 @@ function POSApprovalWorkflowControl({
                       <p className="font-semibold text-slate-900">
                         {entry.stage} - {entry.actor}
                       </p>
-                      <p className="text-xs text-slate-600">{formatDateTime(entry.time)}</p>
+                      <p className="text-xs text-slate-600">
+                        {formatDateTime(entry.time)}
+                      </p>
                       {entry.note ? (
-                        <p className="mt-1 text-xs text-slate-700">{entry.note}</p>
+                        <p className="mt-1 text-xs text-slate-700">
+                          {entry.note}
+                        </p>
                       ) : null}
                     </div>
                   ))
@@ -1158,7 +1263,11 @@ function POSApprovalWorkflowControl({
                   Focus in history
                 </Button>
               ) : null}
-              <Button onClick={closeStatusDetails} type="button" variant="outline">
+              <Button
+                onClick={closeStatusDetails}
+                type="button"
+                variant="outline"
+              >
                 Close
               </Button>
             </div>

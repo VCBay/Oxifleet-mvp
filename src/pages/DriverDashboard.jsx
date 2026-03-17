@@ -1479,7 +1479,7 @@ function DriverDashboard() {
   };
 
   return (
-    <main className="h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
+    <main className="driver-dashboard-theme h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)]">
       <div className="flex h-full w-full min-w-0">
         <div className="hidden lg:block">
           <DriverSidebar
@@ -1487,7 +1487,8 @@ function DriverDashboard() {
             isCollapsed={isDesktopSidebarCollapsed}
             onMenuClick={handleSidebarMenuClick}
             onSignOut={onSignOut}
-            showCollapseToggle={false}
+            onToggleCollapse={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
+            showCollapseToggle
           />
         </div>
 
@@ -1533,21 +1534,17 @@ function DriverDashboard() {
             isDesktopSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"
           } lg:px-8 lg:pb-8 lg:pt-0`}
         >
-          <div className="-mx-4 sticky top-0 z-40 bg-[linear-gradient(135deg,#f8fafc_0%,#edf2f7_100%)] pb-3 pt-0 sm:-mx-6 sm:pb-4 sm:pt-0 lg:-mx-8 lg:pb-4 lg:pt-0">
+          <div className="-mx-4 sticky top-0 z-40 pb-3 pt-0 sm:-mx-6 sm:pb-4 sm:pt-0 lg:-mx-8 lg:pb-4 lg:pt-0">
             <DriverTopbar
               activeMenu={activeMenu}
               displayEmail={displayEmail}
               displayName={displayName}
               driverNotificationCount={driverNotificationCount}
-              isSidebarCollapsed={isDesktopSidebarCollapsed}
               notifications={visibleBookingNotifications}
               onClearAllNotifications={clearAllDriverNotifications}
               onClearNotification={clearDriverNotification}
               onNotificationAction={handleDriverNotificationAction}
               onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-              onToggleSidebarCollapse={() =>
-                setIsDesktopSidebarCollapsed((prev) => !prev)
-              }
               profileInitials={profileInitials}
             />
           </div>

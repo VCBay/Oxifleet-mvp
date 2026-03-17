@@ -270,6 +270,46 @@ function POSBillingSettlementControl({
     return [...paidEntries, ...creditEntries].sort((a, b) => toTime(b.date) - toTime(a.date));
   }, [billingState.creditNotes, billingState.invoices]);
 
+  const billingOverviewCards = useMemo(
+    () =>
+      [
+        {
+          key: "submittedOrders",
+          title: "Submitted",
+          value: submittedOrdersList.length,
+          icon: History,
+        },
+        {
+          key: "validatedOrders",
+          title: "Validated",
+          value: validatedOrders.length,
+          icon: CheckCircle2,
+        },
+        {
+          key: "rejectedOrders",
+          title: "Rejected",
+          value: rejectedOrders.length,
+          icon: FileWarning,
+        },
+        {
+          key: "creditMemos",
+          title: "Credit memos",
+          value: creditMemoRows.length,
+          icon: CreditCard,
+        },
+      ].map((card) => ({
+        ...card,
+        trendPercent: 15,
+        lastMonthValue: Math.max(0, Math.round(Number(card.value || 0) * 0.85)),
+      })),
+    [
+      creditMemoRows.length,
+      rejectedOrders.length,
+      submittedOrdersList.length,
+      validatedOrders.length,
+    ]
+  );
+
   const invoiceById = useMemo(
     () => new Map(billingState.invoices.map((invoice) => [invoice.id, invoice])),
     [billingState.invoices]
@@ -322,22 +362,26 @@ function POSBillingSettlementControl({
   return (
     <section className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Submitted orders</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{submittedOrdersList.length}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Validated orders</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-600">{validatedOrders.length}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Rejected orders</p>
-          <p className="mt-2 text-2xl font-semibold text-rose-600">{rejectedOrders.length}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Credit memos</p>
-          <p className="mt-2 text-2xl font-semibold text-violet-700">{creditMemoRows.length}</p>
-        </div>
+        {billingOverviewCards.map(({ icon: Icon, ...card }) => (
+          <article
+            key={card.key}
+            className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-700 sm:text-sm">
+                <Icon className="text-slate-700" size={14} />
+                {card.title}
+              </p>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
+                +{card.trendPercent}% ↑
+              </span>
+            </div>
+            <p className="mt-2 text-4xl font-semibold leading-none text-[#24114D]">{card.value}</p>
+            <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
+              Last month: {card.lastMonthValue}
+            </p>
+          </article>
+        ))}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
@@ -373,6 +417,7 @@ function POSBillingSettlementControl({
                         size="sm"
                         type="button"
                         variant="outline"
+                        className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                       >
                         Download invoice
                       </Button>
@@ -413,6 +458,7 @@ function POSBillingSettlementControl({
                         size="sm"
                         type="button"
                         variant="outline"
+                        className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                       >
                         Download invoice
                       </Button>
@@ -453,6 +499,7 @@ function POSBillingSettlementControl({
                       size="sm"
                       type="button"
                       variant="outline"
+                      className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                     >
                       Download invoice
                     </Button>
@@ -492,6 +539,7 @@ function POSBillingSettlementControl({
                       size="sm"
                       type="button"
                       variant="outline"
+                      className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                     >
                       Download invoice
                     </Button>
@@ -540,6 +588,7 @@ function POSBillingSettlementControl({
                       size="sm"
                       type="button"
                       variant="outline"
+                      className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                     >
                       Download invoice
                     </Button>
@@ -592,6 +641,7 @@ function POSBillingSettlementControl({
                       size="sm"
                       type="button"
                       variant="outline"
+                      className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                     >
                       Download invoice
                     </Button>
