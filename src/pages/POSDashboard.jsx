@@ -19,19 +19,9 @@ import {
 } from "lucide-react";
 import Logo from "../icons/Logo";
 import OxifleetEmblemWhite from "../icons/Oxifleet-Emblem-White.svg";
-import {
-  clearSession,
-  getSession,
-  subscribeSession,
-} from "../auth/session";
-import {
-  getDriverState,
-  subscribeDrivers,
-} from "../data/driverStore";
-import {
-  getVehicleState,
-  subscribeVehicles,
-} from "../data/vehicleStore";
+import { clearSession, getSession, subscribeSession } from "../auth/session";
+import { getDriverState, subscribeDrivers } from "../data/driverStore";
+import { getVehicleState, subscribeVehicles } from "../data/vehicleStore";
 import {
   getVehiclePolicyState,
   subscribeVehiclePolicies,
@@ -58,21 +48,36 @@ const fallbackVehicles = [
     model: "Freightliner Cascadia",
     plate: "TX-8841",
     type: "Truck",
-    tyreSpecs: { brand: "Goodyear", size: "295/75R22.5", frontPsi: 102, rearPsi: 98 },
+    tyreSpecs: {
+      brand: "Goodyear",
+      size: "295/75R22.5",
+      frontPsi: 102,
+      rearPsi: 98,
+    },
   },
   {
     id: "VH-241",
     model: "Volvo VNL 760",
     plate: "TX-2417",
     type: "Truck",
-    tyreSpecs: { brand: "Michelin", size: "11R22.5", frontPsi: 100, rearPsi: 96 },
+    tyreSpecs: {
+      brand: "Michelin",
+      size: "11R22.5",
+      frontPsi: 100,
+      rearPsi: 96,
+    },
   },
   {
     id: "VH-553",
     model: "Kenworth T680",
     plate: "TX-5532",
     type: "Truck",
-    tyreSpecs: { brand: "Bridgestone", size: "275/80R22.5", frontPsi: 101, rearPsi: 97 },
+    tyreSpecs: {
+      brand: "Bridgestone",
+      size: "275/80R22.5",
+      frontPsi: 101,
+      rearPsi: 97,
+    },
   },
 ];
 
@@ -95,7 +100,7 @@ const posMenuItems = [
     to: "/pos-dashboard/validation",
     icon: ShieldAlert,
   },
-    {
+  {
     key: "analytics-reports",
     labelKey: "pos.menu.analytics-reports",
     to: "/pos-dashboard/analytics-reports",
@@ -160,7 +165,10 @@ const initialPosNotifications = [
   },
 ];
 
-const normalize = (value) => String(value || "").trim().toLowerCase();
+const normalize = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const parseAmount = (value) => {
   const parsed = Number(String(value || "").replace(/[^0-9.-]/g, ""));
@@ -284,7 +292,11 @@ const policyMatchesVehicle = (policy, vehicle, fleetName) => {
   if (scope.vehicleClass && scope.vehicleClass !== vehicle.type) {
     return false;
   }
-  if (scope.fleet && fleetName && normalize(scope.fleet) !== normalize(fleetName)) {
+  if (
+    scope.fleet &&
+    fleetName &&
+    normalize(scope.fleet) !== normalize(fleetName)
+  ) {
     return false;
   }
   return true;
@@ -295,41 +307,45 @@ function POSDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const session = useSyncExternalStore(subscribeSession, getSession, getSession);
+  const session = useSyncExternalStore(
+    subscribeSession,
+    getSession,
+    getSession,
+  );
   const driverState = useSyncExternalStore(
     subscribeDrivers,
     getDriverState,
-    getDriverState
+    getDriverState,
   );
   const vehicleState = useSyncExternalStore(
     subscribeVehicles,
     getVehicleState,
-    getVehicleState
+    getVehicleState,
   );
   const policyState = useSyncExternalStore(
     subscribeVehiclePolicies,
     getVehiclePolicyState,
-    getVehiclePolicyState
+    getVehiclePolicyState,
   );
   const opsState = useSyncExternalStore(
     subscribeDriverOperations,
     getDriverOperationsState,
-    getDriverOperationsState
+    getDriverOperationsState,
   );
   const serviceOrderState = useSyncExternalStore(
     subscribeServiceOrders,
     getServiceOrderState,
-    getServiceOrderState
+    getServiceOrderState,
   );
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
     getPosOrderState,
-    getPosOrderState
+    getPosOrderState,
   );
   const billingState = useSyncExternalStore(
     subscribeBillingFinance,
     getBillingFinanceState,
-    getBillingFinanceState
+    getBillingFinanceState,
   );
 
   const vehicles =
@@ -337,7 +353,8 @@ function POSDashboard() {
   const [plateQuery, setPlateQuery] = useState(() => vehicles[0]?.plate || "");
   const [notifications, setNotifications] = useState(initialPosNotifications);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] =
+    useState(false);
 
   const matchedVehicles = useMemo(() => {
     const q = normalize(plateQuery);
@@ -346,13 +363,15 @@ function POSDashboard() {
     }
     return vehicles.filter((vehicle) =>
       [vehicle.plate, vehicle.id, vehicle.model].some((value) =>
-        normalize(value).includes(q)
-      )
+        normalize(value).includes(q),
+      ),
     );
   }, [plateQuery, vehicles]);
 
   const selectedVehicle = useMemo(() => {
-    const exact = vehicles.find((vehicle) => normalize(vehicle.plate) === normalize(plateQuery));
+    const exact = vehicles.find(
+      (vehicle) => normalize(vehicle.plate) === normalize(plateQuery),
+    );
     if (exact) {
       return exact;
     }
@@ -364,7 +383,9 @@ function POSDashboard() {
       return null;
     }
     return (
-      driverState.drivers.find((driver) => driver.assignedVehicleId === selectedVehicle.id) || null
+      driverState.drivers.find(
+        (driver) => driver.assignedVehicleId === selectedVehicle.id,
+      ) || null
     );
   }, [driverState.drivers, selectedVehicle]);
 
@@ -373,12 +394,14 @@ function POSDashboard() {
       return null;
     }
     const assignment = opsState.tenantAssignments.find(
-      (item) => normalize(item.driverName) === normalize(assignedDriver.name)
+      (item) => normalize(item.driverName) === normalize(assignedDriver.name),
     );
     if (!assignment) {
       return null;
     }
-    const tenant = opsState.tenants.find((item) => item.id === assignment.tenantId);
+    const tenant = opsState.tenants.find(
+      (item) => item.id === assignment.tenantId,
+    );
     return tenant
       ? {
           tenantName: tenant.name,
@@ -395,10 +418,14 @@ function POSDashboard() {
       return [];
     }
     const activePolicies = getLatestPolicies(policyState.policies).filter(
-      (policy) => normalize(policy.status) === "active"
+      (policy) => normalize(policy.status) === "active",
     );
     return activePolicies.filter((policy) =>
-      policyMatchesVehicle(policy, selectedVehicle, fleetDetails?.tenantName || "")
+      policyMatchesVehicle(
+        policy,
+        selectedVehicle,
+        fleetDetails?.tenantName || "",
+      ),
     );
   }, [fleetDetails?.tenantName, policyState.policies, selectedVehicle]);
 
@@ -469,7 +496,10 @@ function POSDashboard() {
           }, requestedAt)
         : requestedAt;
       if (Number.isFinite(requestedAt) && Number.isFinite(lastLifecycleTime)) {
-        const cycleHours = Math.max(0, (lastLifecycleTime - requestedAt) / (1000 * 60 * 60));
+        const cycleHours = Math.max(
+          0,
+          (lastLifecycleTime - requestedAt) / (1000 * 60 * 60),
+        );
         cycleTotal += cycleHours;
         cycleCount += 1;
         if (cycleHours <= 48) {
@@ -478,8 +508,10 @@ function POSDashboard() {
       }
     });
 
-    summary.avgCycleHours = cycleCount > 0 ? Math.round(cycleTotal / cycleCount) : 0;
-    summary.onTimeRate = cycleCount > 0 ? Math.round((onTimeCount / cycleCount) * 100) : 0;
+    summary.avgCycleHours =
+      cycleCount > 0 ? Math.round(cycleTotal / cycleCount) : 0;
+    summary.onTimeRate =
+      cycleCount > 0 ? Math.round((onTimeCount / cycleCount) * 100) : 0;
     return summary;
   }, [selectedVehicleOrders]);
 
@@ -517,7 +549,7 @@ function POSDashboard() {
     });
 
     const hasAnyLiveData = months.some(
-      (month) => month.total > 0 || month.estimatedCost > 0
+      (month) => month.total > 0 || month.estimatedCost > 0,
     );
 
     return months.map((month, index) => {
@@ -529,7 +561,8 @@ function POSDashboard() {
         return normalizedLive;
       }
 
-      const seed = monthlyComparisonFallback[index % monthlyComparisonFallback.length];
+      const seed =
+        monthlyComparisonFallback[index % monthlyComparisonFallback.length];
       if (!hasAnyLiveData) {
         return {
           ...normalizedLive,
@@ -551,15 +584,19 @@ function POSDashboard() {
   const spareParts = useMemo(() => {
     const vehicleType = selectedVehicle?.type || "Truck";
     return sparePartsCatalog
-      .filter((part) => part.compatible.includes(vehicleType) || part.compatible.includes("All"))
+      .filter(
+        (part) =>
+          part.compatible.includes(vehicleType) ||
+          part.compatible.includes("All"),
+      )
       .map((part) => {
         const available = Math.max(0, part.onHand - part.reserved);
         const status =
           available === 0
             ? "Out of stock"
             : available <= part.reorderPoint
-            ? "Low stock"
-            : "In stock";
+              ? "Low stock"
+              : "In stock";
         return {
           ...part,
           available,
@@ -571,10 +608,20 @@ function POSDashboard() {
   }, [selectedVehicle?.type]);
 
   const spareSummary = useMemo(() => {
-    const totalAvailable = spareParts.reduce((sum, part) => sum + part.available, 0);
-    const lowStockCount = spareParts.filter((part) => part.stockStatus === "Low stock").length;
-    const outOfStockCount = spareParts.filter((part) => part.stockStatus === "Out of stock").length;
-    const inventoryValue = spareParts.reduce((sum, part) => sum + part.stockValue, 0);
+    const totalAvailable = spareParts.reduce(
+      (sum, part) => sum + part.available,
+      0,
+    );
+    const lowStockCount = spareParts.filter(
+      (part) => part.stockStatus === "Low stock",
+    ).length;
+    const outOfStockCount = spareParts.filter(
+      (part) => part.stockStatus === "Out of stock",
+    ).length;
+    const inventoryValue = spareParts.reduce(
+      (sum, part) => sum + part.stockValue,
+      0,
+    );
     return {
       totalAvailable,
       lowStockCount,
@@ -591,8 +638,8 @@ function POSDashboard() {
         ? Math.round(
             posOrderState.submittedOrders.reduce(
               (sum, order) => sum + Number(order.total || 0),
-              0
-            ) / submittedOrders
+              0,
+            ) / submittedOrders,
           )
         : 0;
 
@@ -609,7 +656,10 @@ function POSDashboard() {
           acc.rejected += 1;
         } else if (status.includes("approved")) {
           acc.approved += 1;
-        } else if (status.includes("re-submit") || status.includes("resubmit")) {
+        } else if (
+          status.includes("re-submit") ||
+          status.includes("resubmit")
+        ) {
           acc.resubmitted += 1;
         } else if (status.includes("pending")) {
           acc.pending += 1;
@@ -618,15 +668,18 @@ function POSDashboard() {
         }
         return acc;
       },
-      { pending: 0, approved: 0, rejected: 0, resubmitted: 0, inReview: 0 }
+      { pending: 0, approved: 0, rejected: 0, resubmitted: 0, inReview: 0 },
     );
 
     const serviceLimit = primaryPolicy?.servicePriceLimit ?? null;
     const validationOverLimit = posOrderState.draftOrders.filter(
-      (draft) => serviceLimit != null && Number(draft.total || 0) > Number(serviceLimit)
+      (draft) =>
+        serviceLimit != null && Number(draft.total || 0) > Number(serviceLimit),
     ).length;
     const validationMissingCore = posOrderState.draftOrders.filter(
-      (draft) => !String(draft.vehicleId || "").trim() || !String(draft.serviceType || "").trim()
+      (draft) =>
+        !String(draft.vehicleId || "").trim() ||
+        !String(draft.serviceType || "").trim(),
     ).length;
 
     const invoices = billingState.invoices;
@@ -645,14 +698,18 @@ function POSDashboard() {
         }
         return acc;
       },
-      { paid: 0, processing: 0, unpaid: 0, settledValue: 0, inFlightValue: 0 }
+      { paid: 0, processing: 0, unpaid: 0, settledValue: 0, inFlightValue: 0 },
     );
 
-    const peakMonth = [...monthlyComparison]
-      .sort((a, b) => b.total - a.total)[0]?.month || "N/A";
-    const recent = monthlyComparison[monthlyComparison.length - 1]?.estimatedCost || 0;
-    const previous = monthlyComparison[monthlyComparison.length - 2]?.estimatedCost || 0;
-    const trendDirection = recent > previous ? "up" : recent < previous ? "down" : "flat";
+    const peakMonth =
+      [...monthlyComparison].sort((a, b) => b.total - a.total)[0]?.month ||
+      "N/A";
+    const recent =
+      monthlyComparison[monthlyComparison.length - 1]?.estimatedCost || 0;
+    const previous =
+      monthlyComparison[monthlyComparison.length - 2]?.estimatedCost || 0;
+    const trendDirection =
+      recent > previous ? "up" : recent < previous ? "down" : "flat";
 
     return {
       orderManagement: {
@@ -714,51 +771,60 @@ function POSDashboard() {
     spareSummary.totalAvailable,
   ]);
 
-  const isOrderManagementRoute = location.pathname.includes("/order-management");
+  const isOrderManagementRoute =
+    location.pathname.includes("/order-management");
   const isValidationRoute = location.pathname.includes("/validation");
-  const isApprovalWorkflowRoute = location.pathname.includes("/approval-workflow");
-  const isBillingSettlementRoute = location.pathname.includes("/billing-settlement");
-  const isInventoryAvailabilityRoute = location.pathname.includes("/inventory-availability");
-  const isAnalyticsReportsRoute = location.pathname.includes("/analytics-reports");
+  const isApprovalWorkflowRoute =
+    location.pathname.includes("/approval-workflow");
+  const isBillingSettlementRoute = location.pathname.includes(
+    "/billing-settlement",
+  );
+  const isInventoryAvailabilityRoute = location.pathname.includes(
+    "/inventory-availability",
+  );
+  const isAnalyticsReportsRoute =
+    location.pathname.includes("/analytics-reports");
   const isCommunicationRoute = location.pathname.includes("/communication");
-  const isProfileSettingsRoute = location.pathname.includes("/profile-settings");
+  const isProfileSettingsRoute =
+    location.pathname.includes("/profile-settings");
   const isOverviewRoute =
-    location.pathname.includes("/overview") || location.pathname === "/pos-dashboard";
+    location.pathname.includes("/overview") ||
+    location.pathname === "/pos-dashboard";
 
   const pageTitle = isOrderManagementRoute
     ? t("pos.menu.order-management", "Order Management")
     : isCommunicationRoute
-    ? t("pos.menu.communication", "Communication")
-    : isProfileSettingsRoute
-    ? t("pos.menu.profile-settings", "Profile & Settings")
-    : isAnalyticsReportsRoute
-    ? t("pos.menu.analytics-reports", "Analytics & Reports")
-    : isInventoryAvailabilityRoute
-    ? t("pos.menu.inventory-availability", "Inventory & Availability")
-    : isBillingSettlementRoute
-    ? t("pos.menu.billing-settlement", "Billing & Settlement")
-    : isApprovalWorkflowRoute
-    ? t("pos.menu.approval-workflow", "Approval Workflow")
-    : isValidationRoute
-    ? t("pos.menu.validation", "Validation")
-    : t("pos.menu.overview", "Dashboard");
+      ? t("pos.menu.communication", "Communication")
+      : isProfileSettingsRoute
+        ? t("pos.menu.profile-settings", "Profile & Settings")
+        : isAnalyticsReportsRoute
+          ? t("pos.menu.analytics-reports", "Analytics & Reports")
+          : isInventoryAvailabilityRoute
+            ? t("pos.menu.inventory-availability", "Inventory & Availability")
+            : isBillingSettlementRoute
+              ? t("pos.menu.billing-settlement", "Billing & Settlement")
+              : isApprovalWorkflowRoute
+                ? t("pos.menu.approval-workflow", "Approval Workflow")
+                : isValidationRoute
+                  ? t("pos.menu.validation", "Validation")
+                  : t("pos.menu.overview", "Dashboard");
   const pageDescription = isOrderManagementRoute
     ? "Create, edit, and submit service orders with draft support."
     : isCommunicationRoute
-    ? "Chat with multiple drivers and fleet owners in a single communication workspace."
-    : isProfileSettingsRoute
-    ? "Manage workshop profile, staff, working hours, and POS location configuration."
-    : isAnalyticsReportsRoute
-    ? "Track orders, revenue, rejection patterns, fleet performance, and top serviced vehicles."
-    : isInventoryAvailabilityRoute
-    ? "Check tyre stock, view alternatives, and monitor manufacturer integration sync status."
-    : isBillingSettlementRoute
-    ? "Track submitted/validated/rejected orders, credit memos, payment schedules, and settlements."
-    : isApprovalWorkflowRoute
-    ? "Send requests, track approval status, review history, and re-submit corrected orders."
-    : isValidationRoute
-    ? "Validate policy compliance, KB pricing, approval flow, and submission alerts."
-    : "Search by vehicle plate and validate service and contract controls.";
+      ? "Chat with multiple drivers and fleet owners in a single communication workspace."
+      : isProfileSettingsRoute
+        ? "Manage workshop profile, staff, working hours, and POS location configuration."
+        : isAnalyticsReportsRoute
+          ? "Track orders, revenue, rejection patterns, fleet performance, and top serviced vehicles."
+          : isInventoryAvailabilityRoute
+            ? "Check tyre stock, view alternatives, and monitor manufacturer integration sync status."
+            : isBillingSettlementRoute
+              ? "Track submitted/validated/rejected orders, credit memos, payment schedules, and settlements."
+              : isApprovalWorkflowRoute
+                ? "Send requests, track approval status, review history, and re-submit corrected orders."
+                : isValidationRoute
+                  ? "Validate policy compliance, KB pricing, approval flow, and submission alerts."
+                  : "Search by vehicle plate and validate service and contract controls.";
 
   const onSignOut = () => {
     clearSession();
@@ -767,7 +833,7 @@ function POSDashboard() {
 
   const clearNotification = (notificationId) => {
     setNotifications((prev) =>
-      prev.filter((notification) => notification.id !== notificationId)
+      prev.filter((notification) => notification.id !== notificationId),
     );
   };
 
@@ -786,9 +852,9 @@ function POSDashboard() {
         .sort(
           (a, b) =>
             toTimestamp(b.updatedAt || b.requestedAt) -
-            toTimestamp(a.updatedAt || a.requestedAt)
+            toTimestamp(a.updatedAt || a.requestedAt),
         ),
-    [serviceOrderState.orders]
+    [serviceOrderState.orders],
   );
 
   const queueOrders = useMemo(
@@ -813,9 +879,9 @@ function POSDashboard() {
         .sort(
           (a, b) =>
             toTimestamp(b.updatedAt || b.requestedAt) -
-            toTimestamp(a.updatedAt || a.requestedAt)
+            toTimestamp(a.updatedAt || a.requestedAt),
         ),
-    [serviceOrderState.orders]
+    [serviceOrderState.orders],
   );
 
   const actionableNotifications = useMemo(() => {
@@ -827,7 +893,7 @@ function POSDashboard() {
       }) || null;
     const latestRejectedRequest =
       approvalLinkedRequests.find((request) =>
-        normalize(request.status).includes("rejected")
+        normalize(request.status).includes("rejected"),
       ) || null;
     const latestPaidInvoice =
       [...billingState.invoices]
@@ -895,7 +961,13 @@ function POSDashboard() {
         actionPath: notification.actionPath || "/pos-dashboard/overview",
       };
     });
-  }, [approvalLinkedRequests, billingState.invoices, notifications, queueOrders, t]);
+  }, [
+    approvalLinkedRequests,
+    billingState.invoices,
+    notifications,
+    queueOrders,
+    t,
+  ]);
 
   const handleNotificationAction = (notification) => {
     const actionPath = notification?.actionPath || "/pos-dashboard/overview";
@@ -920,7 +992,9 @@ function POSDashboard() {
       <div className="flex h-full w-full min-w-0">
         <div
           className={`fixed inset-0 z-40 bg-slate-900/45 transition-opacity duration-300 ease-in-out lg:hidden ${
-            isMobileSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
+            isMobileSidebarOpen
+              ? "opacity-100"
+              : "pointer-events-none opacity-0"
           }`}
         >
           <button
@@ -955,18 +1029,26 @@ function POSDashboard() {
             </button>
             <button
               aria-label={
-                isDesktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                isDesktopSidebarCollapsed
+                  ? "Expand sidebar"
+                  : "Collapse sidebar"
               }
               className="absolute -right-3 top-3 z-[65] hidden size-6 place-items-center rounded-full border border-[#cec6df] bg-[#ddd6ea] text-[#3b276d] shadow-sm transition hover:bg-[#d1c7e4] lg:grid"
               onClick={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
               type="button"
             >
-              {isDesktopSidebarCollapsed ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
+              {isDesktopSidebarCollapsed ? (
+                <ArrowRight size={14} />
+              ) : (
+                <ArrowLeft size={14} />
+              )}
             </button>
 
             <div className="sidebar-scrollbar min-h-0 flex-1 space-y-8 overflow-y-auto pr-1">
               <div className="flex items-center gap-3">
-                <div className={`${isDesktopSidebarCollapsed ? "lg:hidden" : ""}`}>
+                <div
+                  className={`${isDesktopSidebarCollapsed ? "lg:hidden" : ""}`}
+                >
                   <Logo className="w-48 text-white" />
                 </div>
                 <div
@@ -1014,7 +1096,9 @@ function POSDashboard() {
                       onClick={() => setIsMobileSidebarOpen(false)}
                     >
                       <Icon size={16} />
-                      <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
+                      <span
+                        className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                      >
                         {label}
                       </span>
                     </NavLink>
@@ -1043,7 +1127,9 @@ function POSDashboard() {
 
               <button
                 className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white ${
-                  isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                  isDesktopSidebarCollapsed
+                    ? "lg:justify-center lg:gap-0 lg:px-0"
+                    : ""
                 }`}
                 onClick={onSignOut}
                 title={

@@ -38,21 +38,11 @@ function POSTopbar({
   }, []);
 
   return (
-    <header className="mt-6 w-full border-slate-200/70 px-3 py-3 sm:px-4 sm:py-3.5">
+    <header className="w-full border border-slate-200/70 bg-white px-3 py-3 shadow-sm sm:px-4 sm:py-3.5">
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2.5">
-            {onOpenSidebar ? (
-              <button
-                aria-label={t("actions.openMenu", "Open menu")}
-                className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 lg:hidden"
-                onClick={onOpenSidebar}
-                type="button"
-              >
-                <Menu size={17} />
-              </button>
-            ) : null}
-            {onToggleSidebarCollapse ? (
+            {/* {onToggleSidebarCollapse ? (
               <button
                 aria-label={
                   isSidebarCollapsed
@@ -65,7 +55,7 @@ function POSTopbar({
               >
                 <Menu size={17} />
               </button>
-            ) : null}
+            ) : null} */}
             <div className="min-w-0 pl-4">
               <p className="truncate text-[11px] font-medium text-slate-400 sm:text-xs">
                 {pageTitle}
@@ -112,7 +102,10 @@ function POSTopbar({
                   <div className="sidebar-scrollbar mt-3 max-h-[min(62vh,24rem)] space-y-2 overflow-y-auto pr-1 sm:max-h-[22rem]">
                     {notificationCount === 0 ? (
                       <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
-                        {t("common.noNewNotifications", "No new notifications.")}
+                        {t(
+                          "common.noNewNotifications",
+                          "No new notifications.",
+                        )}
                       </p>
                     ) : (
                       notificationItems.map((item) => (
@@ -178,7 +171,9 @@ function POSTopbar({
                 <p className="text-xs font-semibold text-slate-900 sm:text-sm">
                   {displayName}
                 </p>
-                <p className="truncate text-xs text-slate-500">{displayEmail}</p>
+                <p className="truncate text-xs text-slate-500">
+                  {displayEmail}
+                </p>
               </div>
             </div>
           </div>
