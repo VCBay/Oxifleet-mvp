@@ -1,4 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { Building2, MapPin, ShieldCheck, UserCheck, Users } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -55,6 +56,19 @@ const statusClassName = (status) => {
   return "bg-slate-100 text-slate-700";
 };
 
+const teamOverviewToneClass = (tone) => {
+  if (tone === "good") {
+    return "bg-emerald-100 text-emerald-700";
+  }
+  if (tone === "info") {
+    return "bg-sky-100 text-sky-700";
+  }
+  if (tone === "warn") {
+    return "bg-amber-100 text-amber-700";
+  }
+  return "bg-slate-200 text-slate-700";
+};
+
 function TeamAccessControl() {
   const teamAccessState = useSyncExternalStore(
     subscribeTeamAccess,
@@ -101,6 +115,54 @@ function TeamAccessControl() {
   const uniqueLocations = Array.from(
     new Set(members.flatMap((member) => member.locations || []))
   ).length;
+
+  const overviewCards = [
+    {
+      key: "members",
+      title: "Team members",
+      value: `${members.length}`,
+      helper: "Total onboarded users",
+      status: "Directory synced",
+      tone: "good",
+      icon: Users,
+    },
+    {
+      key: "active",
+      title: "Active members",
+      value: `${activeMembers}`,
+      helper: "Currently enabled",
+      status: "Operational",
+      tone: "good",
+      icon: UserCheck,
+    },
+    {
+      key: "multi-location",
+      title: "Multi-location users",
+      value: `${multiLocationMembers}`,
+      helper: "Access in multiple sites",
+      status: multiLocationMembers > 0 ? "Distributed access" : "Single-site only",
+      tone: multiLocationMembers > 0 ? "info" : "warn",
+      icon: Building2,
+    },
+    {
+      key: "locations",
+      title: "Covered locations",
+      value: `${uniqueLocations}`,
+      helper: "Distinct managed locations",
+      status: uniqueLocations > 0 ? "Coverage mapped" : "No coverage",
+      tone: uniqueLocations > 0 ? "info" : "warn",
+      icon: MapPin,
+    },
+    {
+      key: "roles",
+      title: "Role templates",
+      value: `${roleOptions.length}`,
+      helper: "Configured permission templates",
+      status: "Policy ready",
+      tone: "good",
+      icon: ShieldCheck,
+    },
+  ];
 
   const handleAddMember = () => {
     if (!memberForm.name.trim() || !memberForm.email.trim()) {
@@ -191,42 +253,54 @@ function TeamAccessControl() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">
+      <div className="rounded-3xl border border-slate-200/70 bg-[radial-gradient(circle_at_top_right,#223447_0%,#0E1729_42%,#05070f_100%)] p-6 shadow-sm">
+        <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
           Team & Access Control
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-white/50">
           Add team members, configure role-based permissions, manage multi-location
           access, and review activity and audit records.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Team members</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
-            {members.length}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Active members</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-600">
-            {activeMembers}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Multi-location users</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
-            {multiLocationMembers}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Covered locations</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
-            {uniqueLocations}
-          </p>
-        </div>
-      </div>
+      <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-5">
+        {overviewCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <article
+              className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm sm:rounded-2xl sm:p-4"
+              key={card.key}
+            >
+              <div className="pointer-events-none absolute -right-5 -top-5 size-16 rounded-full bg-slate-100" />
+              <div className="relative z-10 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                    {card.title}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900 sm:text-3xl">
+                    {card.value}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
+                    {card.helper}
+                  </p>
+                </div>
+                <span className="rounded-lg bg-slate-100 p-1.5 text-slate-700">
+                  <Icon size={13} />
+                </span>
+              </div>
+              <div className="mt-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${teamOverviewToneClass(
+                    card.tone,
+                  )}`}
+                >
+                  {card.status}
+                </span>
+              </div>
+            </article>
+          );
+        })}
+      </section>
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
@@ -291,7 +365,7 @@ function TeamAccessControl() {
               rows={3}
               value={memberForm.locations}
             />
-            <Button onClick={handleAddMember} type="button">
+            <Button onClick={handleAddMember} type="button" className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">
               Add team member
             </Button>
           </div>
@@ -433,7 +507,7 @@ function TeamAccessControl() {
               rows={4}
               value={locationForm}
             />
-            <Button onClick={handleSaveLocations} type="button">
+            <Button onClick={handleSaveLocations} type="button" className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">
               Save location access
             </Button>
           </div>

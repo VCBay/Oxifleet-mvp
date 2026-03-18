@@ -214,13 +214,16 @@ function ServiceOrderControl() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">
+      <div
+        className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#223447_0%,#0E1729_42%,#05070f_100%)] p-5 text-white shadow-lg sm:p-7 lg:block"
+        // className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
+      >
+        <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
           Service & Order Control
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Manage all service requests, workflow approvals, manual overrides, order
-          details, lifecycle tracking, and emergency monitoring.
+        <p className="mt-1 text-sm text-white/50">
+          Manage all service requests, workflow approvals, manual overrides,
+          order details, lifecycle tracking, and emergency monitoring.
         </p>
       </div>
 
@@ -358,7 +361,8 @@ function ServiceOrderControl() {
                         </span>
                       </div>
                       <p className="mt-1 text-xs opacity-80">
-                        {order.vehicleId} | {order.serviceType} | {order.requestedBy}
+                        {order.vehicleId} | {order.serviceType} |{" "}
+                        {order.requestedBy}
                       </p>
                       {order.emergency ? (
                         <p className="mt-1 text-xs font-semibold text-rose-300">
@@ -377,7 +381,8 @@ function ServiceOrderControl() {
               Invoice submissions awaiting fleet confirmation
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              POS has sent invoices. Confirm from fleet side to finalize service completion.
+              POS has sent invoices. Confirm from fleet side to finalize service
+              completion.
             </p>
             <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
               {settlementReadyOrders.length === 0 ? (
@@ -399,14 +404,18 @@ function ServiceOrderControl() {
                         type="button"
                         size="sm"
                         variant="outline"
+                        className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                       >
                         Confirm completion
                       </Button>
                     </div>
                     <p className="mt-1 text-xs text-emerald-700">
-                      Invoice sent by {order?.settlement?.completionConfirmedBy || "POS"} on{" "}
+                      Invoice sent by{" "}
+                      {order?.settlement?.completionConfirmedBy || "POS"} on{" "}
                       {order?.settlement?.completionConfirmedAt
-                        ? new Date(order.settlement.completionConfirmedAt).toLocaleString()
+                        ? new Date(
+                            order.settlement.completionConfirmedAt,
+                          ).toLocaleString()
                         : "N/A"}
                     </p>
                   </div>
@@ -418,13 +427,17 @@ function ServiceOrderControl() {
 
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">View order details</h3>
+            <h3 className="text-lg font-semibold text-slate-900">
+              View order details
+            </h3>
             {selectedOrder ? (
               <div className="mt-4 grid gap-4 text-sm">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-slate-500">Order ID</p>
-                    <p className="font-semibold text-slate-900">{selectedOrder.id}</p>
+                    <p className="font-semibold text-slate-900">
+                      {selectedOrder.id}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">Requested at</p>
@@ -446,13 +459,15 @@ function ServiceOrderControl() {
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">Priority</p>
-                    <p className="font-semibold text-slate-900">{selectedOrder.priority}</p>
+                    <p className="font-semibold text-slate-900">
+                      {selectedOrder.priority}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">Status</p>
                     <span
                       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassName(
-                        selectedOrder.status
+                        selectedOrder.status,
                       )}`}
                     >
                       {selectedOrder.status}
@@ -479,7 +494,9 @@ function ServiceOrderControl() {
                 </div>
               </div>
             ) : (
-              <p className="mt-4 text-sm text-slate-500">Select an order to view details.</p>
+              <p className="mt-4 text-sm text-slate-500">
+                Select an order to view details.
+              </p>
             )}
           </div>
 
@@ -488,7 +505,8 @@ function ServiceOrderControl() {
               Approval/rejection workflow
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Manual approval override is available even after rejection/pending.
+              Manual approval override is available even after
+              rejection/pending.
             </p>
 
             <div className="mt-4 grid gap-3">
@@ -549,7 +567,9 @@ function ServiceOrderControl() {
                       key={`${selectedOrder.id}-lifecycle-${index}`}
                       className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs"
                     >
-                      <p className="font-semibold text-slate-900">{entry.stage}</p>
+                      <p className="font-semibold text-slate-900">
+                        {entry.stage}
+                      </p>
                       <p className="mt-1 text-slate-600">
                         {new Date(entry.time).toLocaleString()} | {entry.actor}
                       </p>
@@ -561,14 +581,21 @@ function ServiceOrderControl() {
                 </div>
 
                 <div className="grid gap-3 border-t border-slate-200 pt-3">
-                  <Select onValueChange={setLifecycleStage} value={lifecycleStage}>
+                  <Select
+                    onValueChange={setLifecycleStage}
+                    value={lifecycleStage}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Next stage" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="In progress">In progress</SelectItem>
-                      <SelectItem value="Parts ordered">Parts ordered</SelectItem>
-                      <SelectItem value="Quality check">Quality check</SelectItem>
+                      <SelectItem value="Parts ordered">
+                        Parts ordered
+                      </SelectItem>
+                      <SelectItem value="Quality check">
+                        Quality check
+                      </SelectItem>
                       <SelectItem value="Completed">Completed</SelectItem>
                       <SelectItem value="Closed">Closed</SelectItem>
                     </SelectContent>
@@ -579,13 +606,19 @@ function ServiceOrderControl() {
                     rows={2}
                     value={lifecycleNote}
                   />
-                  <Button onClick={handleLifecycleUpdate} type="button" variant="outline">
+                  <Button
+                    onClick={handleLifecycleUpdate}
+                    type="button"
+                    variant="outline"
+                  >
                     Update lifecycle stage
                   </Button>
                 </div>
               </div>
             ) : (
-              <p className="mt-4 text-sm text-slate-500">Select an order to track lifecycle.</p>
+              <p className="mt-4 text-sm text-slate-500">
+                Select an order to track lifecycle.
+              </p>
             )}
           </div>
         </div>

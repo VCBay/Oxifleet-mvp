@@ -59,17 +59,17 @@ function SettingsProfileControl() {
   const settingsState = useSyncExternalStore(
     subscribeSettingsProfile,
     getSettingsProfileState,
-    getSettingsProfileState
+    getSettingsProfileState,
   );
 
   const [companyDraft, setCompanyDraft] = useState(
-    () => getSettingsProfileState().companyProfile
+    () => getSettingsProfileState().companyProfile,
   );
   const [contractDraft, setContractDraft] = useState(
-    () => getSettingsProfileState().contractDetails
+    () => getSettingsProfileState().contractDetails,
   );
   const [integrationDraft, setIntegrationDraft] = useState(
-    () => getSettingsProfileState().integrationSettings
+    () => getSettingsProfileState().integrationSettings,
   );
   const [notificationDraft, setNotificationDraft] = useState(() => {
     const current = getSettingsProfileState().notificationPreferences;
@@ -93,7 +93,7 @@ function SettingsProfileControl() {
         const timeB = new Date(b.updatedAt).getTime() || 0;
         return timeB - timeA;
       }),
-    [settingsState.helpSupport.tickets]
+    [settingsState.helpSupport.tickets],
   );
 
   const saveCompanyProfile = () => {
@@ -136,11 +136,13 @@ function SettingsProfileControl() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Settings & Profile</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Maintain company profile, contract controls, integrations, notification
-          preferences, and support workflows.
+      <div className="rounded-3xl border border-slate-200/70 bg-[radial-gradient(circle_at_top_right,#223447_0%,#0E1729_42%,#05070f_100%)] p-6 shadow-sm">
+        <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
+          Settings & Profile
+        </h2>
+        <p className="mt-1 text-sm text-white/50">
+          Maintain company profile, contract controls, integrations,
+          notification preferences, and support workflows.
         </p>
       </div>
 
@@ -245,7 +247,11 @@ function SettingsProfileControl() {
               rows={3}
               value={companyDraft.headquartersAddress}
             />
-            <Button onClick={saveCompanyProfile} type="button">
+            <Button
+              onClick={saveCompanyProfile}
+              type="button"
+              className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+            >
               Save company profile
             </Button>
           </div>
@@ -366,7 +372,11 @@ function SettingsProfileControl() {
               rows={3}
               value={contractDraft.notes}
             />
-            <Button onClick={saveContractDetails} type="button" variant="outline">
+            <Button
+              onClick={saveContractDetails}
+              type="button"
+              variant="outline"
+            >
               Save contract details
             </Button>
           </div>
@@ -441,6 +451,7 @@ function SettingsProfileControl() {
                 }
                 type="button"
                 variant={integrationDraft.syncEnabled ? "default" : "outline"}
+                  className={integrationDraft.syncEnabled ? "text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" : ""}
               >
                 Sync {integrationDraft.syncEnabled ? "On" : "Off"}
               </Button>
@@ -452,7 +463,10 @@ function SettingsProfileControl() {
                   }))
                 }
                 type="button"
-                variant={integrationDraft.autoInvoiceSync ? "default" : "outline"}
+                variant={
+                  integrationDraft.autoInvoiceSync ? "default" : "outline"
+                }
+                className={integrationDraft.autoInvoiceSync ? "text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" : ""}
               >
                 Invoice {integrationDraft.autoInvoiceSync ? "On" : "Off"}
               </Button>
@@ -464,13 +478,17 @@ function SettingsProfileControl() {
                   }))
                 }
                 type="button"
-                variant={integrationDraft.autoDriverSync ? "default" : "outline"}
+                variant={
+                  integrationDraft.autoDriverSync ? "default" : "outline"
+                }
+                className={integrationDraft.autoDriverSync ? "text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" : ""}
               >
                 Driver {integrationDraft.autoDriverSync ? "On" : "Off"}
               </Button>
             </div>
             <p className="text-xs text-slate-500">
-              Last sync: {formatDateTime(settingsState.integrationSettings.lastSyncAt)}
+              Last sync:{" "}
+              {formatDateTime(settingsState.integrationSettings.lastSyncAt)}
             </p>
             <Button onClick={saveIntegrationSettings} type="button">
               Save integration settings
@@ -491,8 +509,10 @@ function SettingsProfileControl() {
                     emailAlerts: !prev.emailAlerts,
                   }))
                 }
+                className={notificationDraft.emailAlerts ? "text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" : ""}
+                // className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                 type="button"
-                variant={notificationDraft.emailAlerts ? "default" : "outline"}
+                variant={notificationDraft.emailAlerts ? "default" : "outline"} //show green button on place default  
               >
                 Email alerts
               </Button>
@@ -505,6 +525,7 @@ function SettingsProfileControl() {
                 }
                 type="button"
                 variant={notificationDraft.smsAlerts ? "default" : "outline"}
+                className={notificationDraft.smsAlerts ? "text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" : ""}
               >
                 SMS alerts
               </Button>
@@ -517,6 +538,7 @@ function SettingsProfileControl() {
                 }
                 type="button"
                 variant={notificationDraft.pushAlerts ? "default" : "outline"}
+                className={notificationDraft.pushAlerts ? "text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" : ""}
               >
                 Push alerts
               </Button>
@@ -529,8 +551,13 @@ function SettingsProfileControl() {
                     criticalIncidentsOnly: !prev.criticalIncidentsOnly,
                   }))
                 }
+                className={notificationDraft.criticalIncidentsOnly ? "text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" : ""}
                 type="button"
-                variant={notificationDraft.criticalIncidentsOnly ? "default" : "outline"}
+                variant={
+                  notificationDraft.criticalIncidentsOnly
+                    ? "default"
+                    : "outline"
+                }
               >
                 Critical only
               </Button>
@@ -542,7 +569,10 @@ function SettingsProfileControl() {
                   }))
                 }
                 type="button"
-                variant={notificationDraft.weeklySummary ? "default" : "outline"}
+                variant={
+                  notificationDraft.weeklySummary ? "default" : "outline"
+                }
+                className={notificationDraft.weeklySummary ? "text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" : ""}
               >
                 Weekly summary
               </Button>
@@ -555,8 +585,11 @@ function SettingsProfileControl() {
                 }
                 type="button"
                 variant={
-                  notificationDraft.monthlyComplianceDigest ? "default" : "outline"
+                  notificationDraft.monthlyComplianceDigest
+                    ? "default"
+                    : "outline"
                 }
+                className={notificationDraft.monthlyComplianceDigest ? "text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" : ""}
               >
                 Monthly digest
               </Button>
@@ -572,7 +605,11 @@ function SettingsProfileControl() {
               rows={3}
               value={notificationDraft.recipientsText}
             />
-            <Button onClick={saveNotificationPreferences} type="button" variant="outline">
+            <Button
+              onClick={saveNotificationPreferences}
+              type="button"
+              variant="outline"
+            >
               Save notification preferences
             </Button>
           </div>
@@ -689,7 +726,7 @@ function SettingsProfileControl() {
                     </p>
                     <span
                       className={`rounded-full px-2 py-1 text-[11px] font-semibold ${supportStatusClassName(
-                        ticket.status
+                        ticket.status,
                       )}`}
                     >
                       {ticket.status}

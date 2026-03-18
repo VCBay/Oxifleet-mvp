@@ -1,5 +1,12 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { X } from "lucide-react";
+import {
+  BadgeCheck,
+  CircleDollarSign,
+  Clock3,
+  CreditCard,
+  Receipt,
+  X,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -96,6 +103,19 @@ const toArrayTotals = (items, keySelector, valueSelector) => {
     .sort((a, b) => b.amount - a.amount);
 };
 
+const billingOverviewToneClass = (tone) => {
+  if (tone === "good") {
+    return "bg-emerald-100 text-emerald-700";
+  }
+  if (tone === "warn") {
+    return "bg-amber-100 text-amber-700";
+  }
+  if (tone === "danger") {
+    return "bg-rose-100 text-rose-700";
+  }
+  return "bg-sky-100 text-sky-700";
+};
+
 function BillingFinanceControl() {
   const billingState = useSyncExternalStore(
     subscribeBillingFinance,
@@ -184,6 +204,54 @@ function BillingFinanceControl() {
       processing,
     };
   }, [consolidatedInvoices]);
+
+  const overviewCards = [
+    {
+      key: "total",
+      title: "Total spend",
+      value: formatCurrency(totals.totalSpend),
+      helper: `${consolidatedInvoices.length} consolidated invoices`,
+      status: "Ledger synced",
+      tone: "good",
+      icon: CircleDollarSign,
+    },
+    {
+      key: "paid",
+      title: "Paid",
+      value: formatCurrency(totals.paid),
+      helper: "Cleared invoices",
+      status: "Settled",
+      tone: "good",
+      icon: BadgeCheck,
+    },
+    {
+      key: "unpaid",
+      title: "Unpaid",
+      value: formatCurrency(totals.unpaid),
+      helper: "Pending settlement",
+      status: totals.unpaid > 0 ? "Follow up" : "No due amount",
+      tone: totals.unpaid > 0 ? "danger" : "good",
+      icon: Receipt,
+    },
+    {
+      key: "processing",
+      title: "Processing",
+      value: formatCurrency(totals.processing),
+      helper: "Under verification",
+      status: totals.processing > 0 ? "In progress" : "Up to date",
+      tone: totals.processing > 0 ? "warn" : "info",
+      icon: Clock3,
+    },
+    {
+      key: "methods",
+      title: "Payment methods",
+      value: `${billingState.paymentMethods.length}`,
+      helper: "Configured methods",
+      status: billingState.paymentMethods.length > 0 ? "Ready to pay" : "Add method",
+      tone: billingState.paymentMethods.length > 0 ? "info" : "warn",
+      icon: CreditCard,
+    },
+  ];
 
   const spendByVehicle = useMemo(
     () =>
@@ -289,39 +357,56 @@ function BillingFinanceControl() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Billing & Finance</h2>
-        <p className="mt-1 text-sm text-slate-500">
+      <div
+        className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#223447_0%,#0E1729_42%,#05070f_100%)] p-5 text-white shadow-lg sm:p-7 lg:block"
+        // className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
+      >
+        <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
+          Billing & Finance
+        </h2>
+        <p className="mt-1 text-sm text-white/50">
           Consolidated invoices, credit notes, status tracking, spend analytics,
           payment methods, billing/tax details, and accounting export.
         </p>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Total spend</p>
-          <p className="mt-3 text-3xl font-semibold text-slate-900">
-            {formatCurrency(totals.totalSpend)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Paid</p>
-          <p className="mt-3 text-3xl font-semibold text-emerald-700">
-            {formatCurrency(totals.paid)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Unpaid</p>
-          <p className="mt-3 text-3xl font-semibold text-rose-700">
-            {formatCurrency(totals.unpaid)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Processing</p>
-          <p className="mt-3 text-3xl font-semibold text-amber-700">
-            {formatCurrency(totals.processing)}
-          </p>
-        </div>
+      <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-5">
+        {overviewCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <article
+              className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm sm:rounded-2xl sm:p-4"
+              key={card.key}
+            >
+              <div className="pointer-events-none absolute -right-5 -top-5 size-16 rounded-full bg-slate-100" />
+              <div className="relative z-10 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                    {card.title}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900 sm:text-3xl">
+                    {card.value}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
+                    {card.helper}
+                  </p>
+                </div>
+                <span className="rounded-lg bg-slate-100 p-1.5 text-slate-700">
+                  <Icon size={13} />
+                </span>
+              </div>
+              <div className="mt-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${billingOverviewToneClass(
+                    card.tone,
+                  )}`}
+                >
+                  {card.status}
+                </span>
+              </div>
+            </article>
+          );
+        })}
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1.5fr]">
@@ -407,12 +492,18 @@ function BillingFinanceControl() {
                       </button>
                       <div className="mt-2 flex justify-end">
                         <Button
-                          className={isSelected ? "border-white/30 text-white hover:bg-green-600" : ""}
+                          className={
+                            isSelected
+                              ? "border-white/30 text-white hover:bg-green-600"
+                              : ""
+                          }
                           onClick={() => handleDownloadInvoice(invoice)}
                           size="sm"
                           type="button"
                           variant="outline"
-                          style={{  backgroundColor: isSelected ? "green" : undefined }}
+                          style={{
+                            backgroundColor: isSelected ? "green" : undefined,
+                          }}
                         >
                           Download invoice
                         </Button>
@@ -502,7 +593,12 @@ function BillingFinanceControl() {
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <Button onClick={() => handleDownloadInvoice(selectedInvoice)} size="sm" type="button" variant="outline">
+                  <Button
+                    onClick={() => handleDownloadInvoice(selectedInvoice)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
                     Download invoice
                   </Button>
                 </div>
@@ -512,7 +608,9 @@ function BillingFinanceControl() {
                       key={`${selectedInvoice.id}-line-${index}`}
                       className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs"
                     >
-                      <p className="font-semibold text-slate-800">{line.name}</p>
+                      <p className="font-semibold text-slate-800">
+                        {line.name}
+                      </p>
                       <p className="font-semibold text-slate-900">
                         {formatCurrency(line.cost)}
                       </p>
@@ -549,7 +647,9 @@ function BillingFinanceControl() {
                       className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs"
                     >
                       <p className="font-semibold text-slate-800">{item.key}</p>
-                      <p className="text-slate-600">{formatCurrency(item.amount)}</p>
+                      <p className="text-slate-600">
+                        {formatCurrency(item.amount)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -565,7 +665,9 @@ function BillingFinanceControl() {
                       className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs"
                     >
                       <p className="font-semibold text-slate-800">{item.key}</p>
-                      <p className="text-slate-600">{formatCurrency(item.amount)}</p>
+                      <p className="text-slate-600">
+                        {formatCurrency(item.amount)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -581,7 +683,9 @@ function BillingFinanceControl() {
                       className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs"
                     >
                       <p className="font-semibold text-slate-800">{item.key}</p>
-                      <p className="text-slate-600">{formatCurrency(item.amount)}</p>
+                      <p className="text-slate-600">
+                        {formatCurrency(item.amount)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -660,7 +764,10 @@ function BillingFinanceControl() {
             </Select>
             <Input
               onChange={(event) =>
-                setPaymentForm((prev) => ({ ...prev, label: event.target.value }))
+                setPaymentForm((prev) => ({
+                  ...prev,
+                  label: event.target.value,
+                }))
               }
               placeholder="Label (e.g. Corporate Mastercard)"
               value={paymentForm.label}
@@ -678,12 +785,19 @@ function BillingFinanceControl() {
             <Input
               maxLength={4}
               onChange={(event) =>
-                setPaymentForm((prev) => ({ ...prev, last4: event.target.value }))
+                setPaymentForm((prev) => ({
+                  ...prev,
+                  last4: event.target.value,
+                }))
               }
               placeholder="Last 4 digits"
               value={paymentForm.last4}
             />
-            <Button onClick={handleAddPaymentMethod} type="button" variant="outline">
+            <Button
+              onClick={handleAddPaymentMethod}
+              type="button"
+              variant="outline"
+            >
               Add payment method
             </Button>
           </div>
@@ -736,14 +850,20 @@ function BillingFinanceControl() {
             />
             <Input
               onChange={(event) =>
-                setBillingDraft((prev) => ({ ...prev, city: event.target.value }))
+                setBillingDraft((prev) => ({
+                  ...prev,
+                  city: event.target.value,
+                }))
               }
               placeholder="City"
               value={billingDraft.city}
             />
             <Input
               onChange={(event) =>
-                setBillingDraft((prev) => ({ ...prev, state: event.target.value }))
+                setBillingDraft((prev) => ({
+                  ...prev,
+                  state: event.target.value,
+                }))
               }
               placeholder="State"
               value={billingDraft.state}
@@ -760,14 +880,20 @@ function BillingFinanceControl() {
             />
             <Input
               onChange={(event) =>
-                setBillingDraft((prev) => ({ ...prev, country: event.target.value }))
+                setBillingDraft((prev) => ({
+                  ...prev,
+                  country: event.target.value,
+                }))
               }
               placeholder="Country"
               value={billingDraft.country}
             />
             <Input
               onChange={(event) =>
-                setBillingDraft((prev) => ({ ...prev, taxId: event.target.value }))
+                setBillingDraft((prev) => ({
+                  ...prev,
+                  taxId: event.target.value,
+                }))
               }
               placeholder="Tax ID"
               value={billingDraft.taxId}
@@ -785,10 +911,18 @@ function BillingFinanceControl() {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button onClick={handleSaveBillingProfile} type="button">
+            <Button
+              onClick={handleSaveBillingProfile}
+              type="button"
+              className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+            >
               Save billing profile
             </Button>
-            <Button onClick={handleExportAccountingData} type="button" variant="outline">
+            <Button
+              onClick={handleExportAccountingData}
+              type="button"
+              variant="outline"
+            >
               Export accounting data
             </Button>
             {exportMessage ? (
