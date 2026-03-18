@@ -38,6 +38,21 @@ const toIsoString = (value) => {
   return parsed.toISOString();
 };
 
+const toNullableNonNegativeInteger = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const normalized = String(value).replace(/[^0-9]/g, "");
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return Math.round(parsed);
+};
+
 const normalizeLifecycleEntry = (entry) => ({
   stage: String(entry?.stage || "Pending review").trim() || "Pending review",
   time: toIsoString(entry?.time),
@@ -99,6 +114,14 @@ const normalizeOrder = (order = {}) => {
       estimatedCost: String(order.orderDetails?.estimatedCost || "N/A").trim(),
       location: String(order.orderDetails?.location || "N/A").trim(),
       notes: String(order.orderDetails?.notes || "").trim(),
+      odometerReading: toNullableNonNegativeInteger(
+        order.orderDetails?.odometerReading,
+      ),
+      odometerUnit:
+        String(order.orderDetails?.odometerUnit || "km").trim().toLowerCase() ===
+        "miles"
+          ? "miles"
+          : "km",
     },
     approval: {
       decision: String(order.approval?.decision || "").trim(),

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   Bell,
@@ -8,6 +8,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { buildDriverBookingNotifications } from "../lib/driverBookingNotifications";
+import { Input } from "./ui/input";
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
 
@@ -53,6 +54,7 @@ function DriverBookingTrackingPanel({
   nextServiceDate,
   orders = [],
 }) {
+  const [bookingSearch, setBookingSearch] = useState("");
   const scopedOrders = useMemo(() => {
     const vehicleId = normalize(vehicle?.id);
     const driverName = normalize(displayName);
@@ -103,6 +105,18 @@ function DriverBookingTrackingPanel({
     [scopedOrders]
   );
 
+  const filteredUpcomingBookings = useMemo(() => {
+    const query = normalize(bookingSearch);
+    if (!query) {
+      return upcomingBookings;
+    }
+    return upcomingBookings.filter((booking) =>
+      [booking.id, booking.serviceType, booking.status].some((value) =>
+        normalize(value).includes(query),
+      ),
+    );
+  }, [bookingSearch, upcomingBookings]);
+
   const bookingHistory = useMemo(
     () =>
       scopedOrders.filter((order) => {
@@ -111,6 +125,18 @@ function DriverBookingTrackingPanel({
       }),
     [scopedOrders]
   );
+
+  const filteredBookingHistory = useMemo(() => {
+    const query = normalize(bookingSearch);
+    if (!query) {
+      return bookingHistory;
+    }
+    return bookingHistory.filter((booking) =>
+      [booking.id, booking.serviceType, booking.status].some((value) =>
+        normalize(value).includes(query),
+      ),
+    );
+  }, [bookingHistory, bookingSearch]);
 
   const liveBooking = useMemo(
     () =>
@@ -145,13 +171,13 @@ function DriverBookingTrackingPanel({
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <p className="text-xs text-slate-500">Upcoming bookings</p>
           <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {upcomingBookings.length}
+            {filteredUpcomingBookings.length}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <p className="text-xs text-slate-500">Booking history</p>
           <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {bookingHistory.length}
+            {filteredBookingHistory.length}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
@@ -168,14 +194,34 @@ function DriverBookingTrackingPanel({
         </div>
       </div>
 
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+              Find bookings
+            </h2>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+              Search by booking code, service type, or status.
+            </p>
+          </div>
+          <div className="w-full sm:w-72">
+            <Input
+              onChange={(event) => setBookingSearch(event.target.value)}
+              placeholder="Search bookings"
+              value={bookingSearch}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="grid min-w-0 items-start gap-4 sm:gap-6 xl:grid-cols-2">
         <div className="flex flex-col rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6 xl:h-[30rem]">
           <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Upcoming bookings</h2>
           <div className="sidebar-scrollbar mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 sm:pr-2">
-            {upcomingBookings.length === 0 ? (
-              <p className="text-xs text-slate-500 sm:text-sm">No upcoming bookings.</p>
+            {filteredUpcomingBookings.length === 0 ? (
+              <p className="text-xs text-slate-500 sm:text-sm">No upcoming bookings found.</p>
             ) : (
-              upcomingBookings.map((booking) => (
+              filteredUpcomingBookings.map((booking) => (
                 <div
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
                   key={booking.id}
@@ -209,10 +255,10 @@ function DriverBookingTrackingPanel({
         <div className="flex flex-col rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6 xl:h-[30rem]">
           <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Booking history</h2>
           <div className="sidebar-scrollbar mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 sm:pr-2">
-            {bookingHistory.length === 0 ? (
-              <p className="text-xs text-slate-500 sm:text-sm">No historical bookings yet.</p>
+            {filteredBookingHistory.length === 0 ? (
+              <p className="text-xs text-slate-500 sm:text-sm">No historical bookings found.</p>
             ) : (
-              bookingHistory.map((booking) => (
+              filteredBookingHistory.map((booking) => (
                 <div
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
                   key={booking.id}

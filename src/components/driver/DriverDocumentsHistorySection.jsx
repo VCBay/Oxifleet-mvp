@@ -1,4 +1,8 @@
+import { useMemo, useState } from "react";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+
+const normalize = (value) => String(value || "").trim().toLowerCase();
 
 function DriverDocumentsHistorySection({
   documentsHistoryRows,
@@ -6,46 +10,88 @@ function DriverDocumentsHistorySection({
   selectedDocument,
   setSelectedDocumentId,
   formatDateTime,
-  handleDownloadReceipt,
+  handleDownloadServiceDetails,
 }) {
+  const [serviceSearch, setServiceSearch] = useState("");
+
+  const filteredDocumentsHistoryRows = useMemo(() => {
+    const query = normalize(serviceSearch);
+    if (!query) {
+      return documentsHistoryRows;
+    }
+    return documentsHistoryRows.filter((row) =>
+      [row.documentNo, row.id, row.title].some((value) =>
+        normalize(value).includes(query),
+      ),
+    );
+  }, [documentsHistoryRows, serviceSearch]);
+
+  const filteredTyreReplacementHistory = useMemo(
+    () =>
+      tyreReplacementHistory.filter((row) =>
+        filteredDocumentsHistoryRows.some((item) => item.id === row.id),
+      ),
+    [filteredDocumentsHistoryRows, tyreReplacementHistory],
+  );
+
+  const activeSelectedDocument = useMemo(() => {
+    if (!selectedDocument) {
+      return null;
+    }
+    return (
+      filteredDocumentsHistoryRows.find((row) => row.id === selectedDocument.id) ||
+      filteredDocumentsHistoryRows[0] ||
+      null
+    );
+  }, [filteredDocumentsHistoryRows, selectedDocument]);
+
   return (
     <section className="min-w-0 space-y-4 sm:space-y-6">
       <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <p className="text-xs text-slate-500">Service history</p>
           <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {documentsHistoryRows.length}
+            {filteredDocumentsHistoryRows.length}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <p className="text-xs text-slate-500">Tyre replacement history</p>
           <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {tyreReplacementHistory.length}
+            {filteredTyreReplacementHistory.length}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Invoice/receipt download</p>
+          <p className="text-xs text-slate-500">Service records</p>
           <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {documentsHistoryRows.length}
+            {filteredDocumentsHistoryRows.length}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <p className="text-xs text-slate-500">Previous service details</p>
           <p className="mt-2 break-words text-xs font-semibold text-slate-900 sm:text-sm">
-            {selectedDocument ? selectedDocument.documentNo : "No history found"}
+            {activeSelectedDocument ? activeSelectedDocument.documentNo : "No history found"}
           </p>
         </div>
       </div>
 
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[340px_1fr]">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-          <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Service history</h3>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Service history</h3>
+            <div className="w-full sm:w-56">
+              <Input
+                onChange={(event) => setServiceSearch(event.target.value)}
+                placeholder="Search by service code"
+                value={serviceSearch}
+              />
+            </div>
+          </div>
           <div className="card-list-scrollbar mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1 sm:max-h-[460px] sm:pr-2">
-            {documentsHistoryRows.length === 0 ? (
-              <p className="text-xs text-slate-500 sm:text-sm">No service history available.</p>
+            {filteredDocumentsHistoryRows.length === 0 ? (
+              <p className="text-xs text-slate-500 sm:text-sm">No service history found.</p>
             ) : (
-              documentsHistoryRows.map((row) => {
-                const isActive = selectedDocument?.id === row.id;
+              filteredDocumentsHistoryRows.map((row) => {
+                const isActive = activeSelectedDocument?.id === row.id;
                 return (
                   <button
                     className={`w-full min-w-0 rounded-2xl border p-3 text-left transition ${
@@ -77,37 +123,33 @@ function DriverDocumentsHistorySection({
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
           <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Previous service details</h3>
-          {!selectedDocument ? (
+          {!activeSelectedDocument ? (
             <p className="mt-4 text-xs text-slate-500 sm:text-sm">No details available.</p>
           ) : (
             <>
               <div className="mt-4 grid gap-2.5 text-xs text-slate-700 sm:grid-cols-2 sm:text-sm">
                 <p>
                   Service:{" "}
-                  <span className="break-words font-semibold text-slate-900">{selectedDocument.title}</span>
+                  <span className="break-words font-semibold text-slate-900">{activeSelectedDocument.title}</span>
                 </p>
                 <p>
                   Source:{" "}
-                  <span className="break-words font-semibold text-slate-900">{selectedDocument.source}</span>
+                  <span className="break-words font-semibold text-slate-900">{activeSelectedDocument.source}</span>
                 </p>
                 <p>
                   Date:{" "}
                   <span className="font-semibold text-slate-900">
-                    {formatDateTime(selectedDocument.date)}
+                    {formatDateTime(activeSelectedDocument.date)}
                   </span>
                 </p>
                 <p>
-                  Cost:{" "}
-                  <span className="font-semibold text-slate-900">{selectedDocument.cost}</span>
-                </p>
-                <p>
                   Location:{" "}
-                  <span className="break-words font-semibold text-slate-900">{selectedDocument.location}</span>
+                  <span className="break-words font-semibold text-slate-900">{activeSelectedDocument.location}</span>
                 </p>
                 <p>
                   Document:{" "}
                   <span className="break-all font-semibold text-slate-900">
-                    {selectedDocument.documentNo}
+                    {activeSelectedDocument.documentNo}
                   </span>
                 </p>
               </div>
@@ -116,19 +158,20 @@ function DriverDocumentsHistorySection({
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Details
                 </p>
-                <p className="mt-1 text-xs text-slate-700 sm:text-sm">{selectedDocument.details}</p>
+                <p className="mt-1 text-xs text-slate-700 sm:text-sm">{activeSelectedDocument.details}</p>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
                   className="w-full text-xs sm:w-auto sm:text-sm"
-                  onClick={() => handleDownloadReceipt(selectedDocument)}
+                  onClick={() => handleDownloadServiceDetails(activeSelectedDocument)}
                   type="button"
+                  variant="outline"
                 >
-                  Download invoice/receipt
+                  Download service details (PDF)
                 </Button>
-                {selectedDocument.isTyre ? (
-                  <span className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">
+                {activeSelectedDocument.isTyre ? (
+                  <span className="inline-flex items-center justify-center self-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">
                     Tyre replacement history
                   </span>
                 ) : null}
@@ -141,10 +184,10 @@ function DriverDocumentsHistorySection({
       <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
         <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Tyre replacement history</h3>
         <div className="card-list-scrollbar mt-4 grid max-h-[20rem] gap-3 overflow-y-auto pr-1 md:grid-cols-2">
-          {tyreReplacementHistory.length === 0 ? (
+          {filteredTyreReplacementHistory.length === 0 ? (
             <p className="text-xs text-slate-500 sm:text-sm">No tyre replacement records found.</p>
           ) : (
-            tyreReplacementHistory.slice(0, 8).map((row) => (
+            filteredTyreReplacementHistory.slice(0, 8).map((row) => (
               <div
                 className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
                 key={`tyre-${row.id}-${row.documentNo}`}
