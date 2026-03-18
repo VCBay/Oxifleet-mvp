@@ -16,7 +16,9 @@ import { Textarea } from "../ui/textarea";
 import {
   doesCategoryRequireDescription,
   doesCategoryRequirePhotos,
+  doesCategoryRequireSubtype,
   getCategoryDetails,
+  getCategorySubOptions,
 } from "../../data/driverBookingCatalog";
 
 const problemPictogramMap = {
@@ -154,6 +156,7 @@ function DriverServiceRequestSection({
   const loadMoreTimeoutRef = useRef(null);
   const nextSectionScrollTimeoutRef = useRef(null);
   const nearestPosSectionRef = useRef(null);
+  const subServiceSectionRef = useRef(null);
   const dateSlotSectionRef = useRef(null);
   const optionalDetailsSectionRef = useRef(null);
   const photoInputRef = useRef(null);
@@ -161,6 +164,14 @@ function DriverServiceRequestSection({
   const inlineStationLimit = 6;
   const categoryDetails = useMemo(
     () => getCategoryDetails(requestForm.problemType),
+    [requestForm.problemType],
+  );
+  const categorySubOptions = useMemo(
+    () => getCategorySubOptions(requestForm.problemType),
+    [requestForm.problemType],
+  );
+  const requiresSubtype = useMemo(
+    () => doesCategoryRequireSubtype(requestForm.problemType),
     [requestForm.problemType],
   );
   const requiresDescription = useMemo(
@@ -328,6 +339,17 @@ function DriverServiceRequestSection({
     if (closeModal) {
       setShowAllServices(false);
     }
+    if (doesCategoryRequireSubtype(serviceValue)) {
+      scrollToSection(subServiceSectionRef);
+      return;
+    }
+    scrollToSection(nearestPosSectionRef);
+  };
+  const handleSubtypeSelect = (subtypeValue) => {
+    setRequestForm((prev) => ({
+      ...prev,
+      problemSubtype: subtypeValue,
+    }));
     scrollToSection(nearestPosSectionRef);
   };
   const policyStatusLabel = "Covered";
@@ -518,6 +540,72 @@ function DriverServiceRequestSection({
               ))}
             </div>
           </div>
+
+          {requestForm.problemType ? (
+            <div
+              className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5"
+              ref={subServiceSectionRef}
+            >
+              <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+                {categoryDetails?.selectionLabel || "Service details"}
+              </h2>
+              <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+                {categoryDetails?.selectionHint ||
+                  "Choose the correct service detail before booking."}
+              </p>
+              {categorySubOptions.length > 0 ? (
+                <div className="mt-4 grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  {categorySubOptions.map((option) => {
+                    const isSelected = requestForm.problemSubtype === option.value;
+                    return (
+                      <button
+                        className={`rounded-2xl border px-4 py-3 text-left transition ${
+                          isSelected
+                            ? "border-slate-900 bg-slate-900 text-white shadow-lg"
+                            : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
+                        }`}
+                        key={option.value}
+                        onClick={() => handleSubtypeSelect(option.value)}
+                        type="button"
+                      >
+                        <p className="text-sm font-semibold">{option.label}</p>
+                        {option.requiresExplanation ? (
+                          <p
+                            className={`mt-1 text-xs ${
+                              isSelected ? "text-slate-200" : "text-amber-700"
+                            }`}
+                          >
+                            Explanation required
+                          </p>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                  {requestForm.problemType === "Technisches Problem" ? (
+                    <p>
+                      Please describe the issue in the field below or upload a
+                      picture of the error message.
+                    </p>
+                  ) : requestForm.problemType === "Schadensmeldung" ? (
+                    <p>
+                      Please fill out the damage details below and upload clear
+                      pictures of the damage.
+                    </p>
+                  ) : (
+                    <p>Select the details below to continue.</p>
+                  )}
+                </div>
+              )}
+              {requiresSubtype && !requestForm.problemSubtype ? (
+                <p className="mt-3 text-xs text-amber-700">
+                  Select one service option to continue.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div
             className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
@@ -804,6 +892,13 @@ function DriverServiceRequestSection({
                 Problem:{" "}
                 <span className="font-semibold text-slate-900">
                   {requestForm.problemType || "Not selected"}
+                </span>
+              </p>
+              <p>
+                Service option:{" "}
+                <span className="font-semibold text-slate-900">
+                  {requestForm.problemSubtype ||
+                    (requiresSubtype ? "Not selected" : "Not required")}
                 </span>
               </p>
               <p>
