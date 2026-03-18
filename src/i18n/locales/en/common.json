@@ -1,0 +1,114 @@
+{
+  "language": {
+    "english": "English",
+    "german": "German",
+    "switchLabel": "Language",
+    "short": {
+      "en": "EN",
+      "de": "DE"
+    }
+  },
+  "common": {
+    "notifications": "Notifications",
+    "noNewNotifications": "No new notifications.",
+    "menu": "Menu",
+    "general": "General"
+  },
+  "actions": {
+    "open": "Open",
+    "clear": "Clear",
+    "clearAll": "Clear all",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "signOut": "Sign out",
+    "createAccount": "Create account",
+    "createAnAccount": "Create an account",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "openMenu": "Open menu",
+    "hidePassword": "Hide password",
+    "showPassword": "Show password"
+  },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "createYourAccount": "Create your account",
+    "email": "Email",
+    "workEmail": "Work email",
+    "password": "Password",
+    "fullName": "Full name",
+    "emailPlaceholder": "you@company.com",
+    "passwordPlaceholder": "Enter your password",
+    "newPasswordPlaceholder": "Create a password",
+    "namePlaceholder": "Avery Patel",
+    "newToOxifleet": "New to Oxifleet?",
+    "alreadyHaveAccess": "Already have access?",
+    "invalidCredentials": "Invalid email or password.",
+    "missingCredentials": "Please enter your email and password.",
+    "signInFailed": "Unable to sign in right now. Please try again.",
+    "accountCreated": "Account created. Please sign in.",
+    "emailAlreadyExists": "Email already exists.",
+    "signUpFailed": "Sign up failed. Please try again.",
+    "marketingText": "To empower businesses with intelligent, sustainable, and tailor-made fleet solutions that optimize operations, enhance the driver experience, and deliver measurable efficiency.",
+    "marketingBullets": {
+      "digitization": "Full service digitization tool",
+      "optimization": "Cost and performance optimization for vehicle fleets",
+      "billing": "Billing tool with reporting system"
+    }
+  },
+  "driver": {
+    "topbar": {
+      "overview": "Dashboard",
+      "service_request": "Service Request",
+      "communication": "Communication",
+      "booking_tracking": "Booking & Tracking",
+      "documents_history": "Documents & History",
+      "profile": "Profile"
+    },
+    "sidebar": {
+      "overview": "Dashboard",
+      "service_request": "Service Request",
+      "communication": "Communication",
+      "booking_tracking": "Booking & Tracking",
+      "documents_history": "Documents & History",
+      "profile": "Profile"
+    }
+  },
+  "fleet": {
+    "menu": {
+      "dashboard": "Dashboard",
+      "vehicles": "Vehicles",
+      "drivers": "Drivers",
+      "vehicle_policy": "Vehicle Policy",
+      "service_order_control": "Service & Order Control",
+      "billing_finance": "Billing & Finance",
+      "reporting_analytics": "Reporting & Analytics",
+      "communication": "Communication",
+      "team_access_control": "Team & Access Control",
+      "settings_profile": "Settings & Profile"
+    }
+  },
+  "pos": {
+    "menu": {
+      "overview": "Dashboard",
+      "order-management": "Order Management",
+      "validation": "Validation",
+      "analytics-reports": "Analytics & Reports",
+      "approval-workflow": "Approval Workflow",
+      "billing-settlement": "Billing & Settlement",
+      "inventory-availability": "Inventory & Availability",
+      "profile-settings": "Profile & Settings"
+    },
+    "notifications": {
+      "newBookingTitle": "New booking received",
+      "newBookingDetail": "A new service booking is waiting in order queue.",
+      "approvalResponsesTitle": "Approval responses",
+      "approvalResponsesDetail": "Fleet manager responded to recent approval requests.",
+      "rejectionAlertsTitle": "Rejection alerts",
+      "rejectionAlertsDetail": "One request was rejected and needs correction.",
+      "paymentProcessedTitle": "Payment processed alerts",
+      "paymentProcessedDetail": "A settlement payment has been processed successfully.",
+      "minutesAgo": "{{count}} min ago"
+    }
+  }
+}
+

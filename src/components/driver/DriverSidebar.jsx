@@ -1,7 +1,7 @@
 import {
+  ArrowLeft,
+  ArrowRight,
   CalendarClock,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   LogOut,
   MessageSquare,
@@ -12,14 +12,31 @@ import {
 import Logo from "../../icons/Logo";
 import OxifleetEmblemWhite from "../../icons/Oxifleet-Emblem-White.svg";
 import { Button } from "../ui/button";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const menuItems = [
-  { key: "overview", label: "Dashboard", Icon: Truck },
-  { key: "service_request", label: "Service Request", Icon: Wrench },
-  { key: "communication", label: "Communication", Icon: MessageSquare },
-  { key: "booking_tracking", label: "Booking & Tracking", Icon: CalendarClock },
-  { key: "documents_history", label: "Documents & History", Icon: FileText },
-  { key: "profile", label: "Profile", Icon: User },
+  { key: "overview", labelKey: "driver.sidebar.overview", Icon: Truck },
+  {
+    key: "service_request",
+    labelKey: "driver.sidebar.service_request",
+    Icon: Wrench,
+  },
+  {
+    key: "communication",
+    labelKey: "driver.sidebar.communication",
+    Icon: MessageSquare,
+  },
+  {
+    key: "booking_tracking",
+    labelKey: "driver.sidebar.booking_tracking",
+    Icon: CalendarClock,
+  },
+  {
+    key: "documents_history",
+    labelKey: "driver.sidebar.documents_history",
+    Icon: FileText,
+  },
+  { key: "profile", labelKey: "driver.sidebar.profile", Icon: User },
 ];
 
 function DriverSidebar({
@@ -32,11 +49,12 @@ function DriverSidebar({
   isMobile = false,
   className = "",
 }) {
+  const { t } = useTranslation();
   const sidebarWidthClass = isMobile ? "w-72" : isCollapsed ? "w-24" : "w-72";
 
   return (
     <aside
-      className={`inset-y-0 left-0 ${isMobile ? "absolute" : "fixed transition-[width] duration-300"} ${sidebarWidthClass} ${className} z-index-1000`}
+      className={`inset-y-0 left-0 ${isMobile ? "absolute z-50" : "fixed z-50 transition-[width] duration-300"} ${sidebarWidthClass} ${className}`}
     >
       <div
         className={`relative flex h-full flex-col bg-[#0D0F16] text-white shadow-xl ${isCollapsed ? "p-3" : "p-6"}`}
@@ -48,13 +66,12 @@ function DriverSidebar({
             onClick={onToggleCollapse}
             type="button"
           >
-            {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            {isCollapsed ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
           </button>
         ) : null}
 
         <div className="space-y-8">
           <div className="space-y-3">
-
             {isCollapsed ? (
               <div className="mx-auto space-y-1">
                 <div className="grid place-items-center rounded-2xl border-white/10 bg-white/5 p-2 shadow-inner">
@@ -76,6 +93,7 @@ function DriverSidebar({
           <nav className="space-y-2 text-sm">
             {menuItems.map((item) => {
               const MenuIcon = item.Icon;
+              const label = t(item.labelKey, item.key);
               return (
                 <button
                   className={`flex w-full items-center rounded-2xl border transition ${
@@ -91,11 +109,11 @@ function DriverSidebar({
                   }`}
                   key={item.key}
                   onClick={() => onMenuClick(item.key)}
-                  title={isCollapsed ? item.label : undefined}
+                  title={isCollapsed ? label : undefined}
                   type="button"
                 >
                   <MenuIcon size={18} />
-                  {!isCollapsed ? item.label : null}
+                  {!isCollapsed ? label : null}
                 </button>
               );
             })}
@@ -106,12 +124,12 @@ function DriverSidebar({
           <Button
             className={`w-full ${isCollapsed ? "justify-center px-0" : "justify-start"}`}
             onClick={onSignOut}
-            title={isCollapsed ? "Sign out" : undefined}
+            title={isCollapsed ? t("actions.signOut", "Sign out") : undefined}
             type="button"
             variant="secondary"
           >
             <LogOut className={isCollapsed ? "" : "mr-2"} size={16} />
-            {!isCollapsed ? "Sign out" : null}
+            {!isCollapsed ? t("actions.signOut", "Sign out") : null}
           </Button>
         </div>
       </div>

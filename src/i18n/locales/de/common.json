@@ -1,0 +1,114 @@
+{
+  "language": {
+    "english": "Englisch",
+    "german": "Deutsch",
+    "switchLabel": "Sprache",
+    "short": {
+      "en": "EN",
+      "de": "DE"
+    }
+  },
+  "common": {
+    "notifications": "Benachrichtigungen",
+    "noNewNotifications": "Keine neuen Benachrichtigungen.",
+    "menu": "Menü",
+    "general": "Allgemein"
+  },
+  "actions": {
+    "open": "Öffnen",
+    "clear": "Löschen",
+    "clearAll": "Alle löschen",
+    "signIn": "Anmelden",
+    "signingIn": "Anmeldung läuft...",
+    "signOut": "Abmelden",
+    "createAccount": "Konto erstellen",
+    "createAnAccount": "Konto erstellen",
+    "expandSidebar": "Seitenleiste erweitern",
+    "collapseSidebar": "Seitenleiste einklappen",
+    "openMenu": "Menü öffnen",
+    "hidePassword": "Passwort ausblenden",
+    "showPassword": "Passwort anzeigen"
+  },
+  "auth": {
+    "welcomeBack": "Willkommen zurück",
+    "createYourAccount": "Erstellen Sie Ihr Konto",
+    "email": "E-Mail",
+    "workEmail": "Geschäftliche E-Mail",
+    "password": "Passwort",
+    "fullName": "Vollständiger Name",
+    "emailPlaceholder": "sie@firma.de",
+    "passwordPlaceholder": "Passwort eingeben",
+    "newPasswordPlaceholder": "Passwort erstellen",
+    "namePlaceholder": "Avery Patel",
+    "newToOxifleet": "Neu bei Oxifleet?",
+    "alreadyHaveAccess": "Sie haben bereits Zugang?",
+    "invalidCredentials": "Ungültige E-Mail oder ungültiges Passwort.",
+    "missingCredentials": "Bitte geben Sie Ihre E-Mail und Ihr Passwort ein.",
+    "signInFailed": "Anmeldung derzeit nicht möglich. Bitte versuchen Sie es erneut.",
+    "accountCreated": "Konto erstellt. Bitte melden Sie sich an.",
+    "emailAlreadyExists": "E-Mail existiert bereits.",
+    "signUpFailed": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "marketingText": "Wir unterstützen Unternehmen mit intelligenten, nachhaltigen und maßgeschneiderten Flottenlösungen, die Abläufe optimieren, das Fahrerlebnis verbessern und messbare Effizienz schaffen.",
+    "marketingBullets": {
+      "digitization": "Digitalisierungstool für den kompletten Serviceprozess",
+      "optimization": "Kosten- und Leistungsoptimierung für Fahrzeugflotten",
+      "billing": "Abrechnungstool mit Reportingsystem"
+    }
+  },
+  "driver": {
+    "topbar": {
+      "overview": "Dashboard",
+      "service_request": "Serviceanfrage",
+      "communication": "Kommunikation",
+      "booking_tracking": "Buchung & Tracking",
+      "documents_history": "Dokumente & Historie",
+      "profile": "Profil"
+    },
+    "sidebar": {
+      "overview": "Dashboard",
+      "service_request": "Serviceanfrage",
+      "communication": "Kommunikation",
+      "booking_tracking": "Buchung & Tracking",
+      "documents_history": "Dokumente & Historie",
+      "profile": "Profil"
+    }
+  },
+  "fleet": {
+    "menu": {
+      "dashboard": "Dashboard",
+      "vehicles": "Fahrzeuge",
+      "drivers": "Fahrer",
+      "vehicle_policy": "Fahrzeugrichtlinien",
+      "service_order_control": "Service- & Auftragssteuerung",
+      "billing_finance": "Abrechnung & Finanzen",
+      "reporting_analytics": "Reporting & Analysen",
+      "communication": "Kommunikation",
+      "team_access_control": "Team- & Zugriffssteuerung",
+      "settings_profile": "Einstellungen & Profil"
+    }
+  },
+  "pos": {
+    "menu": {
+      "overview": "Dashboard",
+      "order-management": "Auftragsmanagement",
+      "validation": "Prüfung",
+      "analytics-reports": "Analysen & Berichte",
+      "approval-workflow": "Freigabeprozess",
+      "billing-settlement": "Abrechnung & Settlement",
+      "inventory-availability": "Bestand & Verfügbarkeit",
+      "profile-settings": "Profil & Einstellungen"
+    },
+    "notifications": {
+      "newBookingTitle": "Neue Buchung eingegangen",
+      "newBookingDetail": "Eine neue Servicebuchung wartet in der Auftragswarteschlange.",
+      "approvalResponsesTitle": "Freigabeantworten",
+      "approvalResponsesDetail": "Der Flottenmanager hat auf aktuelle Freigabeanfragen reagiert.",
+      "rejectionAlertsTitle": "Ablehnungswarnungen",
+      "rejectionAlertsDetail": "Eine Anfrage wurde abgelehnt und muss korrigiert werden.",
+      "paymentProcessedTitle": "Zahlung verarbeitet",
+      "paymentProcessedDetail": "Eine Settlement-Zahlung wurde erfolgreich verarbeitet.",
+      "minutesAgo": "vor {{count}} Min."
+    }
+  }
+}
+
