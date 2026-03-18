@@ -31,6 +31,8 @@ import {
   Van,
   Wrench,
   X,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { clearSession, getSession } from "../auth/session";
 import Logo from "../icons/Logo";
@@ -832,7 +834,7 @@ function Dashboard() {
               onClick={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
               type="button"
             >
-              {isDesktopSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+              {isDesktopSidebarCollapsed ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
             </button>
 
             <div className="sidebar-scrollbar min-h-0 flex-1 space-y-10 overflow-y-auto pr-1">
@@ -1515,7 +1517,7 @@ function Dashboard() {
                   <Button type="button" variant="outline">
                     <FileUp /> Import from Excel
                   </Button>
-                  <Button type="submit" disabled={!isVehicleReady}>
+                  <Button type="submit" disabled={!isVehicleReady} className="w-full justify-center text-sm sm:w-auto text-white bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">
                     Add vehicle
                   </Button>
                 </DialogFooter>
@@ -1611,7 +1613,7 @@ function Dashboard() {
                   <Button type="button" variant="outline">
                     Import from Excel
                   </Button>
-                  <Button type="submit" disabled={!isDriverReady}>
+                  <Button type="submit" disabled={!isDriverReady} className="w-full justify-center text-sm sm:w-auto text-white bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">
                     Add driver
                   </Button>
                 </DialogFooter>
@@ -1619,7 +1621,7 @@ function Dashboard() {
             </DialogContent>
           </Dialog>
 
-          <div className="-mx-4 sticky top-0 z-40 pb-3 sm:-mx-6 sm:pb-4 lg:-mx-8 lg:pb-4">
+          <div className="-mx-4 top-0 z-40 pb-3 sm:-mx-6 sm:pb-4 lg:-mx-8 lg:pb-4">
             <FleetTopbar
               displayEmail={user?.email || "john@oxifleet.com"}
               displayName={user?.name || "John Doe"}
@@ -2015,15 +2017,15 @@ function Dashboard() {
               </div>
             </div>
 
-            <div className="rounded-3xl bg-[radial-gradient(circle_at_top,#0b1220_0%,#0d0f16_55%,#050608_100%)] p-4 text-white shadow-lg sm:p-6">
+            <div className="rounded-3xl bg-white p-4 shadow-lg sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-semibold sm:text-sm">Team focus</p>
-                  <p className="mt-1 text-[10px] text-white/60 sm:text-xs">
+                  <p className="mt-1 text-[10px] sm:text-xs">
                     Active initiatives this week
                   </p>
                 </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs">
                   04 tasks
                 </span>
               </div>
@@ -2031,27 +2033,27 @@ function Dashboard() {
                 <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
                   <div>
                     <p className="text-[12px] font-semibold sm:text-sm">Service desk refresh</p>
-                    <p className="text-[10px] text-white/50 sm:text-xs">Due Feb 8</p>
+                    <p className="text-[10px] sm:text-xs">Due Feb 8</p>
                   </div>
-                  <span className="text-xs font-semibold text-emerald-300">
+                  <span className="text-xs font-semibold text-emerald-300 bg-emerald-100 px-2 py-0.5 rounded-full">
                     On track
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
                   <div>
                     <p className="text-[12px] font-semibold sm:text-sm">Driver onboarding</p>
-                    <p className="text-[10px] text-white/50 sm:text-xs">Due Feb 10</p>
+                    <p className="text-[10px] sm:text-xs">Due Feb 10</p>
                   </div>
-                  <span className="text-xs font-semibold text-amber-300">
+                  <span className="text-xs font-semibold text-amber-300 bg-amber-100 px-2 py-0.5 rounded-full">
                     Review
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
                   <div>
                     <p className="text-[12px] font-semibold sm:text-sm">Parts inventory</p>
-                    <p className="text-[10px] text-white/50 sm:text-xs">Due Feb 12</p>
+                    <p className="text-[10px] sm:text-xs">Due Feb 12</p>
                   </div>
-                  <span className="text-xs font-semibold text-rose-300">
+                  <span className="text-xs font-semibold text-rose-300 bg-rose-100 px-2 py-0.5 rounded-full">
                     At risk
                   </span>
                 </div>

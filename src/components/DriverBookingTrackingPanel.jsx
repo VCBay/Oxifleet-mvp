@@ -138,34 +138,83 @@ function DriverBookingTrackingPanel({
       }),
     [nextServiceDate, scopedOrders, vehicle?.id]
   );
+  const overviewCards = useMemo(() => {
+    const liveStatus = liveBooking?.status || "No active bookings";
+    const activeWorkflows = upcomingBookings.length;
+    return [
+      {
+        key: "upcoming",
+        title: "Upcoming bookings",
+        icon: CalendarClock,
+        value: upcomingBookings.length,
+        valueType: "number",
+      },
+      {
+        key: "history",
+        title: "Booking history",
+        icon: CheckCircle2,
+        value: bookingHistory.length,
+        valueType: "number",
+      },
+      {
+        key: "live",
+        title: "Live status",
+        icon: Bell,
+        value: liveStatus,
+        valueType: "text",
+      },
+      {
+        key: "workflows",
+        title: "Active workflows",
+        icon: AlertTriangle,
+        value: activeWorkflows,
+        valueType: "number",
+      },
+    ].map((card) => {
+      const numericValue = Number(card.value) || 0;
+      return {
+        ...card,
+        trendPercent: card.valueType === "number" ? 15 : 0,
+        lastMonthValue:
+          card.valueType === "number"
+            ? Math.max(0, Math.round(numericValue * 0.85))
+            : "Monitoring",
+      };
+    });
+  }, [bookingHistory.length, liveBooking?.status, upcomingBookings.length]);
 
   return (
     <section className="min-w-0 space-y-4 sm:space-y-6">
       <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Upcoming bookings</p>
-          <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {upcomingBookings.length}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Booking history</p>
-          <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {bookingHistory.length}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Live status</p>
-          <p className="mt-2 text-xs font-semibold text-slate-900 sm:text-sm">
-            {liveBooking?.status || "No active bookings"}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Active workflows</p>
-          <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {upcomingBookings.length}
-          </p>
-        </div>
+        {overviewCards.map(({ icon: Icon, ...card }) => (
+          <article
+            key={card.key}
+            className="rounded-2xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm sm:px-4"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-700 sm:text-sm">
+                <Icon className="text-slate-700" size={14} />
+                {card.title}
+              </p>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
+                {card.trendPercent >= 0 ? "+" : ""}
+                {card.trendPercent}% ↑
+              </span>
+            </div>
+            {card.valueType === "number" ? (
+              <p className="mt-2 text-3xl font-semibold leading-none text-[#24114D] sm:text-4xl">
+                {card.value}
+              </p>
+            ) : (
+              <p className="mt-2 line-clamp-1 text-sm font-semibold leading-tight text-[#24114D] sm:text-xl">
+                {card.value}
+              </p>
+            )}
+            <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
+              Last month: {card.lastMonthValue}
+            </p>
+          </article>
+        ))}
       </div>
 
       <div className="grid min-w-0 items-start gap-4 sm:gap-6 xl:grid-cols-2">
@@ -312,7 +361,7 @@ function DriverBookingTrackingPanel({
           )}
       </div>
 
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+      {/* <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
         <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Notifications</h2>
         <div className="card-list-scrollbar mt-4 max-h-[300px] space-y-2 overflow-y-auto pr-1 sm:max-h-[340px] sm:pr-2">
           {notifications.map((item) => {
@@ -336,7 +385,7 @@ function DriverBookingTrackingPanel({
             );
           })}
         </div>
-      </div>
+      </div> */}
     </section>
   );
 }

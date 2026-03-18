@@ -1,6 +1,8 @@
 import {
   CalendarClock,
   ChevronLeft,
+  ArrowLeft,
+  ArrowRight,
   ChevronRight,
   FileText,
   LogOut,
@@ -48,7 +50,7 @@ function DriverSidebar({
             onClick={onToggleCollapse}
             type="button"
           >
-            {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            {isCollapsed ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
           </button>
         ) : null}
 
@@ -104,11 +106,11 @@ function DriverSidebar({
 
         <div className="mt-auto space-y-2">
           <Button
-            className={`w-full ${isCollapsed ? "justify-center px-0" : "justify-start"}`}
+            className={`w-full ${isCollapsed ? "justify-center px-0" : "justify-start"} hover:bg-white/10 rounded-2xl border-transparent text-white/70 hover:text-white`}
             onClick={onSignOut}
             title={isCollapsed ? "Sign out" : undefined}
             type="button"
-            variant="secondary"
+            variant="transparent"
           >
             <LogOut className={isCollapsed ? "" : "mr-2"} size={16} />
             {!isCollapsed ? "Sign out" : null}

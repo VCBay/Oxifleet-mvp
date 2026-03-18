@@ -664,7 +664,8 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                 Bulk upload
               </Button>
               <Button
-                className="h-10 w-full justify-center px-3 text-sm sm:w-auto"
+                // className="h-10 w-full justify-center px-3 text-sm sm:w-auto"
+                className="h-10 w-full justify-center text-sm sm:w-auto text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                 onClick={onAddVehicleClick}
                 type="button"
               >

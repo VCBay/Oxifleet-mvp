@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { CalendarClock, CheckCircle2, FileText, History } from "lucide-react";
 import { Button } from "../ui/button";
 
 function DriverDocumentsHistorySection({
@@ -8,33 +10,86 @@ function DriverDocumentsHistorySection({
   formatDateTime,
   handleDownloadReceipt,
 }) {
+  const overviewCards = useMemo(() => {
+    const selectedDocumentNo = selectedDocument ? selectedDocument.documentNo : "No history found";
+    return [
+      {
+        key: "service_history",
+        title: "Service history",
+        icon: History,
+        value: documentsHistoryRows.length,
+        valueType: "number",
+      },
+      {
+        key: "tyre_history",
+        title: "Tyre replacement history",
+        icon: CheckCircle2,
+        value: tyreReplacementHistory.length,
+        valueType: "number",
+      },
+      {
+        key: "invoice_downloads",
+        title: "Invoice/receipt download",
+        icon: FileText,
+        value: documentsHistoryRows.length,
+        valueType: "number",
+      },
+      {
+        key: "previous_details",
+        title: "Previous service details",
+        icon: CalendarClock,
+        value: selectedDocumentNo,
+        valueType: "text",
+      },
+    ].map((card) => {
+      const numericValue = Number(card.value) || 0;
+      return {
+        ...card,
+        trendPercent: card.valueType === "number" ? 15 : 0,
+        lastMonthValue:
+          card.valueType === "number"
+            ? Math.max(0, Math.round(numericValue * 0.85))
+            : "Context available",
+      };
+    });
+  }, [
+    documentsHistoryRows.length,
+    selectedDocument,
+    tyreReplacementHistory.length,
+  ]);
+
   return (
     <section className="min-w-0 space-y-4 sm:space-y-6">
       <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Service history</p>
-          <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {documentsHistoryRows.length}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Tyre replacement history</p>
-          <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {tyreReplacementHistory.length}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Invoice/receipt download</p>
-          <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {documentsHistoryRows.length}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Previous service details</p>
-          <p className="mt-2 break-words text-xs font-semibold text-slate-900 sm:text-sm">
-            {selectedDocument ? selectedDocument.documentNo : "No history found"}
-          </p>
-        </div>
+        {overviewCards.map(({ icon: Icon, ...card }) => (
+          <article
+            key={card.key}
+            className="rounded-2xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm sm:px-4"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-700 sm:text-sm">
+                <Icon className="text-slate-700" size={14} />
+                {card.title}
+              </p>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
+                {card.trendPercent >= 0 ? "+" : ""}
+                {card.trendPercent}% ↑
+              </span>
+            </div>
+            {card.valueType === "number" ? (
+              <p className="mt-2 text-3xl font-semibold leading-none text-[#24114D] sm:text-4xl">
+                {card.value}
+              </p>
+            ) : (
+              <p className="mt-2 line-clamp-1 break-all text-sm font-semibold leading-tight text-[#24114D] sm:text-base">
+                {card.value}
+              </p>
+            )}
+            <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
+              Last month: {card.lastMonthValue}
+            </p>
+          </article>
+        ))}
       </div>
 
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[340px_1fr]">
@@ -121,11 +176,12 @@ function DriverDocumentsHistorySection({
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
-                  className="w-full text-xs sm:w-auto sm:text-sm"
+                  // className="w-full text-xs sm:w-auto sm:text-sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                   onClick={() => handleDownloadReceipt(selectedDocument)}
                   type="button"
                 >
-                  Download invoice/receipt
+                  Download invoice
                 </Button>
                 {selectedDocument.isTyre ? (
                   <span className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">
