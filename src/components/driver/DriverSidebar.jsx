@@ -2,6 +2,10 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarClock,
+  ChevronLeft,
+  // ArrowLeft,
+  // ArrowRight,
+  ChevronRight,
   FileText,
   LogOut,
   MessageSquare,
@@ -122,11 +126,11 @@ function DriverSidebar({
 
         <div className="mt-auto space-y-2">
           <Button
-            className={`w-full ${isCollapsed ? "justify-center px-0" : "justify-start"}`}
+            className={`w-full ${isCollapsed ? "justify-center px-0" : "justify-start"} hover:bg-white/10 rounded-2xl border-transparent text-white/70 hover:text-white`}
             onClick={onSignOut}
             title={isCollapsed ? t("actions.signOut", "Sign out") : undefined}
             type="button"
-            variant="secondary"
+            variant="transparent"
           >
             <LogOut className={isCollapsed ? "" : "mr-2"} size={16} />
             {!isCollapsed ? t("actions.signOut", "Sign out") : null}

@@ -68,6 +68,19 @@ const STATUS_CHIPS = [
   { key: "Inactive", label: "Inactive" },
 ];
 
+const driverOverviewToneClass = (tone) => {
+  if (tone === "good") {
+    return "bg-emerald-100 text-emerald-700";
+  }
+  if (tone === "warn") {
+    return "bg-amber-100 text-amber-700";
+  }
+  if (tone === "info") {
+    return "bg-sky-100 text-sky-700";
+  }
+  return "bg-slate-200 text-slate-700";
+};
+
 function DriverManagement({
   drivers,
   assignmentVehicles,
@@ -117,6 +130,54 @@ function DriverManagement({
 
     return { total, driving, active, idle, unassigned, avgCompliance };
   }, [drivers]);
+
+  const driverOverviewCards = [
+    {
+      key: "total",
+      title: "Total drivers",
+      value: summary.total,
+      helper: "Registered in tenant",
+      status: "Roster synced",
+      tone: "good",
+      icon: Users,
+    },
+    {
+      key: "driving",
+      title: "Driving now",
+      value: summary.driving,
+      helper: "Currently on route",
+      status: "Live duty",
+      tone: "good",
+      icon: Activity,
+    },
+    {
+      key: "active",
+      title: "Active standby",
+      value: summary.active,
+      helper: "Ready for assignments",
+      status: "On standby",
+      tone: "info",
+      icon: BadgeCheck,
+    },
+    {
+      key: "idle",
+      title: "Idle",
+      value: summary.idle,
+      helper: "No active trip",
+      status: "Monitor queue",
+      tone: "warn",
+      icon: CarFront,
+    },
+    {
+      key: "compliance",
+      title: "Avg compliance",
+      value: `${summary.avgCompliance}%`,
+      helper: "Fleet compliance average",
+      status: summary.avgCompliance >= 90 ? "Excellent" : "Watch",
+      tone: summary.avgCompliance >= 90 ? "good" : "warn",
+      icon: ShieldCheck,
+    },
+  ];
 
   const filteredDrivers = useMemo(() => {
     return drivers.filter((driver) => {
@@ -221,43 +282,59 @@ function DriverManagement({
       <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#1d3148_0%,#0f1b33_45%,#070b14_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
+            <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
               Driver Cockpit
             </p>
 
-            <p className="mt-2 max-w-3xl text-xs text-slate-300 sm:text-sm">
+            <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
               Monitor driver activity, compliance, access, assignment and service
               history from one responsive control surface.
             </p>
           </div>
-          <Button onClick={onAddDriverClick} type="button">
+          <Button onClick={onAddDriverClick} type="button" className="h-10 w-full justify-center text-sm sm:w-auto text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">
             <Plus size={15} />
             Add driver
           </Button>
         </div>
       </header>
 
-      <section className="hidden grid-cols-2 gap-2.5 sm:gap-3 lg:grid lg:grid-cols-5">
-        <article className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total drivers</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">{summary.total}</p>
-        </article>
-        <article className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Driving now</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">{summary.driving}</p>
-        </article>
-        <article className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Active standby</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">{summary.active}</p>
-        </article>
-        <article className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Idle</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">{summary.idle}</p>
-        </article>
-        <article className="col-span-2 rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:col-span-1 sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Avg compliance</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">{summary.avgCompliance}%</p>
-        </article>
+      <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-5">
+        {driverOverviewCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <article
+              className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm sm:rounded-2xl sm:p-4"
+              key={card.key}
+            >
+              <div className="pointer-events-none absolute -right-5 -top-5 size-16 rounded-full bg-slate-100" />
+              <div className="relative z-10 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                    {card.title}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900 sm:text-3xl">
+                    {card.value}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
+                    {card.helper}
+                  </p>
+                </div>
+                <span className="rounded-lg bg-slate-100 p-1.5 text-slate-700">
+                  <Icon size={13} />
+                </span>
+              </div>
+              <div className="mt-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${driverOverviewToneClass(
+                    card.tone,
+                  )}`}
+                >
+                  {card.status}
+                </span>
+              </div>
+            </article>
+          );
+        })}
       </section>
 
       {!showMobileDetailPage ? (

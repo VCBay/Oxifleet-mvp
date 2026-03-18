@@ -262,7 +262,7 @@ function DriverCommunicationSection({
                       placeholder="Quick support message"
                       value={communicationDraft}
                     />
-                    <Button className="w-full sm:w-auto" onClick={handleSendCommunicationMessage} type="button">
+                    <Button className="w-full sm:w-auto text-xs sm:text-sm text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" onClick={handleSendCommunicationMessage} type="button">
                       <Send className="mr-2" size={14} />
                       Send
                     </Button>
@@ -310,7 +310,7 @@ function DriverCommunicationSection({
                       rows={5}
                       value={supportRequest.message}
                     />
-                    <Button className="w-full" onClick={handleSupportRequestSubmit} type="button">
+                    <Button className="w-full text-xs text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" onClick={handleSupportRequestSubmit} type="button">
                       <Headset className="mr-2" size={14} />
                       Send support request
                     </Button>
@@ -409,7 +409,7 @@ function DriverCommunicationSection({
                       placeholder="Type simple message here..."
                       value={communicationDraft}
                     />
-                    <Button className="w-full sm:w-auto" onClick={handleSendCommunicationMessage} type="button">
+                    <Button className="w-full sm:w-auto text-xs sm:text-sm text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" onClick={handleSendCommunicationMessage} type="button">
                       <Send className="mr-2" size={14} />
                       Send
                     </Button>

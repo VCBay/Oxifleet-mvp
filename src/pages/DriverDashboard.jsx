@@ -1320,15 +1320,6 @@ function DriverDashboard() {
       return;
     }
     if (
-      doesCategoryRequireSubtype(requestForm.problemType) &&
-      !String(requestForm.problemSubtype || "").trim()
-    ) {
-      const message = "Select a service option before continuing.";
-      setWizardFeedback(message);
-      toast.error("Request not sent", { description: message, duration: 3200 });
-      return;
-    }
-    if (
       doesCategoryRequireDescription(
         requestForm.problemType,
         requestForm.problemSubtype,
@@ -1709,7 +1700,7 @@ function DriverDashboard() {
             isDesktopSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"
           } lg:px-8 lg:pb-8 lg:pt-0`}
         >
-          <div className="-mx-4 sticky top-0 z-40 pb-3 pt-0 sm:-mx-6 sm:pb-4 sm:pt-0 lg:-mx-8 lg:pb-4 lg:pt-0">
+          <div className="-mx-4 top-0 z-40 pb-3 pt-0 sm:-mx-6 sm:pb-4 sm:pt-0 lg:-mx-8 lg:pb-4 lg:pt-0">
             <DriverTopbar
               activeMenu={activeMenu}
               displayEmail={displayEmail}

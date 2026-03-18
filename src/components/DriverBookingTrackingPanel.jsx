@@ -10,7 +10,10 @@ import {
 import { buildDriverBookingNotifications } from "../lib/driverBookingNotifications";
 import { Input } from "./ui/input";
 
-const normalize = (value) => String(value || "").trim().toLowerCase();
+const normalize = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const toDate = (value) => {
   const parsed = new Date(value);
@@ -67,7 +70,7 @@ function DriverBookingTrackingPanel({
       .sort(
         (a, b) =>
           (toDate(b?.requestedAt)?.getTime() || 0) -
-          (toDate(a?.requestedAt)?.getTime() || 0)
+          (toDate(a?.requestedAt)?.getTime() || 0),
       );
 
     if (rows.length > 0) {
@@ -102,7 +105,7 @@ function DriverBookingTrackingPanel({
         const status = normalize(order.status);
         return !status.includes("rejected") && !status.includes("completed");
       }),
-    [scopedOrders]
+    [scopedOrders],
   );
 
   const filteredUpcomingBookings = useMemo(() => {
@@ -123,7 +126,7 @@ function DriverBookingTrackingPanel({
         const status = normalize(order.status);
         return status.includes("rejected") || status.includes("completed");
       }),
-    [scopedOrders]
+    [scopedOrders],
   );
 
   const filteredBookingHistory = useMemo(() => {
@@ -140,10 +143,12 @@ function DriverBookingTrackingPanel({
 
   const liveBooking = useMemo(
     () =>
-      upcomingBookings.find((order) => normalize(order.status).includes("progress")) ||
+      upcomingBookings.find((order) =>
+        normalize(order.status).includes("progress"),
+      ) ||
       upcomingBookings[0] ||
       null,
-    [upcomingBookings]
+    [upcomingBookings],
   );
 
   const iconByNotificationKey = {
@@ -162,8 +167,52 @@ function DriverBookingTrackingPanel({
         scopedOrders,
         vehicleId: vehicle?.id,
       }),
-    [nextServiceDate, scopedOrders, vehicle?.id]
+    [nextServiceDate, scopedOrders, vehicle?.id],
   );
+  const overviewCards = useMemo(() => {
+    const liveStatus = liveBooking?.status || "No active bookings";
+    const activeWorkflows = upcomingBookings.length;
+    return [
+      {
+        key: "upcoming",
+        title: "Upcoming bookings",
+        icon: CalendarClock,
+        value: upcomingBookings.length,
+        valueType: "number",
+      },
+      {
+        key: "history",
+        title: "Booking history",
+        icon: CheckCircle2,
+        value: bookingHistory.length,
+        valueType: "number",
+      },
+      {
+        key: "live",
+        title: "Live status",
+        icon: Bell,
+        value: liveStatus,
+        valueType: "text",
+      },
+      {
+        key: "workflows",
+        title: "Active workflows",
+        icon: AlertTriangle,
+        value: activeWorkflows,
+        valueType: "number",
+      },
+    ].map((card) => {
+      const numericValue = Number(card.value) || 0;
+      return {
+        ...card,
+        trendPercent: card.valueType === "number" ? 15 : 0,
+        lastMonthValue:
+          card.valueType === "number"
+            ? Math.max(0, Math.round(numericValue * 0.85))
+            : "Monitoring",
+      };
+    });
+  }, [bookingHistory.length, liveBooking?.status, upcomingBookings.length]);
 
   return (
     <section className="min-w-0 space-y-4 sm:space-y-6">
@@ -216,10 +265,14 @@ function DriverBookingTrackingPanel({
 
       <div className="grid min-w-0 items-start gap-4 sm:gap-6 xl:grid-cols-2">
         <div className="flex flex-col rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6 xl:h-[30rem]">
-          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Upcoming bookings</h2>
+          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+            Upcoming bookings
+          </h2>
           <div className="sidebar-scrollbar mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 sm:pr-2">
             {filteredUpcomingBookings.length === 0 ? (
-              <p className="text-xs text-slate-500 sm:text-sm">No upcoming bookings found.</p>
+              <p className="text-xs text-slate-500 sm:text-sm">
+                No upcoming bookings found.
+              </p>
             ) : (
               filteredUpcomingBookings.map((booking) => (
                 <div
@@ -232,7 +285,7 @@ function DriverBookingTrackingPanel({
                     </p>
                     <span
                       className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold sm:text-xs ${badgeClassByStatus(
-                        booking.status
+                        booking.status,
                       )}`}
                     >
                       {booking.status}
@@ -243,7 +296,8 @@ function DriverBookingTrackingPanel({
                   </p>
                   {booking?.appointment?.dateTime ? (
                     <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
-                      Appointment: {formatDateTime(booking.appointment.dateTime)}
+                      Appointment:{" "}
+                      {formatDateTime(booking.appointment.dateTime)}
                     </p>
                   ) : null}
                 </div>
@@ -253,10 +307,14 @@ function DriverBookingTrackingPanel({
         </div>
 
         <div className="flex flex-col rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6 xl:h-[30rem]">
-          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Booking history</h2>
+          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+            Booking history
+          </h2>
           <div className="sidebar-scrollbar mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 sm:pr-2">
             {filteredBookingHistory.length === 0 ? (
-              <p className="text-xs text-slate-500 sm:text-sm">No historical bookings found.</p>
+              <p className="text-xs text-slate-500 sm:text-sm">
+                No historical bookings found.
+              </p>
             ) : (
               filteredBookingHistory.map((booking) => (
                 <div
@@ -269,14 +327,15 @@ function DriverBookingTrackingPanel({
                     </p>
                     <span
                       className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold sm:text-xs ${badgeClassByStatus(
-                        booking.status
+                        booking.status,
                       )}`}
                     >
                       {booking.status}
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
-                    Updated: {formatDateTime(booking.updatedAt || booking.requestedAt)}
+                    Updated:{" "}
+                    {formatDateTime(booking.updatedAt || booking.requestedAt)}
                   </p>
                 </div>
               ))
@@ -286,79 +345,80 @@ function DriverBookingTrackingPanel({
       </div>
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-            Live booking status tracking
-          </h2>
-          {!liveBooking ? (
-            <p className="mt-4 text-xs text-slate-500 sm:text-sm">
-              No active booking available for live tracking.
-            </p>
-          ) : (
-            <div className="mt-4 space-y-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                <p className="break-words text-xs font-semibold text-slate-900 sm:text-sm">
-                  {liveBooking.id} - {liveBooking.serviceType}
-                </p>
+        <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+          Live booking status tracking
+        </h2>
+        {!liveBooking ? (
+          <p className="mt-4 text-xs text-slate-500 sm:text-sm">
+            No active booking available for live tracking.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="break-words text-xs font-semibold text-slate-900 sm:text-sm">
+                {liveBooking.id} - {liveBooking.serviceType}
+              </p>
+              <p className="text-[11px] text-slate-500 sm:text-xs">
+                Current status: {liveBooking.status}
+              </p>
+              {liveBooking?.appointment?.dateTime ? (
                 <p className="text-[11px] text-slate-500 sm:text-xs">
-                  Current status: {liveBooking.status}
+                  Appointment:{" "}
+                  {formatDateTime(liveBooking.appointment.dateTime)}
                 </p>
-                {liveBooking?.appointment?.dateTime ? (
-                  <p className="text-[11px] text-slate-500 sm:text-xs">
-                    Appointment: {formatDateTime(liveBooking.appointment.dateTime)}
-                  </p>
-                ) : null}
-              </div>
-              <div className="space-y-2">
-                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
-                  {(() => {
-                    const entries = (liveBooking.lifecycle || [])
-                      .slice()
-                      .reverse()
-                      .slice(0, 6);
-                    return (
-                      <div className="relative">
-                        {entries.length > 1 ? (
-                          <span className="absolute left-[9px] top-2 h-[calc(100%-1rem)] w-px bg-emerald-500/60" />
-                        ) : null}
-                        {entries.map((entry, index) => {
-                          const isLast = index === entries.length - 1;
-                          return (
-                            <div
-                              className={`relative pl-8 ${isLast ? "" : "pb-4 sm:pb-5"}`}
-                              key={`${liveBooking.id}-lifecycle-${index}`}
-                            >
-                              <span className="absolute left-0 top-0.5 grid size-5 place-items-center rounded-full bg-emerald-600 text-white ring-2 ring-emerald-100">
-                                <CheckCircle2 size={12} />
-                              </span>
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-slate-900 sm:text-sm">
-                                  {entry.stage},{" "}
-                                  <span className="font-medium text-slate-700">
-                                    {formatDateTime(entry.time)}
-                                  </span>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                {(() => {
+                  const entries = (liveBooking.lifecycle || [])
+                    .slice()
+                    .reverse()
+                    .slice(0, 6);
+                  return (
+                    <div className="relative">
+                      {entries.length > 1 ? (
+                        <span className="absolute left-[9px] top-2 h-[calc(100%-1rem)] w-px bg-emerald-500/60" />
+                      ) : null}
+                      {entries.map((entry, index) => {
+                        const isLast = index === entries.length - 1;
+                        return (
+                          <div
+                            className={`relative pl-8 ${isLast ? "" : "pb-4 sm:pb-5"}`}
+                            key={`${liveBooking.id}-lifecycle-${index}`}
+                          >
+                            <span className="absolute left-0 top-0.5 grid size-5 place-items-center rounded-full bg-emerald-600 text-white ring-2 ring-emerald-100">
+                              <CheckCircle2 size={12} />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-slate-900 sm:text-sm">
+                                {entry.stage},{" "}
+                                <span className="font-medium text-slate-700">
+                                  {formatDateTime(entry.time)}
+                                </span>
+                              </p>
+                              <p className="text-[11px] text-slate-500 sm:text-xs">
+                                by {entry.actor}
+                              </p>
+                              {entry.note ? (
+                                <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
+                                  {entry.note}
                                 </p>
-                                <p className="text-[11px] text-slate-500 sm:text-xs">
-                                  by {entry.actor}
-                                </p>
-                                {entry.note ? (
-                                  <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
-                                    {entry.note}
-                                  </p>
-                                ) : null}
-                              </div>
+                              ) : null}
                             </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-                </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
-          )}
+          </div>
+        )}
       </div>
 
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+      {/* <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
         <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Notifications</h2>
         <div className="card-list-scrollbar mt-4 max-h-[300px] space-y-2 overflow-y-auto pr-1 sm:max-h-[340px] sm:pr-2">
           {notifications.map((item) => {
@@ -382,7 +442,7 @@ function DriverBookingTrackingPanel({
             );
           })}
         </div>
-      </div>
+      </div> */}
     </section>
   );
 }

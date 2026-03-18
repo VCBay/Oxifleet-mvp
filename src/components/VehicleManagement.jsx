@@ -283,6 +283,76 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
     };
   }, [vehicles]);
 
+  const vehicleOverviewCards = [
+    {
+      key: "total",
+      title: "Total vehicles",
+      value: summary.total,
+      helper: "Vehicles in catalog",
+      status: "On track",
+      tone: "good",
+      icon: Truck,
+    },
+    {
+      key: "active",
+      title: "Active",
+      value: summary.active,
+      helper: "Currently operating",
+      status: "Running",
+      tone: "good",
+      icon: Gauge,
+    },
+    {
+      key: "in-service",
+      title: "In service",
+      value: summary.inService,
+      helper: "Assigned to workshop",
+      status: "Workshop",
+      tone: "info",
+      icon: Wrench,
+    },
+    {
+      key: "inactive",
+      title: "Inactive",
+      value: summary.inactive,
+      helper: "Not currently active",
+      status: "Paused",
+      tone: "neutral",
+      icon: ShieldX,
+    },
+    {
+      key: "warranty-alerts",
+      title: "Warranty alerts",
+      value: summary.expiring,
+      helper: "Expiring within 60 days",
+      status: "Expiring soon",
+      tone: "warn",
+      icon: AlertTriangle,
+    },
+    {
+      key: "replacement-mapped",
+      title: "Replacement mapped",
+      value: summary.replacementAssigned,
+      helper: "Backup vehicle linked",
+      status: "Ready backup",
+      tone: "good",
+      icon: ShieldCheck,
+    },
+  ];
+
+  const vehicleOverviewToneClass = (tone) => {
+    if (tone === "good") {
+      return "bg-emerald-100 text-emerald-700";
+    }
+    if (tone === "info") {
+      return "bg-sky-100 text-sky-700";
+    }
+    if (tone === "warn") {
+      return "bg-amber-100 text-amber-700";
+    }
+    return "bg-slate-200 text-slate-700";
+  };
+
   const spendByClass = useMemo(() => {
     const totals = {};
     vehicles.forEach((vehicle) => {
@@ -550,11 +620,11 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
       <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#223447_0%,#0E1729_42%,#05070f_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
+            <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
               Vehicle Management
             </p>
 
-            <p className="mt-2 max-w-3xl text-xs text-slate-300 sm:text-sm">
+            <p className="mt-2 max-w-3xl text-xs text-white/70 sm:text-sm">
               Operate vehicles with one command surface. Keep service history in sync from a single workflow.
             </p>
           </div>
@@ -568,62 +638,43 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
         </div>
       </header>
 
-      <section className="hidden grid-cols-2 gap-2.5 sm:gap-3 lg:grid lg:grid-cols-5">
-        <article className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
-            Active
-          </p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {summary.active}
-          </p>
-          <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 sm:text-xs">
-            Running
-          </span>
-        </article>
-        <article className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
-            In service
-          </p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {summary.inService}
-          </p>
-          <span className="mt-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700 sm:text-xs">
-            Workshop
-          </span>
-        </article>
-        <article className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
-            Inactive
-          </p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {summary.inactive}
-          </p>
-          <span className="mt-2 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700 sm:text-xs">
-            Paused
-          </span>
-        </article>
-        <article className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
-            Warranty alerts
-          </p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {summary.expiring}
-          </p>
-          <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 sm:text-xs">
-            Expiring soon
-          </span>
-        </article>
-        <article className="col-span-2 rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:col-span-1 sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
-            Replacement mapped
-          </p>
-          <p className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">
-            {summary.replacementAssigned}
-          </p>
-          <span className="mt-2 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 sm:text-xs">
-            Ready backup
-          </span>
-        </article>
+      <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3 xl:grid-cols-6">
+        {vehicleOverviewCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <article
+              className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm sm:rounded-2xl sm:p-4"
+              key={card.key}
+            >
+              <div className="pointer-events-none absolute -right-5 -top-5 size-16 rounded-full bg-slate-100" />
+              <div className="relative z-10 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                    {card.title}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900 sm:text-3xl">
+                    {card.value}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
+                    {card.helper}
+                  </p>
+                </div>
+                <span className="rounded-lg bg-slate-100 p-1.5 text-slate-700">
+                  <Icon size={13} />
+                </span>
+              </div>
+              <div className="mt-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${vehicleOverviewToneClass(
+                    card.tone,
+                  )}`}
+                >
+                  {card.status}
+                </span>
+              </div>
+            </article>
+          );
+        })}
       </section>
 
       {!showMobileDetailPage ? (
@@ -664,7 +715,8 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                 Bulk upload
               </Button>
               <Button
-                className="h-10 w-full justify-center px-3 text-sm sm:w-auto"
+                // className="h-10 w-full justify-center px-3 text-sm sm:w-auto"
+                className="h-10 w-full justify-center text-sm sm:w-auto text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                 onClick={onAddVehicleClick}
                 type="button"
               >

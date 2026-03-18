@@ -346,9 +346,14 @@ function CommunicationControl() {
   return (
     <section className="space-y-4">
       <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
-        <header className="border-b border-slate-200 bg-white px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Communication Hub</h2>
-          <p className="text-xs text-slate-500">
+        <header
+          className="hidden overflow-hidden rounded-right-top bg-[radial-gradient(circle_at_top_right,#223447_0%,#0E1729_42%,#05070f_100%)] p-5 text-white shadow-lg sm:p-7 lg:block"
+          // className="border-b border-slate-200 px-5 py-4"
+        >
+          <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
+            Communication Hub
+          </h2>
+          <p className="text-xs text-white/50">
             Chat-style view while keeping existing message and ticket flow.
           </p>
         </header>
@@ -420,11 +425,17 @@ function CommunicationControl() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-800">{row.title}</p>
-                        <p className="text-[11px] text-slate-400">{formatListTime(row.latestAt)}</p>
+                        <p className="text-sm font-semibold text-slate-800">
+                          {row.title}
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          {formatListTime(row.latestAt)}
+                        </p>
                       </div>
                       <p className="text-[11px] text-slate-500">{row.ref}</p>
-                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">{row.latestMessage}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">
+                        {row.latestMessage}
+                      </p>
                     </button>
                   ))
                 : null}
@@ -442,11 +453,17 @@ function CommunicationControl() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-800">{row.title}</p>
-                        <p className="text-[11px] text-slate-400">{formatListTime(row.latestAt)}</p>
+                        <p className="text-sm font-semibold text-slate-800">
+                          {row.title}
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          {formatListTime(row.latestAt)}
+                        </p>
                       </div>
                       <p className="text-[11px] text-slate-500">{row.ref}</p>
-                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">{row.latestMessage}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">
+                        {row.latestMessage}
+                      </p>
                     </button>
                   ))
                 : null}
@@ -464,16 +481,20 @@ function CommunicationControl() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-800">{row.id}</p>
+                        <p className="text-sm font-semibold text-slate-800">
+                          {row.id}
+                        </p>
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusClass(
-                            row.status
+                            row.status,
                           )}`}
                         >
                           {row.status}
                         </span>
                       </div>
-                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">{row.subject}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">
+                        {row.subject}
+                      </p>
                     </button>
                   ))
                 : null}
@@ -493,13 +514,17 @@ function CommunicationControl() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Select value={selectedDriverTargetId} onValueChange={setDriverTargetId}>
+                    <Select
+                      value={selectedDriverTargetId}
+                      onValueChange={setDriverTargetId}
+                    >
                       <SelectTrigger className="w-[180px] bg-slate-50">
                         <SelectValue placeholder="Driver" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>Select driver</SelectItem>
-                        {selectedDriverTargetId !== NONE && !hasSelectedDriverOption ? (
+                        {selectedDriverTargetId !== NONE &&
+                        !hasSelectedDriverOption ? (
                           <SelectItem value={selectedDriverTargetId}>
                             {selectedDriverTargetId}
                           </SelectItem>
@@ -511,7 +536,10 @@ function CommunicationControl() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Select value={driverChannel} onValueChange={setDriverChannel}>
+                    <Select
+                      value={driverChannel}
+                      onValueChange={setDriverChannel}
+                    >
                       <SelectTrigger className="w-[120px] bg-slate-50">
                         <SelectValue placeholder="Channel" />
                       </SelectTrigger>
@@ -526,9 +554,13 @@ function CommunicationControl() {
 
                 <div className="card-list-scrollbar max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4 pr-1">
                   {activeDriverThread?.messages?.map((message) => {
-                    const mine = String(message.fromRole || "").toLowerCase() !== "driver";
+                    const mine =
+                      String(message.fromRole || "").toLowerCase() !== "driver";
                     return (
-                      <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                      <div
+                        key={message.id}
+                        className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                      >
                         <div
                           className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                             mine
@@ -587,13 +619,17 @@ function CommunicationControl() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Select value={selectedWorkshopTarget} onValueChange={setWorkshopTarget}>
+                    <Select
+                      value={selectedWorkshopTarget}
+                      onValueChange={setWorkshopTarget}
+                    >
                       <SelectTrigger className="w-[210px] bg-slate-50">
                         <SelectValue placeholder="Workshop" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>Select workshop</SelectItem>
-                        {selectedWorkshopTarget !== NONE && !hasSelectedWorkshopOption ? (
+                        {selectedWorkshopTarget !== NONE &&
+                        !hasSelectedWorkshopOption ? (
                           <SelectItem value={selectedWorkshopTarget}>
                             {selectedWorkshopTarget}
                           </SelectItem>
@@ -605,7 +641,10 @@ function CommunicationControl() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Select value={workshopChannel} onValueChange={setWorkshopChannel}>
+                    <Select
+                      value={workshopChannel}
+                      onValueChange={setWorkshopChannel}
+                    >
                       <SelectTrigger className="w-[110px] bg-slate-50">
                         <SelectValue placeholder="Channel" />
                       </SelectTrigger>
@@ -615,7 +654,10 @@ function CommunicationControl() {
                         <SelectItem value="Call">Call</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={workshopUrgency} onValueChange={setWorkshopUrgency}>
+                    <Select
+                      value={workshopUrgency}
+                      onValueChange={setWorkshopUrgency}
+                    >
                       <SelectTrigger className="w-[120px] bg-slate-50">
                         <SelectValue placeholder="Urgency" />
                       </SelectTrigger>
@@ -630,9 +672,14 @@ function CommunicationControl() {
 
                 <div className="card-list-scrollbar max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4 pr-1">
                   {activeWorkshopThread?.messages?.map((message) => {
-                    const mine = String(message.fromRole || "").toLowerCase() !== "workshop";
+                    const mine =
+                      String(message.fromRole || "").toLowerCase() !==
+                      "workshop";
                     return (
-                      <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                      <div
+                        key={message.id}
+                        className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                      >
                         <div
                           className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                             mine
@@ -675,7 +722,11 @@ function CommunicationControl() {
                       placeholder="Type workshop message"
                       className="min-h-[44px] resize-none bg-slate-50"
                     />
-                    <Button onClick={sendWorkshop} type="button" variant="outline">
+                    <Button
+                      onClick={sendWorkshop}
+                      type="button"
+                      variant="outline"
+                    >
                       <Send className="mr-2" size={14} />
                       Send
                     </Button>
@@ -690,7 +741,9 @@ function CommunicationControl() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-base font-semibold text-slate-900">
-                        {activeTicket ? `${activeTicket.id} - ${activeTicket.subject}` : "Select ticket"}
+                        {activeTicket
+                          ? `${activeTicket.id} - ${activeTicket.subject}`
+                          : "Select ticket"}
                       </h3>
                       <p className="mt-1 text-xs text-slate-500">
                         {activeTicket
@@ -703,7 +756,7 @@ function CommunicationControl() {
                     {activeTicket ? (
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(
-                          activeTicket.status
+                          activeTicket.status,
                         )}`}
                       >
                         {activeTicket.status}
@@ -716,11 +769,12 @@ function CommunicationControl() {
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                         <p>{activeTicket.description}</p>
                         <p className="mt-2 text-xs text-slate-500">
-                          Created by {activeTicket.createdBy} | Assigned to {activeTicket.assignee}
+                          Created by {activeTicket.createdBy} | Assigned to{" "}
+                          {activeTicket.assignee}
                         </p>
                         <p className="text-xs text-slate-500">
-                          Updated {formatDateTime(activeTicket.updatedAt)} | Escalation L
-                          {activeTicket.escalationLevel}
+                          Updated {formatDateTime(activeTicket.updatedAt)} |
+                          Escalation L{activeTicket.escalationLevel}
                         </p>
                       </div>
                       <Textarea
@@ -730,15 +784,27 @@ function CommunicationControl() {
                         placeholder="Escalation or resolution note"
                       />
                       <div className="flex flex-wrap gap-2">
-                        <Button onClick={escalate} type="button" variant="destructive">
+                        <Button
+                          onClick={escalate}
+                          type="button"
+                          variant="destructive"
+                        >
                           <AlertTriangle className="mr-2" size={14} />
                           Escalate
                         </Button>
-                        <Button onClick={resolve} type="button" variant="outline">
+                        <Button
+                          onClick={resolve}
+                          type="button"
+                          variant="outline"
+                        >
                           <CheckCircle2 className="mr-2" size={14} />
                           Resolve
                         </Button>
-                        <Button onClick={reopen} type="button" variant="secondary">
+                        <Button
+                          onClick={reopen}
+                          type="button"
+                          variant="secondary"
+                        >
                           Reopen
                         </Button>
                       </div>
@@ -747,12 +813,17 @@ function CommunicationControl() {
                 </article>
 
                 <article className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm">
-                  <h3 className="text-base font-semibold text-slate-900">Create support ticket</h3>
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Create support ticket
+                  </h3>
                   <div className="mt-3 space-y-3">
                     <Input
                       value={ticketForm.subject}
                       onChange={(event) =>
-                        setTicketForm((prev) => ({ ...prev, subject: event.target.value }))
+                        setTicketForm((prev) => ({
+                          ...prev,
+                          subject: event.target.value,
+                        }))
                       }
                       placeholder="Ticket subject"
                     />
@@ -760,15 +831,22 @@ function CommunicationControl() {
                       <Select
                         value={ticketForm.category}
                         onValueChange={(value) =>
-                          setTicketForm((prev) => ({ ...prev, category: value }))
+                          setTicketForm((prev) => ({
+                            ...prev,
+                            category: value,
+                          }))
                         }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Driver support">Driver support</SelectItem>
-                          <SelectItem value="Workshop coordination">Workshop coordination</SelectItem>
+                          <SelectItem value="Driver support">
+                            Driver support
+                          </SelectItem>
+                          <SelectItem value="Workshop coordination">
+                            Workshop coordination
+                          </SelectItem>
                           <SelectItem value="Billing">Billing</SelectItem>
                           <SelectItem value="Technical">Technical</SelectItem>
                         </SelectContent>
@@ -776,7 +854,10 @@ function CommunicationControl() {
                       <Select
                         value={ticketForm.priority}
                         onValueChange={(value) =>
-                          setTicketForm((prev) => ({ ...prev, priority: value }))
+                          setTicketForm((prev) => ({
+                            ...prev,
+                            priority: value,
+                          }))
                         }
                       >
                         <SelectTrigger>
@@ -793,14 +874,20 @@ function CommunicationControl() {
                     <Input
                       value={ticketForm.relatedRef}
                       onChange={(event) =>
-                        setTicketForm((prev) => ({ ...prev, relatedRef: event.target.value }))
+                        setTicketForm((prev) => ({
+                          ...prev,
+                          relatedRef: event.target.value,
+                        }))
                       }
                       placeholder="Related reference"
                     />
                     <Input
                       value={ticketForm.assignee}
                       onChange={(event) =>
-                        setTicketForm((prev) => ({ ...prev, assignee: event.target.value }))
+                        setTicketForm((prev) => ({
+                          ...prev,
+                          assignee: event.target.value,
+                        }))
                       }
                       placeholder="Assignee"
                     />
@@ -808,11 +895,18 @@ function CommunicationControl() {
                       rows={4}
                       value={ticketForm.description}
                       onChange={(event) =>
-                        setTicketForm((prev) => ({ ...prev, description: event.target.value }))
+                        setTicketForm((prev) => ({
+                          ...prev,
+                          description: event.target.value,
+                        }))
                       }
                       placeholder="Issue description"
                     />
-                    <Button className="w-full" onClick={createTicket} type="button">
+                    <Button
+                      className="w-full"
+                      onClick={createTicket}
+                      type="button"
+                    >
                       <LifeBuoy className="mr-2" size={14} />
                       Create ticket
                     </Button>

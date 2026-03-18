@@ -18,6 +18,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ArrowLeft,
+  ArrowRight,
   CircleDollarSign,
   FileUp,
   HelpCircle,
@@ -906,9 +908,9 @@ function Dashboard() {
               type="button"
             >
               {isDesktopSidebarCollapsed ? (
-                <ChevronRight size={14} />
+                <ArrowRight size={14} />
               ) : (
-                <ChevronLeft size={14} />
+                <ArrowLeft size={14} />
               )}
             </button>
 
@@ -1717,7 +1719,11 @@ function Dashboard() {
                   <Button type="button" variant="outline">
                     <FileUp /> Import from Excel
                   </Button>
-                  <Button type="submit" disabled={!isVehicleReady}>
+                  <Button
+                    type="submit"
+                    disabled={!isVehicleReady}
+                    className="w-full justify-center text-sm sm:w-auto text-white bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+                  >
                     Add vehicle
                   </Button>
                 </DialogFooter>
@@ -1813,7 +1819,11 @@ function Dashboard() {
                   <Button type="button" variant="outline">
                     Import from Excel
                   </Button>
-                  <Button type="submit" disabled={!isDriverReady}>
+                  <Button
+                    type="submit"
+                    disabled={!isDriverReady}
+                    className="w-full justify-center text-sm sm:w-auto text-white bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+                  >
                     Add driver
                   </Button>
                 </DialogFooter>
@@ -1821,7 +1831,7 @@ function Dashboard() {
             </DialogContent>
           </Dialog>
 
-          <div className="-mx-4 sticky top-0 z-40 pb-3 sm:-mx-6 sm:pb-4 lg:-mx-8 lg:pb-4">
+          <div className="-mx-4 top-0 z-40 pb-3 sm:-mx-6 sm:pb-4 lg:-mx-8 lg:pb-4">
             <FleetTopbar
               displayEmail={user?.email || "john@oxifleet.com"}
               displayName={user?.name || "John Doe"}
@@ -1845,9 +1855,9 @@ function Dashboard() {
                 {/* <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
                   Fleet dashboard
                 </p> */}
-                <h1 className="text-xl font-semibold text-white sm:text-3xl">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white">
                   Welcome{user?.name ? `, ${user.name}` : " John Doe"}
-                </h1>
+                </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-slate-200 sm:text-xs">
                   <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 sm:px-3">
                     Updated {dashboardUpdatedAt}
@@ -2179,12 +2189,12 @@ function Dashboard() {
                     <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
                       Recent invoices
                     </h2>
-                    <Link
+                    {/* <Link
                       className="text-xs font-semibold text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline"
                       to="/signup"
                     >
                       Create user
-                    </Link>
+                    </Link> */}
                   </div>
                   <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
                     {invoices.map((invoice) => (
@@ -2250,67 +2260,67 @@ function Dashboard() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl bg-[radial-gradient(circle_at_top,#0b1220_0%,#0d0f16_55%,#050608_100%)] p-4 text-white shadow-lg sm:p-6">
+                <div className="rounded-3xl bg-white p-4 text-default shadow-lg sm:p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-[13px] font-semibold sm:text-sm">
                         Team focus
                       </p>
-                      <p className="mt-1 text-[10px] text-white/60 sm:text-xs">
+                      <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
                         Active initiatives this week
                       </p>
                     </div>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-700 font-semibold">
                       04 tasks
                     </span>
                   </div>
                   <div className="mt-5 space-y-3 text-xs sm:mt-6 sm:space-y-4 sm:text-sm">
-                    <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
+                    <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-emerald-100 p-3 rounded-lg">
                       <div>
                         <p className="text-[12px] font-semibold sm:text-sm">
                           Service desk refresh
                         </p>
-                        <p className="text-[10px] text-white/50 sm:text-xs">
+                        <p className="text-[10px] text-slate-500 sm:text-xs">
                           Due Feb 8
                         </p>
                       </div>
-                      <span className="text-xs font-semibold text-emerald-300">
+                      <span className="text-xs font-semibold text-emerald-700 bg-green-300 px-2 py-0.5 rounded-full">
                         On track
                       </span>
                     </div>
-                    <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
+                    <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-amber-100 p-3 rounded-lg">
                       <div>
                         <p className="text-[12px] font-semibold sm:text-sm">
                           Driver onboarding
                         </p>
-                        <p className="text-[10px] text-white/50 sm:text-xs">
+                        <p className="text-[10px] text-slate-500 sm:text-xs">
                           Due Feb 10
                         </p>
                       </div>
-                      <span className="text-xs font-semibold text-amber-300">
+                      <span className="text-xs font-semibold text-amber-700 bg-amber-300 px-2 py-0.5 rounded-full">
                         Review
                       </span>
                     </div>
-                    <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
+                    <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-rose-100 p-3 rounded-lg">
                       <div>
                         <p className="text-[12px] font-semibold sm:text-sm">
                           Parts inventory
                         </p>
-                        <p className="text-[10px] text-white/50 sm:text-xs">
+                        <p className="text-[10px] text-slate-500 sm:text-xs">
                           Due Feb 12
                         </p>
                       </div>
-                      <span className="text-xs font-semibold text-rose-300">
+                      <span className="text-xs font-semibold text-rose-700 bg-rose-300 px-2 py-0.5 rounded-full">
                         At risk
                       </span>
                     </div>
                   </div>
-                  <button
+                  {/* <button
                     className="mt-5 w-full rounded-2xl bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 sm:mt-6 sm:text-sm"
                     type="button"
                   >
                     Review all tasks
-                  </button>
+                  </button> */}
                 </div>
               </section>
             </>

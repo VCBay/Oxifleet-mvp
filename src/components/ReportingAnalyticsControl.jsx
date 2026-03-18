@@ -431,28 +431,41 @@ function ReportingAnalyticsControl() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <div
+        className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#223447_0%,#0E1729_42%,#05070f_100%)] p-5 text-white shadow-lg sm:p-7 lg:block"
+        // className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">
+            <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
               Reporting & Analytics
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-white/50">
               Service spending, maintenance, compliance, brand share, workshop
               performance, scheduling, and downloadable analytics.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => setStartDate(minusDaysIso(7))} type="button" variant="outline">
+            <Button
+              onClick={() => setStartDate(minusDaysIso(7))}
+              type="button"
+              variant="outline"
+              className="bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] text-white rounded-lg px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+            >
               Last 7 days
             </Button>
-            <Button onClick={() => setStartDate(minusDaysIso(30))} type="button" variant="outline">
+            <Button
+              onClick={() => setStartDate(minusDaysIso(30))}
+              type="button"
+              variant="outline"
+              className="bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] text-white rounded-lg px-3 py-2"
+            >
               Last 30 days
             </Button>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="grid gap-2">
             <Label htmlFor="report-start-date">Custom date range start</Label>
             <Input
@@ -483,7 +496,7 @@ function ReportingAnalyticsControl() {
               {filteredInvoices.length}
             </p>
           </div>
-        </div>
+        </div> */}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -492,7 +505,8 @@ function ReportingAnalyticsControl() {
             Service spending reports
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            Total spend in selected range: {formatCurrency(serviceSpending.total)}
+            Total spend in selected range:{" "}
+            {formatCurrency(serviceSpending.total)}
           </p>
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {serviceSpending.byService.length === 0 ? (
@@ -597,7 +611,9 @@ function ReportingAnalyticsControl() {
                 >
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-slate-800">{entry.key}</p>
-                    <p className="font-semibold text-slate-900">{entry.share}%</p>
+                    <p className="font-semibold text-slate-900">
+                      {entry.share}%
+                    </p>
                   </div>
                   <p className="mt-1 text-slate-600">{entry.value} vehicles</p>
                 </div>
@@ -623,7 +639,9 @@ function ReportingAnalyticsControl() {
                 className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs"
               >
                 <p className="font-semibold text-slate-800">{item.vendor}</p>
-                <p className="mt-1 text-slate-600">Orders: {item.totalOrders}</p>
+                <p className="mt-1 text-slate-600">
+                  Orders: {item.totalOrders}
+                </p>
                 <p className="mt-1 text-slate-600">
                   Completed: {item.completedOrders}
                 </p>
@@ -649,9 +667,12 @@ function ReportingAnalyticsControl() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-slate-800">{schedule.name}</p>
+                    <p className="font-semibold text-slate-800">
+                      {schedule.name}
+                    </p>
                     <p className="text-slate-600">
-                      {schedule.reportType} | {schedule.frequency} at {schedule.runAt}
+                      {schedule.reportType} | {schedule.frequency} at{" "}
+                      {schedule.runAt}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -686,7 +707,10 @@ function ReportingAnalyticsControl() {
           <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4">
             <Input
               onChange={(event) =>
-                setScheduleForm((prev) => ({ ...prev, name: event.target.value }))
+                setScheduleForm((prev) => ({
+                  ...prev,
+                  name: event.target.value,
+                }))
               }
               placeholder="Schedule name"
               value={scheduleForm.name}
@@ -726,7 +750,10 @@ function ReportingAnalyticsControl() {
               </Select>
               <Input
                 onChange={(event) =>
-                  setScheduleForm((prev) => ({ ...prev, runAt: event.target.value }))
+                  setScheduleForm((prev) => ({
+                    ...prev,
+                    runAt: event.target.value,
+                  }))
                 }
                 type="time"
                 value={scheduleForm.runAt}
@@ -759,10 +786,18 @@ function ReportingAnalyticsControl() {
           </p>
 
           <div className="mt-4 grid gap-3">
-            <Button onClick={handleDownloadJsonReport} type="button">
+            <Button
+              onClick={handleDownloadJsonReport}
+              type="button"
+              className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+            >
               Download report pack (JSON)
             </Button>
-            <Button onClick={handleDownloadCsvReport} type="button" variant="outline">
+            <Button
+              onClick={handleDownloadCsvReport}
+              type="button"
+              variant="outline"
+            >
               Download invoice report (CSV)
             </Button>
             {downloadMessage ? (

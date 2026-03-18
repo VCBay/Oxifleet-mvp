@@ -565,7 +565,8 @@ function DriverServiceRequestSection({
               {categorySubOptions.length > 0 ? (
                 <div className="mt-4 grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {categorySubOptions.map((option) => {
-                    const isSelected = requestForm.problemSubtype === option.value;
+                    const isSelected =
+                      requestForm.problemSubtype === option.value;
                     return (
                       <button
                         className={`rounded-2xl border px-4 py-3 text-left transition ${
@@ -968,7 +969,10 @@ function DriverServiceRequestSection({
                 <span className="font-semibold text-slate-900">
                   {requestForm.odometerReading
                     ? `${Number(
-                        String(requestForm.odometerReading).replace(/[^0-9]/g, ""),
+                        String(requestForm.odometerReading).replace(
+                          /[^0-9]/g,
+                          "",
+                        ),
                       ).toLocaleString()} ${requestForm.odometerUnit || "km"}`
                     : "Not entered"}
                 </span>
@@ -1005,10 +1009,11 @@ function DriverServiceRequestSection({
                 <p className="mt-1 text-xl font-semibold text-slate-900">${previewCost}</p>
               </div> */}
               <Button
-                className="w-full"
+                // className=""
                 disabled={isSubmittingRequest || !isServiceRequestFormReady}
                 onClick={handleSubmitSimpleRequest}
                 type="button"
+                className="w-full text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
               >
                 {isSubmittingRequest ? (
                   <span className="inline-flex items-center gap-2">
@@ -1043,7 +1048,10 @@ function DriverServiceRequestSection({
                   const section = window.document.getElementById(
                     "driver-service-request-details",
                   );
-                  section?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  section?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
                 }}
                 type="button"
                 variant="outline"
@@ -1053,9 +1061,7 @@ function DriverServiceRequestSection({
             </div>
 
             {recentDriverRequests.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-500">
-                No requests yet.
-              </p>
+              <p className="mt-4 text-sm text-slate-500">No requests yet.</p>
             ) : (
               <div className="card-list-scrollbar mt-4 max-h-[18rem] space-y-2.5 overflow-y-auto pr-1">
                 {recentDriverRequests.map((order) => {
@@ -1245,8 +1251,10 @@ function DriverServiceRequestSection({
                     <p>
                       Odometer:{" "}
                       <span className="font-semibold text-slate-900">
-                        {selectedRequest.orderDetails?.odometerReading !== null &&
-                        selectedRequest.orderDetails?.odometerReading !== undefined
+                        {selectedRequest.orderDetails?.odometerReading !==
+                          null &&
+                        selectedRequest.orderDetails?.odometerReading !==
+                          undefined
                           ? `${Number(
                               selectedRequest.orderDetails.odometerReading,
                             ).toLocaleString()} ${
