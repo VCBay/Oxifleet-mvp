@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Area,
@@ -31,8 +31,6 @@ import {
   Van,
   Wrench,
   X,
-  ArrowLeft,
-  ArrowRight,
 } from "lucide-react";
 import { clearSession, getSession } from "../auth/session";
 import Logo from "../icons/Logo";
@@ -48,6 +46,7 @@ import SettingsProfileControl from "../components/SettingsProfileControl";
 import DriverManagement from "../components/DriverManagement";
 import FleetTopbar from "../components/fleet/FleetTopbar";
 import { Button } from "../components/ui/button";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   Dialog,
   DialogClose,
@@ -106,25 +105,12 @@ const fleetMenuRouteMap = {
   settings_profile: "settings-profile",
 };
 
-const fleetMenuLabelMap = {
-  dashboard: "Dashboard",
-  vehicles: "Vehicles",
-  drivers: "Drivers",
-  vehicle_policy: "Vehicle Policy",
-  service_order_control: "Service & Order Control",
-  billing_finance: "Billing & Finance",
-  reporting_analytics: "Reporting & Analytics",
-  communication: "Communication",
-  team_access_control: "Team & Access Control",
-  settings_profile: "Settings & Profile",
-};
-
 const parseFleetMenuFromPath = (pathname) => {
   const cleaned = String(pathname || "").replace(/\/+$/, "");
   const parts = cleaned.split("/").filter(Boolean);
   const section = parts[1] || fleetMenuRouteMap.dashboard;
   const matched = Object.entries(fleetMenuRouteMap).find(
-    ([, route]) => route === section
+    ([, route]) => route === section,
   );
   return matched ? matched[0] : "dashboard";
 };
@@ -148,17 +134,26 @@ const renderFleetSpendTooltip = ({ active, payload, label }) => {
       >
         Service Spend
       </p>
-      <p className="mt-1 text-sm font-semibold" style={{ color: figmaChartTheme.tooltipTitle }}>
+      <p
+        className="mt-1 text-sm font-semibold"
+        style={{ color: figmaChartTheme.tooltipTitle }}
+      >
         {label}
       </p>
       <div
         className="mt-2 rounded-md px-2.5 py-2"
         style={{ border: `0.5px solid ${figmaChartTheme.tooltipBorder}` }}
       >
-        <p className="text-[10px] uppercase tracking-wide" style={{ color: figmaChartTheme.tooltipLabel }}>
+        <p
+          className="text-[10px] uppercase tracking-wide"
+          style={{ color: figmaChartTheme.tooltipLabel }}
+        >
           Weekly spend
         </p>
-        <p className="mt-1 text-sm font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+        <p
+          className="mt-1 text-sm font-semibold"
+          style={{ color: figmaChartTheme.tooltipValue }}
+        >
           ${spend.toLocaleString()}
         </p>
       </div>
@@ -193,18 +188,30 @@ const renderFleetUtilizationTooltip = ({ active, payload, label }) => {
       }}
     >
       <div className="flex items-center gap-1.5 text-xs">
-        <span className="font-medium" style={{ color: figmaChartTheme.tooltipValue }}>
+        <span
+          className="font-medium"
+          style={{ color: figmaChartTheme.tooltipValue }}
+        >
           {primary?.value ?? 0}%
         </span>
-        <span className="text-[10px]" style={{ color: figmaChartTheme.tooltipLabel }}>
+        <span
+          className="text-[10px]"
+          style={{ color: figmaChartTheme.tooltipLabel }}
+        >
           {primary?.date || `${label} 11 Feb`}
         </span>
       </div>
       <div className="mt-1 flex items-center gap-1.5 text-xs">
-        <span className="font-medium" style={{ color: figmaChartTheme.tooltipValue }}>
+        <span
+          className="font-medium"
+          style={{ color: figmaChartTheme.tooltipValue }}
+        >
           {secondary?.value ?? 0}%
         </span>
-        <span className="text-[10px]" style={{ color: figmaChartTheme.tooltipLabel }}>
+        <span
+          className="text-[10px]"
+          style={{ color: figmaChartTheme.tooltipLabel }}
+        >
           {secondary?.date || `${label} 11 Feb`}
         </span>
       </div>
@@ -223,33 +230,34 @@ const fleetKpiTone = (status) => {
 };
 
 function Dashboard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const user = getSession();
   const vehicleState = useSyncExternalStore(
     subscribeVehicles,
     getVehicleState,
-    getVehicleState
+    getVehicleState,
   );
   const driverState = useSyncExternalStore(
     subscribeDrivers,
     getDriverState,
-    getDriverState
+    getDriverState,
   );
   const serviceOrderState = useSyncExternalStore(
     subscribeServiceOrders,
     getServiceOrderState,
-    getServiceOrderState
+    getServiceOrderState,
   );
   const communicationState = useSyncExternalStore(
     subscribeCommunication,
     getCommunicationState,
-    getCommunicationState
+    getCommunicationState,
   );
   const billingState = useSyncExternalStore(
     subscribeBillingFinance,
     getBillingFinanceState,
-    getBillingFinanceState
+    getBillingFinanceState,
   );
   const totalVehicles =
     vehicleState.baseVehicleCount + vehicleState.vehicles.length;
@@ -266,16 +274,17 @@ function Dashboard() {
     notes: "",
   });
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
-  const [clearedFleetNotificationIds, setClearedFleetNotificationIds] = useState(
-    []
-  );
+  const [clearedFleetNotificationIds, setClearedFleetNotificationIds] =
+    useState([]);
   const activeMenu = parseFleetMenuFromPath(location.pathname);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(
-    false
-  );
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] =
+    useState(false);
   const [driverSearchQuery, setDriverSearchQuery] = useState("");
-  const activePageTitle = fleetMenuLabelMap[activeMenu] || "Dashboard";
+  const activePageTitle = t(
+    `fleet.menu.${activeMenu}`,
+    activeMenu === "dashboard" ? "Dashboard" : activeMenu,
+  );
   const [driverForm, setDriverForm] = useState({
     id: "",
     name: "",
@@ -380,13 +389,55 @@ function Dashboard() {
   ];
 
   const utilization = [
-    { day: "Mon", primary: 86, secondary: 70, dateLabel: "Mon 11 Feb", focus: false },
-    { day: "Tue", primary: 80, secondary: 74, dateLabel: "Tue 11 Feb", focus: false },
-    { day: "Wed", primary: 77, secondary: 40, dateLabel: "Wed 11 Feb", focus: true },
-    { day: "Thu", primary: 71, secondary: 56, dateLabel: "Thu 11 Feb", focus: false },
-    { day: "Fri", primary: 76, secondary: 64, dateLabel: "Fri 11 Feb", focus: false },
-    { day: "Sat", primary: 93, secondary: 88, dateLabel: "Sat 11 Feb", focus: false },
-    { day: "Sun", primary: 100, secondary: 84, dateLabel: "Sun 11 Feb", focus: false },
+    {
+      day: "Mon",
+      primary: 86,
+      secondary: 70,
+      dateLabel: "Mon 11 Feb",
+      focus: false,
+    },
+    {
+      day: "Tue",
+      primary: 80,
+      secondary: 74,
+      dateLabel: "Tue 11 Feb",
+      focus: false,
+    },
+    {
+      day: "Wed",
+      primary: 77,
+      secondary: 40,
+      dateLabel: "Wed 11 Feb",
+      focus: true,
+    },
+    {
+      day: "Thu",
+      primary: 71,
+      secondary: 56,
+      dateLabel: "Thu 11 Feb",
+      focus: false,
+    },
+    {
+      day: "Fri",
+      primary: 76,
+      secondary: 64,
+      dateLabel: "Fri 11 Feb",
+      focus: false,
+    },
+    {
+      day: "Sat",
+      primary: 93,
+      secondary: 88,
+      dateLabel: "Sat 11 Feb",
+      focus: false,
+    },
+    {
+      day: "Sun",
+      primary: 100,
+      secondary: 84,
+      dateLabel: "Sun 11 Feb",
+      focus: false,
+    },
   ];
 
   const assignmentVehicles =
@@ -405,7 +456,10 @@ function Dashboard() {
       const timestamp = new Date(value).getTime();
       return Number.isFinite(timestamp) ? timestamp : 0;
     };
-    const normalize = (value) => String(value || "").trim().toLowerCase();
+    const normalize = (value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase();
 
     const orders = Array.isArray(serviceOrderState.orders)
       ? serviceOrderState.orders
@@ -419,11 +473,17 @@ function Dashboard() {
     const tickets = Array.isArray(communicationState.tickets)
       ? communicationState.tickets
       : [];
-    const invoices = Array.isArray(billingState.invoices) ? billingState.invoices : [];
+    const invoices = Array.isArray(billingState.invoices)
+      ? billingState.invoices
+      : [];
 
     const pendingApprovalNotifications = orders
       .filter((order) => normalize(order.status).includes("pending"))
-      .sort((a, b) => parseTime(b.updatedAt || b.requestedAt) - parseTime(a.updatedAt || a.requestedAt))
+      .sort(
+        (a, b) =>
+          parseTime(b.updatedAt || b.requestedAt) -
+          parseTime(a.updatedAt || a.requestedAt),
+      )
       .slice(0, 5)
       .map((order) => ({
         id: `fleet-pending-${order.id}`,
@@ -441,13 +501,19 @@ function Dashboard() {
 
     const rejectedOrderNotifications = orders
       .filter((order) => normalize(order.status).includes("rejected"))
-      .sort((a, b) => parseTime(b.updatedAt || b.requestedAt) - parseTime(a.updatedAt || a.requestedAt))
+      .sort(
+        (a, b) =>
+          parseTime(b.updatedAt || b.requestedAt) -
+          parseTime(a.updatedAt || a.requestedAt),
+      )
       .slice(0, 4)
       .map((order) => ({
         id: `fleet-rejected-${order.id}`,
         type: "Rejection alert",
         title: `${order.id} rejected`,
-        detail: order.approval?.note || `${order.vehicleId} • Review and resubmit if needed.`,
+        detail:
+          order.approval?.note ||
+          `${order.vehicleId} • Review and resubmit if needed.`,
         iconKey: "approval_rejected",
         levelClass: "bg-rose-100 text-rose-700",
         actionLabel: "Open order",
@@ -459,16 +525,16 @@ function Dashboard() {
       .filter(
         (order) =>
           Boolean(order.settlement?.readyForSettlement) &&
-          !order.settlement?.fleetAcknowledgedAt
+          !order.settlement?.fleetAcknowledgedAt,
       )
       .sort(
         (a, b) =>
           parseTime(
-            b.settlement?.completionConfirmedAt || b.updatedAt || b.requestedAt
+            b.settlement?.completionConfirmedAt || b.updatedAt || b.requestedAt,
           ) -
           parseTime(
-            a.settlement?.completionConfirmedAt || a.updatedAt || a.requestedAt
-          )
+            a.settlement?.completionConfirmedAt || a.updatedAt || a.requestedAt,
+          ),
       )
       .slice(0, 4)
       .map((order) => ({
@@ -492,7 +558,7 @@ function Dashboard() {
       .filter(
         (message) =>
           normalize(message.toRole) === "fleet" &&
-          normalize(message.fromRole) === "driver"
+          normalize(message.fromRole) === "driver",
       )
       .sort((a, b) => parseTime(b.sentAt) - parseTime(a.sentAt))
       .slice(0, 3)
@@ -512,7 +578,7 @@ function Dashboard() {
       .filter(
         (message) =>
           normalize(message.toRole) === "fleet" &&
-          normalize(message.fromRole) === "workshop"
+          normalize(message.fromRole) === "workshop",
       )
       .sort((a, b) => parseTime(b.sentAt) - parseTime(a.sentAt))
       .slice(0, 3)
@@ -533,7 +599,11 @@ function Dashboard() {
         const status = normalize(ticket.status);
         return status === "open" || status === "escalated";
       })
-      .sort((a, b) => parseTime(b.updatedAt || b.createdAt) - parseTime(a.updatedAt || a.createdAt))
+      .sort(
+        (a, b) =>
+          parseTime(b.updatedAt || b.createdAt) -
+          parseTime(a.updatedAt || a.createdAt),
+      )
       .slice(0, 3)
       .map((ticket) => ({
         id: `fleet-ticket-${ticket.id}`,
@@ -591,18 +661,12 @@ function Dashboard() {
     serviceOrderState.orders,
   ]);
 
-  useEffect(() => {
-    setClearedFleetNotificationIds((prev) =>
-      prev.filter((id) => fleetNotifications.some((item) => item.id === id))
-    );
-  }, [fleetNotifications]);
-
   const visibleFleetNotifications = useMemo(
     () =>
       fleetNotifications.filter(
-        (item) => !clearedFleetNotificationIds.includes(item.id)
+        (item) => !clearedFleetNotificationIds.includes(item.id),
       ),
-    [clearedFleetNotificationIds, fleetNotifications]
+    [clearedFleetNotificationIds, fleetNotifications],
   );
 
   const handleSignOut = () => {
@@ -612,7 +676,9 @@ function Dashboard() {
 
   const handleMenuNavigate = (menuKey) => {
     setIsMobileSidebarOpen(false);
-    navigate(`/dashboard/${fleetMenuRouteMap[menuKey] || fleetMenuRouteMap.dashboard}`);
+    navigate(
+      `/dashboard/${fleetMenuRouteMap[menuKey] || fleetMenuRouteMap.dashboard}`,
+    );
   };
 
   const clearFleetNotification = (notificationId) => {
@@ -620,7 +686,7 @@ function Dashboard() {
       return;
     }
     setClearedFleetNotificationIds((prev) =>
-      prev.includes(notificationId) ? prev : [...prev, notificationId]
+      prev.includes(notificationId) ? prev : [...prev, notificationId],
     );
   };
 
@@ -733,12 +799,15 @@ function Dashboard() {
         id: selectedVehicle.id,
         model: selectedVehicleModel,
         plate:
-          selectedVehicleFromStore?.plate || `TX-${9800 + selectedVehicleIdNumber}`,
+          selectedVehicleFromStore?.plate ||
+          `TX-${9800 + selectedVehicleIdNumber}`,
         type: selectedVehicleFromStore?.type || "Truck",
         status: selectedVehicleFromStore?.status || "Active",
         vin: `1FUJGLDR${String(100000 + selectedVehicleIdNumber).slice(-6)}5`,
         year: 2020 + (selectedVehicleIdNumber % 6),
-        color: ["White", "Black", "Silver", "Blue"][selectedVehicleIdNumber % 4],
+        color: ["White", "Black", "Silver", "Blue"][
+          selectedVehicleIdNumber % 4
+        ],
         odometer: `${(120_000 + selectedVehicleIdNumber * 37).toLocaleString()} mi`,
         engineHours: `${(3_200 + selectedVehicleIdNumber * 3).toLocaleString()} hrs`,
         fuelLevel: `${55 + (selectedVehicleIdNumber % 40)}%`,
@@ -828,18 +897,26 @@ function Dashboard() {
             </button>
             <button
               aria-label={
-                isDesktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                isDesktopSidebarCollapsed
+                  ? "Expand sidebar"
+                  : "Collapse sidebar"
               }
               className="absolute -right-3 top-3 z-[65] hidden size-6 place-items-center rounded-full border border-[#cec6df] bg-[#ddd6ea] text-[#3b276d] shadow-sm transition hover:bg-[#d1c7e4] lg:grid"
               onClick={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
               type="button"
             >
-              {isDesktopSidebarCollapsed ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
+              {isDesktopSidebarCollapsed ? (
+                <ChevronRight size={14} />
+              ) : (
+                <ChevronLeft size={14} />
+              )}
             </button>
 
             <div className="sidebar-scrollbar min-h-0 flex-1 space-y-10 overflow-y-auto pr-1">
               <div className="flex items-center gap-3">
-                <div className={`${isDesktopSidebarCollapsed ? "lg:hidden" : ""}`}>
+                <div
+                  className={`${isDesktopSidebarCollapsed ? "lg:hidden" : ""}`}
+                >
                   <Logo className="w-48 text-white" />
                 </div>
                 <div
@@ -861,152 +938,240 @@ function Dashboard() {
                     isDesktopSidebarCollapsed ? "lg:hidden" : ""
                   }`}
                 >
-                  Menu
+                  {t("common.menu", "Menu")}
                 </p>
                 <nav className="space-y-2 text-sm">
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "dashboard"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("dashboard")}
-                    title={isDesktopSidebarCollapsed ? "Dashboard" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.dashboard", "Dashboard")
+                        : undefined
+                    }
                     type="button"
                   >
                     <LayoutGrid size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Dashboard
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t("fleet.menu.dashboard", "Dashboard")}
                     </span>
                   </button>
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "vehicles"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("vehicles")}
-                    title={isDesktopSidebarCollapsed ? "Vehicles" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.vehicles", "Vehicles")
+                        : undefined
+                    }
                     type="button"
                   >
                     <Van size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Vehicles
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t("fleet.menu.vehicles", "Vehicles")}
                     </span>
                   </button>
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "drivers"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("drivers")}
-                    title={isDesktopSidebarCollapsed ? "Drivers" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.drivers", "Drivers")
+                        : undefined
+                    }
                     type="button"
                   >
                     <User size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Drivers
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t("fleet.menu.drivers", "Drivers")}
                     </span>
                   </button>
 
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "vehicle_policy"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("vehicle_policy")}
-                    title={isDesktopSidebarCollapsed ? "Vehicle Policy" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.vehicle_policy", "Vehicle Policy")
+                        : undefined
+                    }
                     type="button"
                   >
                     <User size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Vehicle Policy
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t("fleet.menu.vehicle_policy", "Vehicle Policy")}
                     </span>
                   </button>
 
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "service_order_control"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("service_order_control")}
                     title={
-                      isDesktopSidebarCollapsed ? "Service & Order Control" : undefined
+                      isDesktopSidebarCollapsed
+                        ? t(
+                            "fleet.menu.service_order_control",
+                            "Service & Order Control",
+                          )
+                        : undefined
                     }
                     type="button"
                   >
                     <FileUp size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Service &amp; Order Control
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t(
+                        "fleet.menu.service_order_control",
+                        "Service & Order Control",
+                      )}
                     </span>
                   </button>
 
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "billing_finance"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("billing_finance")}
-                    title={isDesktopSidebarCollapsed ? "Billing & Finance" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.billing_finance", "Billing & Finance")
+                        : undefined
+                    }
                     type="button"
                   >
                     <CircleDollarSign size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Billing &amp; Finance
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t("fleet.menu.billing_finance", "Billing & Finance")}
                     </span>
                   </button>
 
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "reporting_analytics"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("reporting_analytics")}
                     title={
-                      isDesktopSidebarCollapsed ? "Reporting & Analytics" : undefined
+                      isDesktopSidebarCollapsed
+                        ? t(
+                            "fleet.menu.reporting_analytics",
+                            "Reporting & Analytics",
+                          )
+                        : undefined
                     }
                     type="button"
                   >
                     <Search size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Reporting &amp; Analytics
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t(
+                        "fleet.menu.reporting_analytics",
+                        "Reporting & Analytics",
+                      )}
                     </span>
                   </button>
 
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "communication"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("communication")}
-                    title={isDesktopSidebarCollapsed ? "Communication" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.communication", "Communication")
+                        : undefined
+                    }
                     type="button"
                   >
                     <Bell size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Communication
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t("fleet.menu.communication", "Communication")}
                     </span>
                   </button>
 
@@ -1044,7 +1209,7 @@ function Dashboard() {
                     isDesktopSidebarCollapsed ? "lg:hidden" : ""
                   }`}
                 >
-                  General
+                  {t("common.general", "General")}
                 </p>
                 <nav className="space-y-2 text-sm">
                   {/* <button
@@ -1058,39 +1223,63 @@ function Dashboard() {
 
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "team_access_control"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("team_access_control")}
                     title={
-                      isDesktopSidebarCollapsed ? "Team & Access Control" : undefined
+                      isDesktopSidebarCollapsed
+                        ? t(
+                            "fleet.menu.team_access_control",
+                            "Team & Access Control",
+                          )
+                        : undefined
                     }
                     type="button"
                   >
                     <Users size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Team &amp; Access Control
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t(
+                        "fleet.menu.team_access_control",
+                        "Team & Access Control",
+                      )}
                     </span>
                   </button>
 
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     } ${
                       activeMenu === "settings_profile"
-                        ? isDesktopSidebarCollapsed ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]" : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
+                        ? isDesktopSidebarCollapsed
+                          ? "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-[0_0_0_1px_rgba(131,102,214,0.2)_inset]"
+                          : "border border-[#5f47a8] bg-[#2A1656] font-semibold text-white shadow-sm"
                         : "text-white/70 transition hover:bg-white/10 hover:text-white"
                     }`}
                     onClick={() => handleMenuNavigate("settings_profile")}
-                    title={isDesktopSidebarCollapsed ? "Settings & Profile" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("fleet.menu.settings_profile", "Settings & Profile")
+                        : undefined
+                    }
                     type="button"
                   >
                     <Settings size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Settings &amp; Profile
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t("fleet.menu.settings_profile", "Settings & Profile")}
                     </span>
                   </button>
 
@@ -1110,15 +1299,23 @@ function Dashboard() {
                   </button> */}
                   <button
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-white/70 transition hover:bg-white/10 hover:text-white ${
-                      isDesktopSidebarCollapsed ? "lg:justify-center lg:gap-0 lg:px-0" : ""
+                      isDesktopSidebarCollapsed
+                        ? "lg:justify-center lg:gap-0 lg:px-0"
+                        : ""
                     }`}
                     onClick={handleSignOut}
-                    title={isDesktopSidebarCollapsed ? "Sign out" : undefined}
+                    title={
+                      isDesktopSidebarCollapsed
+                        ? t("actions.signOut", "Sign out")
+                        : undefined
+                    }
                     type="button"
                   >
                     <LogOut size={18} />
-                    <span className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}>
-                      Sign out
+                    <span
+                      className={isDesktopSidebarCollapsed ? "lg:hidden" : ""}
+                    >
+                      {t("actions.signOut", "Sign out")}
                     </span>
                   </button>
                 </nav>
@@ -1153,7 +1350,9 @@ function Dashboard() {
               <DialogHeader>
                 <DialogTitle>{selectedVehicleModel}</DialogTitle>
                 <DialogDescription>
-                  {selectedVehicle?.id ? `Vehicle ID: ${selectedVehicle.id}` : ""}
+                  {selectedVehicle?.id
+                    ? `Vehicle ID: ${selectedVehicle.id}`
+                    : ""}
                 </DialogDescription>
               </DialogHeader>
 
@@ -1168,7 +1367,8 @@ function Dashboard() {
                         {selectedVehicleModel}
                       </p>
                     </div>
-                    {vehicleDetails?.serviceStage && vehicleDetails.serviceStage !== "-" ? (
+                    {vehicleDetails?.serviceStage &&
+                    vehicleDetails.serviceStage !== "-" ? (
                       <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
                         {vehicleDetails.serviceStage}
                       </span>
@@ -1222,9 +1422,7 @@ function Dashboard() {
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.createdAt
-                          ? new Date(
-                              vehicleDetails.createdAt
-                            ).toLocaleString()
+                          ? new Date(vehicleDetails.createdAt).toLocaleString()
                           : "—"}
                       </p>
                     </div>
@@ -1280,7 +1478,9 @@ function Dashboard() {
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
-                      <p className="text-xs font-semibold text-slate-500">VIN</p>
+                      <p className="text-xs font-semibold text-slate-500">
+                        VIN
+                      </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.vin || "—"}
                       </p>
@@ -1631,7 +1831,9 @@ function Dashboard() {
               onNotificationAction={handleFleetNotificationAction}
               onOpenSidebar={() => setIsMobileSidebarOpen(true)}
               pageTitle={activePageTitle}
-              profileInitials={user?.name ? user.name.slice(0, 2).toUpperCase() : "JD"}
+              profileInitials={
+                user?.name ? user.name.slice(0, 2).toUpperCase() : "JD"
+              }
             />
           </div>
 
@@ -1658,7 +1860,6 @@ function Dashboard() {
                   </span>
                 </div>
               </div>
-
             </header>
           ) : null}
 
@@ -1679,9 +1880,7 @@ function Dashboard() {
             <ServiceOrderControl />
           ) : null}
 
-          {activeMenu === "billing_finance" ? (
-            <BillingFinanceControl />
-          ) : null}
+          {activeMenu === "billing_finance" ? <BillingFinanceControl /> : null}
 
           {activeMenu === "reporting_analytics" ? (
             <ReportingAnalyticsControl />
@@ -1691,7 +1890,9 @@ function Dashboard() {
 
           {activeMenu === "team_access_control" ? <TeamAccessControl /> : null}
 
-          {activeMenu === "settings_profile" ? <SettingsProfileControl /> : null}
+          {activeMenu === "settings_profile" ? (
+            <SettingsProfileControl />
+          ) : null}
 
           {activeMenu === "drivers" ? (
             <DriverManagement
@@ -1723,7 +1924,9 @@ function Dashboard() {
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
                             {card.title}
                           </p>
-                          <p className="mt-1 text-lg font-semibold text-slate-900 sm:text-3xl">{card.value}</p>
+                          <p className="mt-1 text-lg font-semibold text-slate-900 sm:text-3xl">
+                            {card.value}
+                          </p>
                           <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
                             {card.helper}
                           </p>
@@ -1750,322 +1953,366 @@ function Dashboard() {
                 })}
               </section>
 
-          <section className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-            <div
-              className="p-4 shadow-sm backdrop-blur-sm sm:p-6"
-              style={figmaChartCardStyle}
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold sm:text-lg" style={{ color: figmaChartTheme.title }}>
-                  Service spend
-                </h2>
-                <span
-                  className="rounded-full px-3 py-1 text-xs font-semibold"
-                  style={{
-                    background: figmaChartTheme.positivePillBackground,
-                    color: figmaChartTheme.positivePillText,
-                  }}
+              <section className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+                <div
+                  className="p-4 shadow-sm backdrop-blur-sm sm:p-6"
+                  style={figmaChartCardStyle}
                 >
-                  +12%
-                </span>
-              </div>
-              <p className="mt-1 text-[11px] sm:text-sm" style={{ color: figmaChartTheme.subtitle }}>
-                Rolling four-week spend for maintenance and parts.
-              </p>
-              <div className="mt-3 h-44 sm:mt-4 sm:h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={serviceSpend}
-                    margin={{ left: -16, right: 8 }}
+                  <div className="flex items-center justify-between">
+                    <h2
+                      className="text-sm font-semibold sm:text-lg"
+                      style={{ color: figmaChartTheme.title }}
+                    >
+                      Service spend
+                    </h2>
+                    <span
+                      className="rounded-full px-3 py-1 text-xs font-semibold"
+                      style={{
+                        background: figmaChartTheme.positivePillBackground,
+                        color: figmaChartTheme.positivePillText,
+                      }}
+                    >
+                      +12%
+                    </span>
+                  </div>
+                  <p
+                    className="mt-1 text-[11px] sm:text-sm"
+                    style={{ color: figmaChartTheme.subtitle }}
                   >
-                    <defs>
-                      <linearGradient
-                        id="spendFill"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
+                    Rolling four-week spend for maintenance and parts.
+                  </p>
+                  <div className="mt-3 h-44 sm:mt-4 sm:h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={serviceSpend}
+                        margin={{ left: -16, right: 8 }}
                       >
-                        <stop
-                          offset="10%"
-                          stopColor={figmaChartTheme.areaStart}
-                          stopOpacity={1}
+                        <defs>
+                          <linearGradient
+                            id="spendFill"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="10%"
+                              stopColor={figmaChartTheme.areaStart}
+                              stopOpacity={1}
+                            />
+                            <stop
+                              offset="60%"
+                              stopColor={figmaChartTheme.areaMid}
+                              stopOpacity={1}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor={figmaChartTheme.areaEnd}
+                              stopOpacity={1}
+                            />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid
+                          stroke={figmaChartTheme.grid}
+                          strokeDasharray="3 3"
+                          vertical={false}
                         />
-                        <stop
-                          offset="60%"
-                          stopColor={figmaChartTheme.areaMid}
-                          stopOpacity={1}
+                        <XAxis
+                          dataKey="week"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
                         />
-                        <stop
-                          offset="95%"
-                          stopColor={figmaChartTheme.areaEnd}
-                          stopOpacity={1}
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
+                          tickFormatter={(value) => `$${value / 1000}k`}
                         />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      stroke={figmaChartTheme.grid}
-                      strokeDasharray="3 3"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="week"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
-                      tickFormatter={(value) => `$${value / 1000}k`}
-                    />
-                    <Tooltip
-                      content={renderFleetSpendTooltip}
-                      cursor={{ fill: figmaChartTheme.cursorFill }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="spend"
-                      stroke={figmaChartTheme.linePrimary}
-                      strokeWidth={3}
-                      fill="url(#spendFill)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+                        <Tooltip
+                          content={renderFleetSpendTooltip}
+                          cursor={{ fill: figmaChartTheme.cursorFill }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="spend"
+                          stroke={figmaChartTheme.linePrimary}
+                          strokeWidth={3}
+                          fill="url(#spendFill)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
 
-            <div
-              className="p-4 shadow-sm backdrop-blur-sm sm:p-6"
-              style={{ ...figmaChartCardStyle, border: "1px solid #D3CFDB", minHeight: "342px" }}
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold sm:text-lg" style={{ color: figmaChartTheme.title }}>
-                  Shipments Statistics
-                </h2>
-                <button
-                  className="inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-sm font-medium"
+                <div
+                  className="p-4 shadow-sm backdrop-blur-sm sm:p-6"
                   style={{
-                    background: "#F9F9F9",
-                    border: `0.5px solid ${figmaChartTheme.cardBorder}`,
-                    color: figmaChartTheme.title,
+                    ...figmaChartCardStyle,
+                    border: "1px solid #D3CFDB",
+                    minHeight: "342px",
                   }}
-                  type="button"
                 >
-                  Week
-                  <ChevronDown size={14} strokeWidth={1.75} />
-                </button>
-              </div>
-              <p className="mt-1 text-xs sm:text-xs" style={{ color: "#9E9FA2" }}>
-                Total number of deliveries 50K
-              </p>
-              <div className="mt-3 h-48 sm:mt-4 sm:h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={utilization} barGap={2} barSize={16} margin={{ left: -14, right: 8, top: 4 }}>
-                    <CartesianGrid
-                      stroke={figmaChartTheme.grid}
-                      strokeDasharray="2 4"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      ticks={[0, 25, 50, 75, 100]}
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <Tooltip
-                      content={renderFleetUtilizationTooltip}
-                      cursor={{ fill: "rgba(36, 17, 77, 0.04)" }}
-                    />
-                    <Bar
-                      dataKey="primary"
-                      radius={[6, 6, 0, 0]}
+                  <div className="flex items-center justify-between">
+                    <h2
+                      className="text-sm font-semibold sm:text-lg"
+                      style={{ color: figmaChartTheme.title }}
                     >
-                      {utilization.map((entry) => (
-                        <Cell
-                          key={`primary-${entry.day}`}
-                          fill={entry.focus ? figmaChartTheme.linePrimary : "rgba(167, 160, 184, 0.45)"}
-                        />
-                      ))}
-                    </Bar>
-                    <Bar
-                      dataKey="secondary"
-                      radius={[6, 6, 0, 0]}
+                      Shipments Statistics
+                    </h2>
+                    <button
+                      className="inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-sm font-medium"
+                      style={{
+                        background: "#F9F9F9",
+                        border: `0.5px solid ${figmaChartTheme.cardBorder}`,
+                        color: figmaChartTheme.title,
+                      }}
+                      type="button"
                     >
-                      {utilization.map((entry) => (
-                        <Cell
-                          key={`secondary-${entry.day}`}
-                          fill={entry.focus ? "#A397EE" : "rgba(163, 151, 238, 0.5)"}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                  Serviced vehicles
-                </h2>
-                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                  Completed
-                </span>
-              </div>
-              <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
-                {servicedVehicles.map((vehicle) => (
-                  <button
-                    key={vehicle.id}
-                    className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/60 bg-slate-50 px-3 py-2.5 text-left text-xs transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
-                    onClick={handleVehicleCardClick(vehicle, "Serviced")}
-                    type="button"
+                      Week
+                      <ChevronDown size={14} strokeWidth={1.75} />
+                    </button>
+                  </div>
+                  <p
+                    className="mt-1 text-xs sm:text-xs"
+                    style={{ color: "#9E9FA2" }}
                   >
+                    Total number of deliveries 50K
+                  </p>
+                  <div className="mt-3 h-48 sm:mt-4 sm:h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={utilization}
+                        barGap={2}
+                        barSize={16}
+                        margin={{ left: -14, right: 8, top: 4 }}
+                      >
+                        <CartesianGrid
+                          stroke={figmaChartTheme.grid}
+                          strokeDasharray="2 4"
+                          vertical={false}
+                        />
+                        <XAxis
+                          dataKey="day"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
+                        />
+                        <YAxis
+                          domain={[0, 100]}
+                          ticks={[0, 25, 50, 75, 100]}
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
+                          tickFormatter={(value) => `${value}%`}
+                        />
+                        <Tooltip
+                          content={renderFleetUtilizationTooltip}
+                          cursor={{ fill: "rgba(36, 17, 77, 0.04)" }}
+                        />
+                        <Bar dataKey="primary" radius={[6, 6, 0, 0]}>
+                          {utilization.map((entry) => (
+                            <Cell
+                              key={`primary-${entry.day}`}
+                              fill={
+                                entry.focus
+                                  ? figmaChartTheme.linePrimary
+                                  : "rgba(167, 160, 184, 0.45)"
+                              }
+                            />
+                          ))}
+                        </Bar>
+                        <Bar dataKey="secondary" radius={[6, 6, 0, 0]}>
+                          {utilization.map((entry) => (
+                            <Cell
+                              key={`secondary-${entry.day}`}
+                              fill={
+                                entry.focus
+                                  ? "#A397EE"
+                                  : "rgba(163, 151, 238, 0.5)"
+                              }
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </section>
+
+              <section className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+                <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
+                      Serviced vehicles
+                    </h2>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                      Completed
+                    </span>
+                  </div>
+                  <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
+                    {servicedVehicles.map((vehicle) => (
+                      <button
+                        key={vehicle.id}
+                        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/60 bg-slate-50 px-3 py-2.5 text-left text-xs transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
+                        onClick={handleVehicleCardClick(vehicle, "Serviced")}
+                        type="button"
+                      >
+                        <div>
+                          <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
+                            {vehicle.model}
+                          </p>
+                          <p className="text-[10px] text-slate-500 sm:text-xs">
+                            {vehicle.id}
+                          </p>
+                        </div>
+                        <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
+                          {vehicle.date}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
+                      Recent invoices
+                    </h2>
+                    <Link
+                      className="text-xs font-semibold text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline"
+                      to="/signup"
+                    >
+                      Create user
+                    </Link>
+                  </div>
+                  <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
+                    {invoices.map((invoice) => (
+                      <div
+                        key={invoice.id}
+                        className="rounded-2xl border border-slate-200/70 bg-slate-50 p-3 text-xs sm:p-4 sm:text-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                            {invoice.id}
+                          </p>
+                          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+                            {invoice.status}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-[13px] font-semibold text-slate-900 sm:text-sm">
+                          {invoice.vendor}
+                        </p>
+                        <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
+                          {invoice.date}
+                        </p>
+                        <p className="mt-2.5 text-sm font-semibold text-slate-900 sm:mt-3 sm:text-base">
+                          {invoice.amount}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
+                      Pending service
+                    </h2>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
+                      Upcoming
+                    </span>
+                  </div>
+                  <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
+                    {pendingVehicles.map((vehicle) => (
+                      <button
+                        key={vehicle.id}
+                        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-100/80 bg-amber-50 px-3 py-2.5 text-left text-xs transition hover:bg-amber-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
+                        onClick={handleVehicleCardClick(
+                          vehicle,
+                          "Pending service",
+                        )}
+                        type="button"
+                      >
+                        <div>
+                          <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
+                            {vehicle.model}
+                          </p>
+                          <p className="text-[10px] text-slate-500 sm:text-xs">
+                            {vehicle.id}
+                          </p>
+                        </div>
+                        <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
+                          {vehicle.date}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl bg-[radial-gradient(circle_at_top,#0b1220_0%,#0d0f16_55%,#050608_100%)] p-4 text-white shadow-lg sm:p-6">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
-                        {vehicle.model}
+                      <p className="text-[13px] font-semibold sm:text-sm">
+                        Team focus
                       </p>
-                      <p className="text-[10px] text-slate-500 sm:text-xs">{vehicle.id}</p>
+                      <p className="mt-1 text-[10px] text-white/60 sm:text-xs">
+                        Active initiatives this week
+                      </p>
                     </div>
-                    <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
-                      {vehicle.date}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                  Recent invoices
-                </h2>
-                <Link
-                  className="text-xs font-semibold text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline"
-                  to="/signup"
-                >
-                  Create user
-                </Link>
-              </div>
-              <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
-                {invoices.map((invoice) => (
-                  <div
-                    key={invoice.id}
-                    className="rounded-2xl border border-slate-200/70 bg-slate-50 p-3 text-xs sm:p-4 sm:text-sm"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
-                        {invoice.id}
-                      </p>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-                        {invoice.status}
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
+                      04 tasks
+                    </span>
+                  </div>
+                  <div className="mt-5 space-y-3 text-xs sm:mt-6 sm:space-y-4 sm:text-sm">
+                    <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
+                      <div>
+                        <p className="text-[12px] font-semibold sm:text-sm">
+                          Service desk refresh
+                        </p>
+                        <p className="text-[10px] text-white/50 sm:text-xs">
+                          Due Feb 8
+                        </p>
+                      </div>
+                      <span className="text-xs font-semibold text-emerald-300">
+                        On track
                       </span>
                     </div>
-                    <p className="mt-2 text-[13px] font-semibold text-slate-900 sm:text-sm">
-                      {invoice.vendor}
-                    </p>
-                    <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
-                      {invoice.date}
-                    </p>
-                    <p className="mt-2.5 text-sm font-semibold text-slate-900 sm:mt-3 sm:text-base">
-                      {invoice.amount}
-                    </p>
+                    <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
+                      <div>
+                        <p className="text-[12px] font-semibold sm:text-sm">
+                          Driver onboarding
+                        </p>
+                        <p className="text-[10px] text-white/50 sm:text-xs">
+                          Due Feb 10
+                        </p>
+                      </div>
+                      <span className="text-xs font-semibold text-amber-300">
+                        Review
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
+                      <div>
+                        <p className="text-[12px] font-semibold sm:text-sm">
+                          Parts inventory
+                        </p>
+                        <p className="text-[10px] text-white/50 sm:text-xs">
+                          Due Feb 12
+                        </p>
+                      </div>
+                      <span className="text-xs font-semibold text-rose-300">
+                        At risk
+                      </span>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                  Pending service
-                </h2>
-                <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
-                  Upcoming
-                </span>
-              </div>
-              <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
-                {pendingVehicles.map((vehicle) => (
                   <button
-                    key={vehicle.id}
-                    className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-100/80 bg-amber-50 px-3 py-2.5 text-left text-xs transition hover:bg-amber-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
-                    onClick={handleVehicleCardClick(vehicle, "Pending service")}
+                    className="mt-5 w-full rounded-2xl bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 sm:mt-6 sm:text-sm"
                     type="button"
                   >
-                    <div>
-                      <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
-                        {vehicle.model}
-                      </p>
-                      <p className="text-[10px] text-slate-500 sm:text-xs">{vehicle.id}</p>
-                    </div>
-                    <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
-                      {vehicle.date}
-                    </p>
+                    Review all tasks
                   </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl bg-white p-4 shadow-lg sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[13px] font-semibold sm:text-sm">Team focus</p>
-                  <p className="mt-1 text-[10px] sm:text-xs">
-                    Active initiatives this week
-                  </p>
                 </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs">
-                  04 tasks
-                </span>
-              </div>
-              <div className="mt-5 space-y-3 text-xs sm:mt-6 sm:space-y-4 sm:text-sm">
-                <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
-                  <div>
-                    <p className="text-[12px] font-semibold sm:text-sm">Service desk refresh</p>
-                    <p className="text-[10px] sm:text-xs">Due Feb 8</p>
-                  </div>
-                  <span className="text-xs font-semibold text-emerald-300 bg-emerald-100 px-2 py-0.5 rounded-full">
-                    On track
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
-                  <div>
-                    <p className="text-[12px] font-semibold sm:text-sm">Driver onboarding</p>
-                    <p className="text-[10px] sm:text-xs">Due Feb 10</p>
-                  </div>
-                  <span className="text-xs font-semibold text-amber-300 bg-amber-100 px-2 py-0.5 rounded-full">
-                    Review
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 sm:px-4 sm:py-3">
-                  <div>
-                    <p className="text-[12px] font-semibold sm:text-sm">Parts inventory</p>
-                    <p className="text-[10px] sm:text-xs">Due Feb 12</p>
-                  </div>
-                  <span className="text-xs font-semibold text-rose-300 bg-rose-100 px-2 py-0.5 rounded-full">
-                    At risk
-                  </span>
-                </div>
-              </div>
-              <button
-                className="mt-5 w-full rounded-2xl bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 sm:mt-6 sm:text-sm"
-                type="button"
-              >
-                Review all tasks
-              </button>
-            </div>
-          </section>
+              </section>
             </>
           ) : null}
         </section>
@@ -2075,5 +2322,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-
-

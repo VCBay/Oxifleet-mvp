@@ -6,11 +6,13 @@ import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { findUserByCredentials } from "../data/userStore";
 import { getDefaultRouteForSession, setSession } from "../auth/session";
 import { useState } from "react";
+import { useTranslation } from "../i18n/useTranslation";
 
 const inputClasses =
   "mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-sm outline-none ring-offset-2 focus:ring-2 focus:ring-slate-900/20";
 
 function SignIn() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +28,7 @@ function SignIn() {
     const password = formData.get("password")?.toString();
 
     if (!email || !password) {
-      setError("Please enter your email and password.");
+      setError(t("auth.missingCredentials", "Please enter your email and password."));
       setIsSubmitting(false);
       return;
     }
@@ -35,7 +37,7 @@ function SignIn() {
       const user = findUserByCredentials(email, password);
 
       if (!user) {
-        setError("Invalid email or password.");
+        setError(t("auth.invalidCredentials", "Invalid email or password."));
         setIsSubmitting(false);
         return;
       }
@@ -45,7 +47,7 @@ function SignIn() {
       navigate(getDefaultRouteForSession(safeUser), { replace: true });
     } catch (err) {
       console.error("Sign in failed:", err);
-      setError("Unable to sign in right now. Please try again.");
+      setError(t("auth.signInFailed", "Unable to sign in right now. Please try again."));
       setIsSubmitting(false);
     }
   };
@@ -60,12 +62,12 @@ function SignIn() {
         <div className="relative z-10 w-full max-w-md space-y-6 animate-in fade-in slide-in-from-left-6 duration-700">
           <Logo className="w-48 text-white" />
           <p className="text-lg text-white/70">
-            To empower businesses with intelligent, sustainable, and tailor-made fleet solutions that optimize operations, enhance the driver experience, and deliver measurable efficiency.
+            {t("auth.marketingText", "To empower businesses with intelligent, sustainable, and tailor-made fleet solutions that optimize operations, enhance the driver experience, and deliver measurable efficiency.")}
           </p>
           <div className="text-md text-white/60">
-            <p className="flex items-center gap-1"><ArrowRight size={18}/>Full service digitization tool</p>
-            <p className="flex items-center gap-1"><ArrowRight size={18}/>Const and performance optimization for vehicle fleets</p>
-            <p className="flex items-center gap-1"><ArrowRight size={18}/>Billing tool with reporting system</p>
+            <p className="flex items-center gap-1"><ArrowRight size={18}/>{t("auth.marketingBullets.digitization", "Full service digitization tool")}</p>
+            <p className="flex items-center gap-1"><ArrowRight size={18}/>{t("auth.marketingBullets.optimization", "Cost and performance optimization for vehicle fleets")}</p>
+            <p className="flex items-center gap-1"><ArrowRight size={18}/>{t("auth.marketingBullets.billing", "Billing tool with reporting system")}</p>
           </div>
         </div>
       </section>
@@ -73,26 +75,26 @@ function SignIn() {
         <div className="w-full max-w-md space-y-6 rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl animate-in fade-in slide-in-from-right-6 duration-700">
           <header className="space-y-2">
             <h2 className="text-3xl font-semibold text-slate-900">
-              Welcome back
+              {t("auth.welcomeBack", "Welcome back")}
             </h2>
           </header>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <Label className="text-sm font-medium text-slate-700">
-                Email
+                {t("auth.email", "Email")}
               </Label>
               <Input
                 className={inputClasses}
                 type="email"
                 name="email"
                 autoComplete="email"
-                placeholder="you@company.com"
+                placeholder={t("auth.emailPlaceholder", "you@company.com")}
               />
             </div>
             <div>
               <Label className="text-sm font-medium text-slate-700">
-                Password
+                {t("auth.password", "Password")}
               </Label>
               <div className="relative mt-2">
                 <Input
@@ -100,10 +102,14 @@ function SignIn() {
                   type={showPassword ? "text" : "password"}
                   name="password"
                   autoComplete="current-password"
-                  placeholder="Enter your password"
+                  placeholder={t("auth.passwordPlaceholder", "Enter your password")}
                 />
                 <button
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={
+                    showPassword
+                      ? t("actions.hidePassword", "Hide password")
+                      : t("actions.showPassword", "Show password")
+                  }
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 transition hover:text-slate-700"
                   onClick={() => setShowPassword((prev) => !prev)}
                   type="button"
@@ -117,7 +123,9 @@ function SignIn() {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Signing in..." : "Sign in"}
+              {isSubmitting
+                ? t("actions.signingIn", "Signing in...")
+                : t("actions.signIn", "Sign in")}
             </button>
           </form>
           {error ? (
@@ -125,9 +133,9 @@ function SignIn() {
           ) : null}
 
           <p className="text-center text-sm text-slate-500">
-            New to Oxifleet?{" "}
+            {t("auth.newToOxifleet", "New to Oxifleet?")}{" "}
             <Link className="font-semibold text-slate-900" to="/signup">
-              Create an account
+              {t("actions.createAnAccount", "Create an account")}
             </Link>
           </p>
         </div>
