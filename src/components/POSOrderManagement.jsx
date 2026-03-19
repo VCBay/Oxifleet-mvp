@@ -17,7 +17,9 @@ import {
 } from "../data/posOrderStore";
 import {
   createServiceRequest,
+  getServiceOrderState,
   submitInvoiceToFleet,
+  subscribeServiceOrders,
 } from "../data/serviceOrderStore";
 import { addInvoice } from "../data/billingFinanceStore";
 
@@ -129,6 +131,11 @@ function POSOrderManagement({
     getPosOrderState,
     getPosOrderState
   );
+  const serviceOrderState = useSyncExternalStore(
+    subscribeServiceOrders,
+    getServiceOrderState,
+    getServiceOrderState
+  );
 
   const [orderForm, setOrderForm] = useState(() => createInitialForm(selectedVehicle));
   const [partDraft, setPartDraft] = useState({
@@ -197,6 +204,18 @@ function POSOrderManagement({
   const selectedVehicleModel = useMemo(
     () => vehicles.find((item) => item.id === orderForm.vehicleId) || selectedVehicle || null,
     [orderForm.vehicleId, selectedVehicle, vehicles]
+  );
+
+  const checkedInRequests = useMemo(
+    () =>
+      serviceOrderState.orders
+        .filter((order) => String(order.status || "").trim().toLowerCase() === "checked in")
+        .sort((a, b) => {
+          const ta = new Date(a.updatedAt || a.requestedAt).getTime() || 0;
+          const tb = new Date(b.updatedAt || b.requestedAt).getTime() || 0;
+          return tb - ta;
+        }),
+    [serviceOrderState.orders]
   );
 
   const totals = useMemo(() => {
@@ -313,6 +332,36 @@ function POSOrderManagement({
   useEffect(() => {
     attachmentPreviewsRef.current = attachmentPreviews;
   }, [attachmentPreviews]);
+
+  const loadCheckedInRequestIntoForm = (request) => {
+    if (!request) {
+      return;
+    }
+    const targetVehicle =
+      vehicles.find((item) => item.id === request.vehicleId) || selectedVehicle || null;
+    const existingOrder =
+      posOrderState.submittedOrders.find((order) => order.id === completionPosOrderId) || null;
+
+    setOrderForm({
+      id: existingOrder?.id || "",
+      vehicleId: request.vehicleId || targetVehicle?.id || "",
+      vehiclePlate: targetVehicle?.plate || "",
+      serviceType: request.serviceType || "General service",
+      problemType: request.requestTitle || "General check",
+      description:
+        request.orderDetails?.description || request.requestTitle || "Checked-in service request.",
+      priority: request.priority || "Normal",
+      parts: existingOrder?.parts || [],
+      labour: existingOrder?.labour || [],
+      attachments: existingOrder?.attachments || [],
+      notes:
+        request.checkIn?.note ||
+        request.orderDetails?.notes ||
+        "Loaded from checked-in booking in POS workflow.",
+    });
+    setSelectedDraftId("");
+    setFeedback(`Loaded checked-in request ${request.id} into order editor.`);
+  };
 
   const loadDraftIntoForm = (draft) => {
     if (!draft) {
@@ -1063,6 +1112,51 @@ function POSOrderManagement({
         </div>
 
         <div className="space-y-6">
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-900">Checked-in vehicles and services</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Create orders from bookings that have already been checked in by POS.
+            </p>
+            <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
+              {checkedInRequests.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+                  No checked-in vehicles waiting for order creation.
+                </p>
+              ) : (
+                checkedInRequests.map((request) => {
+                  const vehicleMatch = vehicles.find((item) => item.id === request.vehicleId);
+                  return (
+                    <div
+                      key={request.id}
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs"
+                    >
+                      <p className="font-semibold text-slate-800">
+                        {request.vehicleId} - {request.serviceType}
+                      </p>
+                      <p className="mt-1 text-slate-600">
+                        {vehicleMatch?.plate || request.vehicleModel || "Vehicle N/A"} |{" "}
+                        {request.requestedBy}
+                      </p>
+                      <p className="mt-1 text-slate-500">
+                        Check-in: {formatDateTime(request.checkIn?.checkedInAt || request.updatedAt)}
+                      </p>
+                      <div className="mt-2 flex gap-2">
+                        <Button
+                          className="bg-sky-600 text-white hover:bg-sky-500"
+                          onClick={() => loadCheckedInRequestIntoForm(request)}
+                          size="sm"
+                          type="button"
+                        >
+                          Create order
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">Draft orders</h3>
             <p className="mt-1 text-sm text-slate-500">
