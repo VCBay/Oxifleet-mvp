@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   CalendarClock,
   CheckCircle2,
@@ -22,7 +28,10 @@ import {
   subscribeServiceOrders,
 } from "../data/serviceOrderStore";
 
-const normalize = (value) => String(value || "").trim().toLowerCase();
+const normalize = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const parseAmount = (value) => {
   const parsed = Number(String(value || "").replace(/[^0-9.-]/g, ""));
@@ -577,6 +586,21 @@ function POSApprovalWorkflowControl({
 
   return (
     <section className="space-y-6">
+      <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#1d3148_0%,#0f1b33_45%,#070b14_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
+              Approval Workflow
+            </p>
+
+            <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
+              Manage and track approval requests for POS orders, coordinate with
+              fleet service team, and oversee driver-to-completion workflow for
+              approved requests - all from one centralized dashboard.
+            </p>
+          </div>
+        </div>
+      </header>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {[
           {

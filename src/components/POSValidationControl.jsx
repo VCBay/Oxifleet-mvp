@@ -249,6 +249,57 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
       ? "Below KB range"
       : "No KB benchmark";
 
+  const policyScore = validation.policyCompliance ? 96 : 42;
+  const kbScore =
+    validation.kbStatus === "within"
+      ? 92
+      : validation.kbStatus === "above" || validation.kbStatus === "below"
+      ? 68
+      : 48;
+  const approvalScore = validation.approvalRequired ? 44 : 94;
+  const alertScore = Math.max(
+    20,
+    100 - validation.errorCount * 28 - validation.warningCount * 12
+  );
+
+  const validationSummaryCards = [
+    {
+      key: "policy",
+      title: "Policy compliance",
+      value: policyScore,
+      icon: ShieldCheck,
+      state: validation.policyCompliance ? "Compliant" : "Not compliant",
+    },
+    {
+      key: "kb",
+      title: "Price validation (KB)",
+      value: kbScore,
+      icon: CircleAlert,
+      state: kbStatusLabel,
+    },
+    {
+      key: "approval",
+      title: "Approval indicator",
+      value: approvalScore,
+      icon: AlertTriangle,
+      state: validation.approvalRequired ? "Approval required" : "No approval required",
+    },
+    {
+      key: "alerts",
+      title: "Error/warning alerts",
+      value: alertScore,
+      icon: CircleAlert,
+      state: `${validation.errorCount} error(s), ${validation.warningCount} warning(s)`,
+    },
+  ].map((card) => {
+    const lastMonthValue = Math.max(0, card.value - 12);
+    return {
+      ...card,
+      trendPercent: card.value - lastMonthValue,
+      lastMonthValue,
+    };
+  });
+
   const serviceTypeOptions = useMemo(() => {
     const list = new Set(kbPriceList.map((item) => item.serviceType));
     (primaryPolicy?.allowedServiceTypes || []).forEach((item) => list.add(item));
@@ -257,38 +308,59 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
 
   return (
     <section className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Policy compliance check</p>
-          <p
-            className={`mt-2 text-lg font-semibold ${
-              validation.policyCompliance ? "text-emerald-600" : "text-rose-600"
-            }`}
-          >
-            {validation.policyCompliance ? "Compliant" : "Not compliant"}
-          </p>
+       <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#1d3148_0%,#0f1b33_45%,#070b14_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
+              Service order validation
+            </p>
+
+            <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
+              Validate policy compliance, KB pricing, and approval rules before final submission.
+            </p>
+          </div>
+        
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Price validation (KB)</p>
-          <p className="mt-2 text-lg font-semibold text-slate-900">{kbStatusLabel}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Approval required indicator</p>
-          <p
-            className={`mt-2 text-lg font-semibold ${
-              validation.approvalRequired ? "text-amber-600" : "text-emerald-600"
-            }`}
-          >
-            {validation.approvalRequired ? "Required" : "Not required"}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Error/warning alerts</p>
-          <p className="mt-2 text-lg font-semibold text-slate-900">
-            {validation.errorCount} error(s), {validation.warningCount} warning(s)
-          </p>
-        </div>
-      </div>
+      </header>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {validationSummaryCards.map(({ icon: Icon, ...card }) => {
+          const trendPositive = card.trendPercent >= 0;
+          return (
+            <article
+              key={card.key}
+              className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-700 sm:text-sm">
+                  <Icon className="text-slate-700" size={14} />
+                  {card.title}
+                </p>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <p className="text-4xl font-semibold leading-none text-[#24114D]">
+                  {card.value}%
+                </p>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[9px] font-semibold sm:text-[10px] ${
+                    trendPositive
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "bg-rose-50 text-rose-600"
+                  }`}
+                >
+                  {trendPositive ? "+" : ""}
+                  {card.trendPercent}%
+                </span>
+              </div>
+              <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
+                Last month: {card.lastMonthValue}%
+              </p>
+              <p className="mt-1 text-[10px] font-medium text-slate-700 sm:text-xs">
+                {card.state}
+              </p>
+            </article>
+          );
+        })}
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">

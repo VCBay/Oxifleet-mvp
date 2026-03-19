@@ -283,6 +283,7 @@ function POSDashboardOverview({
 
   return (
     <>
+    
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {summaryCards.map(({ icon: Icon, ...card }) => (
           <article

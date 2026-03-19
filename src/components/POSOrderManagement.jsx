@@ -700,15 +700,24 @@ function POSOrderManagement({
 
   return (
     <section className="space-y-6">
-      {/* <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Order Management</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Create, edit, draft, duplicate, and submit service orders with parts,
-          labour, and document attachments.
-        </p>
-      </div> */}
+      <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#1d3148_0%,#0f1b33_45%,#070b14_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
+            Order Management
+            </p>
+
+            <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
+            Create, edit, draft, duplicate, and submit service orders with parts,
+            labour, and document attachments.
+            </p>
+          </div>
+        
+        </div>
+      </header>
 
       <div className="grid gap-6 xl:grid-cols-[1.25fr_1fr]">
+         
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">Create service order</h3>

@@ -342,9 +342,9 @@ function POSCommunicationControl({ session = null }) {
   return (
     <section className="min-w-0 space-y-4 sm:space-y-6">
       <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
-        <header className="border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
-          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Communication</h2>
-          <p className="text-xs text-slate-500 sm:text-sm">
+        <header className="border-b border-slate-200 bg-[radial-gradient(circle_at_20%_20%,#1f2937_0%,#0f172a_45%,#0b0d12_100%)] px-4 py-3 sm:px-5 sm:py-4">
+          <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">Communication</h2>
+          <p className="text-xs text-white/50 sm:text-sm">
             POS chat with multiple drivers and fleet owners in one view.
           </p>
         </header>

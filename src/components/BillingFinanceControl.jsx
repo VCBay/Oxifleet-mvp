@@ -494,16 +494,17 @@ function BillingFinanceControl() {
                         <Button
                           className={
                             isSelected
-                              ? "border-white/30 text-white hover:bg-green-600"
+                              ? "bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)]"
                               : ""
                           }
                           onClick={() => handleDownloadInvoice(invoice)}
                           size="sm"
                           type="button"
                           variant="outline"
-                          style={{
-                            backgroundColor: isSelected ? "green" : undefined,
-                          }}
+                          // style={{
+                          //   backgroundColor: isSelected ? "" : undefined,
+                          // }}
+                          
                         >
                           Download invoice
                         </Button>

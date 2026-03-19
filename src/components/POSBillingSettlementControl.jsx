@@ -1,20 +1,26 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { CalendarClock, CheckCircle2, CreditCard, FileWarning, History } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  CreditCard,
+  FileWarning,
+  History,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import {
   getBillingFinanceState,
   subscribeBillingFinance,
 } from "../data/billingFinanceStore";
-import {
-  getPosOrderState,
-  subscribePosOrders,
-} from "../data/posOrderStore";
+import { getPosOrderState, subscribePosOrders } from "../data/posOrderStore";
 import {
   getServiceOrderState,
   subscribeServiceOrders,
 } from "../data/serviceOrderStore";
 
-const normalize = (value) => String(value || "").trim().toLowerCase();
+const normalize = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -73,7 +79,7 @@ const buildInvoiceCsv = (invoice) => {
   ];
 
   const serviceRows = (invoice.services || []).map((line) =>
-    [line.name, Number(line.cost) || 0].map(escapeCsvCell).join(",")
+    [line.name, Number(line.cost) || 0].map(escapeCsvCell).join(","),
   );
 
   return [
@@ -104,7 +110,9 @@ const getLatestRequestByPosOrder = (serviceOrders) => {
     }
     const existing = map.get(posOrderId);
     const currentTs = toTime(order.updatedAt || order.requestedAt);
-    const existingTs = existing ? toTime(existing.updatedAt || existing.requestedAt) : -1;
+    const existingTs = existing
+      ? toTime(existing.updatedAt || existing.requestedAt)
+      : -1;
     if (!existing || currentTs >= existingTs) {
       map.set(posOrderId, order);
     }
@@ -119,44 +127,48 @@ function POSBillingSettlementControl({
   const billingState = useSyncExternalStore(
     subscribeBillingFinance,
     getBillingFinanceState,
-    getBillingFinanceState
+    getBillingFinanceState,
   );
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
     getPosOrderState,
-    getPosOrderState
+    getPosOrderState,
   );
   const serviceOrderState = useSyncExternalStore(
     subscribeServiceOrders,
     getServiceOrderState,
-    getServiceOrderState
+    getServiceOrderState,
   );
 
   const submittedOrders = useMemo(
     () =>
       [...posOrderState.submittedOrders].sort(
-        (a, b) => toTime(b.submittedAt || b.updatedAt) - toTime(a.submittedAt || a.updatedAt)
+        (a, b) =>
+          toTime(b.submittedAt || b.updatedAt) -
+          toTime(a.submittedAt || a.updatedAt),
       ),
-    [posOrderState.submittedOrders]
+    [posOrderState.submittedOrders],
   );
 
   const latestRequestByPosOrder = useMemo(
     () => getLatestRequestByPosOrder(serviceOrderState.orders),
-    [serviceOrderState.orders]
+    [serviceOrderState.orders],
   );
 
   const submittedOrdersList = useMemo(
     () =>
       submittedOrders.map((order) => {
         const linkedRequest = latestRequestByPosOrder.get(order.id) || null;
-        const approvalStatus = linkedRequest ? linkedRequest.status : "Not requested";
+        const approvalStatus = linkedRequest
+          ? linkedRequest.status
+          : "Not requested";
         return {
           ...order,
           approvalStatus,
           linkedRequestId: linkedRequest?.id || "",
         };
       }),
-    [latestRequestByPosOrder, submittedOrders]
+    [latestRequestByPosOrder, submittedOrders],
   );
 
   const validatedOrders = useMemo(
@@ -165,7 +177,7 @@ function POSBillingSettlementControl({
         const status = normalize(order.approvalStatus);
         return status.includes("approved");
       }),
-    [submittedOrdersList]
+    [submittedOrdersList],
   );
 
   const rejectedOrders = useMemo(
@@ -183,7 +195,8 @@ function POSBillingSettlementControl({
           const latestLifecycleNote =
             [...(linkedRequest.lifecycle || [])]
               .reverse()
-              .find((entry) => normalize(entry.stage).includes("rejected"))?.note || "";
+              .find((entry) => normalize(entry.stage).includes("rejected"))
+              ?.note || "";
           const reason =
             linkedRequest.approval?.note ||
             latestLifecycleNote ||
@@ -193,19 +206,22 @@ function POSBillingSettlementControl({
             serviceType: order.serviceType,
             total: order.total,
             requestId: linkedRequest.id,
-            rejectedAt: linkedRequest.approval?.decidedAt || linkedRequest.updatedAt,
+            rejectedAt:
+              linkedRequest.approval?.decidedAt || linkedRequest.updatedAt,
             reason,
           };
         })
         .filter(Boolean),
-    [latestRequestByPosOrder, submittedOrdersList]
+    [latestRequestByPosOrder, submittedOrdersList],
   );
 
   const creditMemoRows = useMemo(
     () =>
       [...billingState.creditNotes]
         .map((note) => {
-          const invoice = billingState.invoices.find((item) => item.id === note.invoiceId) || null;
+          const invoice =
+            billingState.invoices.find((item) => item.id === note.invoiceId) ||
+            null;
           return {
             ...note,
             invoiceId: note.invoiceId,
@@ -214,7 +230,7 @@ function POSBillingSettlementControl({
           };
         })
         .sort((a, b) => toTime(b.date) - toTime(a.date)),
-    [billingState.creditNotes, billingState.invoices]
+    [billingState.creditNotes, billingState.invoices],
   );
 
   const paymentSchedule = useMemo(
@@ -224,15 +240,16 @@ function POSBillingSettlementControl({
           const dueDate = addDays(invoice.date, 15);
           const dueTs = toTime(dueDate);
           const todayTs = toTime(new Date().toISOString());
-          const isOverdue = invoice.status !== "Paid" && dueTs > 0 && dueTs < todayTs;
+          const isOverdue =
+            invoice.status !== "Paid" && dueTs > 0 && dueTs < todayTs;
           const scheduleStatus =
             invoice.status === "Paid"
               ? "Settled"
               : isOverdue
-              ? "Overdue"
-              : invoice.status === "Processing"
-              ? "In processing"
-              : "Upcoming";
+                ? "Overdue"
+                : invoice.status === "Processing"
+                  ? "In processing"
+                  : "Upcoming";
           return {
             id: invoice.id,
             orderId: invoice.orderId,
@@ -243,7 +260,7 @@ function POSBillingSettlementControl({
           };
         })
         .sort((a, b) => toTime(a.dueDate) - toTime(b.dueDate)),
-    [billingState.invoices]
+    [billingState.invoices],
   );
 
   const settlementHistory = useMemo(() => {
@@ -267,7 +284,9 @@ function POSBillingSettlementControl({
       date: note.date,
     }));
 
-    return [...paidEntries, ...creditEntries].sort((a, b) => toTime(b.date) - toTime(a.date));
+    return [...paidEntries, ...creditEntries].sort(
+      (a, b) => toTime(b.date) - toTime(a.date),
+    );
   }, [billingState.creditNotes, billingState.invoices]);
 
   const billingOverviewCards = useMemo(
@@ -307,21 +326,29 @@ function POSBillingSettlementControl({
       rejectedOrders.length,
       submittedOrdersList.length,
       validatedOrders.length,
-    ]
+    ],
   );
 
   const invoiceById = useMemo(
-    () => new Map(billingState.invoices.map((invoice) => [invoice.id, invoice])),
-    [billingState.invoices]
+    () =>
+      new Map(billingState.invoices.map((invoice) => [invoice.id, invoice])),
+    [billingState.invoices],
   );
 
   const invoiceByOrderId = useMemo(
-    () => new Map(billingState.invoices.map((invoice) => [invoice.orderId, invoice])),
-    [billingState.invoices]
+    () =>
+      new Map(
+        billingState.invoices.map((invoice) => [invoice.orderId, invoice]),
+      ),
+    [billingState.invoices],
   );
 
   const handleDownloadInvoice = (invoice) => {
-    if (!invoice || typeof window === "undefined" || typeof document === "undefined") {
+    if (
+      !invoice ||
+      typeof window === "undefined" ||
+      typeof document === "undefined"
+    ) {
       return;
     }
     const content = buildInvoiceCsv(invoice);
@@ -361,6 +388,20 @@ function POSBillingSettlementControl({
 
   return (
     <section className="space-y-6">
+      <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#1d3148_0%,#0f1b33_45%,#070b14_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
+              Billing & Settlement
+            </p>
+
+            <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
+              Monitor and manage your billing, settlements, and financial
+              records with ease.
+            </p>
+          </div>
+        </div>
+      </header>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {billingOverviewCards.map(({ icon: Icon, ...card }) => (
           <article
@@ -376,7 +417,9 @@ function POSBillingSettlementControl({
                 +{card.trendPercent}% ↑
               </span>
             </div>
-            <p className="mt-2 text-4xl font-semibold leading-none text-[#24114D]">{card.value}</p>
+            <p className="mt-2 text-4xl font-semibold leading-none text-[#24114D]">
+              {card.value}
+            </p>
             <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
               Last month: {card.lastMonthValue}
             </p>
@@ -389,7 +432,9 @@ function POSBillingSettlementControl({
           className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
           ref={paymentScheduleSectionRef}
         >
-          <h2 className="text-lg font-semibold text-slate-900">Submitted orders list</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Submitted orders list
+          </h2>
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {submittedOrdersList.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
@@ -398,14 +443,20 @@ function POSBillingSettlementControl({
             ) : (
               submittedOrdersList.map((order) => {
                 const linkedInvoice =
-                  invoiceByOrderId.get(order.linkedRequestId) || invoiceByOrderId.get(order.id) || null;
+                  invoiceByOrderId.get(order.linkedRequestId) ||
+                  invoiceByOrderId.get(order.id) ||
+                  null;
                 return (
-                  <div key={order.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <div
+                    key={order.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm"
+                  >
                     <p className="font-semibold text-slate-900">
                       {order.id} - {order.serviceType}
                     </p>
                     <p className="text-slate-600">
-                      Total: {formatCurrency(order.total)} | Status: {order.approvalStatus}
+                      Total: {formatCurrency(order.total)} | Status:{" "}
+                      {order.approvalStatus}
                     </p>
                     <p className="text-xs text-slate-500">
                       Linked request: {order.linkedRequestId || "Not created"}
@@ -442,14 +493,20 @@ function POSBillingSettlementControl({
             ) : (
               validatedOrders.map((order) => {
                 const linkedInvoice =
-                  invoiceByOrderId.get(order.linkedRequestId) || invoiceByOrderId.get(order.id) || null;
+                  invoiceByOrderId.get(order.linkedRequestId) ||
+                  invoiceByOrderId.get(order.id) ||
+                  null;
                 return (
-                  <div key={order.id} className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
+                  <div
+                    key={order.id}
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm"
+                  >
                     <p className="font-semibold text-emerald-900">
                       {order.id} - {order.serviceType}
                     </p>
                     <p className="text-emerald-700">
-                      Approved amount: {formatCurrency(order.total)} | {order.approvalStatus}
+                      Approved amount: {formatCurrency(order.total)} |{" "}
+                      {order.approvalStatus}
                     </p>
                     <div className="mt-2 flex justify-end">
                       <Button
@@ -484,7 +541,10 @@ function POSBillingSettlementControl({
               </p>
             ) : (
               rejectedOrders.map((order) => (
-                <div key={order.id} className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm">
+                <div
+                  key={order.id}
+                  className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm"
+                >
                   <p className="font-semibold text-rose-900">
                     {order.id} - {order.serviceType}
                   </p>
@@ -495,7 +555,11 @@ function POSBillingSettlementControl({
                   <div className="mt-2 flex justify-end">
                     <Button
                       disabled={!invoiceByOrderId.get(order.requestId)}
-                      onClick={() => handleDownloadInvoice(invoiceByOrderId.get(order.requestId))}
+                      onClick={() =>
+                        handleDownloadInvoice(
+                          invoiceByOrderId.get(order.requestId),
+                        )
+                      }
                       size="sm"
                       type="button"
                       variant="outline"
@@ -522,7 +586,10 @@ function POSBillingSettlementControl({
               </p>
             ) : (
               creditMemoRows.map((memo) => (
-                <div key={memo.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                <div
+                  key={memo.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm"
+                >
                   <p className="font-semibold text-slate-900">
                     {memo.id} - {memo.status}
                   </p>
@@ -530,12 +597,15 @@ function POSBillingSettlementControl({
                     {memo.reason} | {formatCurrency(memo.amount)}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Invoice: {memo.invoiceId} | Order: {memo.orderId} | {formatDate(memo.date)}
+                    Invoice: {memo.invoiceId} | Order: {memo.orderId} |{" "}
+                    {formatDate(memo.date)}
                   </p>
                   <div className="mt-2 flex justify-end">
                     <Button
                       disabled={!invoiceById.get(memo.invoiceId)}
-                      onClick={() => handleDownloadInvoice(invoiceById.get(memo.invoiceId))}
+                      onClick={() =>
+                        handleDownloadInvoice(invoiceById.get(memo.invoiceId))
+                      }
                       size="sm"
                       type="button"
                       variant="outline"
@@ -579,12 +649,15 @@ function POSBillingSettlementControl({
                     {formatCurrency(row.amount)} | {row.scheduleStatus}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Invoice: {formatDate(row.invoiceDate)} | Due: {formatDate(row.dueDate)}
+                    Invoice: {formatDate(row.invoiceDate)} | Due:{" "}
+                    {formatDate(row.dueDate)}
                   </p>
                   <div className="mt-2 flex justify-end">
                     <Button
                       disabled={!invoiceById.get(row.id)}
-                      onClick={() => handleDownloadInvoice(invoiceById.get(row.id))}
+                      onClick={() =>
+                        handleDownloadInvoice(invoiceById.get(row.id))
+                      }
                       size="sm"
                       type="button"
                       variant="outline"
@@ -631,13 +704,20 @@ function POSBillingSettlementControl({
                       item.amount < 0 ? "text-violet-700" : "text-emerald-700"
                     }`}
                   >
-                    {item.amount < 0 ? "-" : ""}{formatCurrency(Math.abs(item.amount))}
+                    {item.amount < 0 ? "-" : ""}
+                    {formatCurrency(Math.abs(item.amount))}
                   </p>
-                  <p className="text-xs text-slate-500">{formatDate(item.date)}</p>
+                  <p className="text-xs text-slate-500">
+                    {formatDate(item.date)}
+                  </p>
                   <div className="mt-2 flex justify-end">
                     <Button
-                      disabled={item.type !== "Settlement" || !invoiceById.get(item.ref)}
-                      onClick={() => handleDownloadInvoice(invoiceById.get(item.ref))}
+                      disabled={
+                        item.type !== "Settlement" || !invoiceById.get(item.ref)
+                      }
+                      onClick={() =>
+                        handleDownloadInvoice(invoiceById.get(item.ref))
+                      }
                       size="sm"
                       type="button"
                       variant="outline"

@@ -196,13 +196,13 @@ function DriverTopbar({
                               >
                                 {item.actionLabel || t("actions.open", "Open")}
                               </button>
-                              <button
+                              {/* <button
                                 className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 transition hover:bg-slate-100"
                                 onClick={() => onClearNotification?.(item.id)}
                                 type="button"
                               >
                                 {t("actions.clear", "Clear")}
-                              </button>
+                              </button> */}
                             </div>
                           </article>
                         );
