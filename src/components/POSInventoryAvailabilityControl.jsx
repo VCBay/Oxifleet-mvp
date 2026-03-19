@@ -140,7 +140,10 @@ const manufacturerIntegrationStatus = [
   },
 ];
 
-const normalize = (value) => String(value || "").trim().toLowerCase();
+const normalize = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -170,17 +173,20 @@ function POSInventoryAvailabilityControl({
   primaryPolicy = null,
 }) {
   const [vehicleId, setVehicleId] = useState(
-    () => selectedVehicle?.id || vehicles[0]?.id || ""
+    () => selectedVehicle?.id || vehicles[0]?.id || "",
   );
   const [requestedQty, setRequestedQty] = useState("4");
   const [category, setCategory] = useState("all");
   const [preferredBrand, setPreferredBrand] = useState(
-    () => selectedVehicle?.tyreSpecs?.brand || ""
+    () => selectedVehicle?.tyreSpecs?.brand || "",
   );
 
   const selected = useMemo(
-    () => vehicles.find((vehicle) => vehicle.id === vehicleId) || selectedVehicle || null,
-    [selectedVehicle, vehicleId, vehicles]
+    () =>
+      vehicles.find((vehicle) => vehicle.id === vehicleId) ||
+      selectedVehicle ||
+      null,
+    [selectedVehicle, vehicleId, vehicles],
   );
 
   const tyreSize = selected?.tyreSpecs?.size || "";
@@ -190,21 +196,27 @@ function POSInventoryAvailabilityControl({
     () =>
       tyreInventory
         .filter((item) => normalize(item.size) === normalize(tyreSize))
-        .filter((item) => category === "all" || normalize(item.category) === normalize(category))
+        .filter(
+          (item) =>
+            category === "all" ||
+            normalize(item.category) === normalize(category),
+        )
         .map((item) => ({
           ...item,
           available: Math.max(0, item.onHand - item.reserved),
         }))
         .sort((a, b) => b.available - a.available),
-    [category, tyreSize]
+    [category, tyreSize],
   );
 
   const preferredStock = useMemo(
     () =>
       availableBySize.find(
-        (item) => normalize(item.brand) === normalize(preferredBrand || selected?.tyreSpecs?.brand)
+        (item) =>
+          normalize(item.brand) ===
+          normalize(preferredBrand || selected?.tyreSpecs?.brand),
       ) || null,
-    [availableBySize, preferredBrand, selected?.tyreSpecs?.brand]
+    [availableBySize, preferredBrand, selected?.tyreSpecs?.brand],
   );
 
   const availabilityResult = useMemo(() => {
@@ -222,7 +234,10 @@ function POSInventoryAvailabilityControl({
         canFulfill: true,
       };
     }
-    const totalAvailable = availableBySize.reduce((sum, item) => sum + item.available, 0);
+    const totalAvailable = availableBySize.reduce(
+      (sum, item) => sum + item.available,
+      0,
+    );
     if (totalAvailable >= requiredQty) {
       return {
         status: "Partially available",
@@ -233,38 +248,50 @@ function POSInventoryAvailabilityControl({
     }
     return {
       status: "Insufficient stock",
-      message: "Current stock cannot fulfill required quantity. Check ETA and alternatives.",
+      message:
+        "Current stock cannot fulfill required quantity. Check ETA and alternatives.",
       canFulfill: false,
     };
   }, [availableBySize, preferredStock, requiredQty, tyreSize]);
 
-  const alternativeTyres = useMemo(
-    () => {
-      const allowedBrands = Array.isArray(primaryPolicy?.allowedTyreBrands)
-        ? primaryPolicy.allowedTyreBrands
-        : [];
-      return (
-      availableBySize
-        .filter((item) => normalize(item.brand) !== normalize(preferredBrand))
-        .map((item) => ({
-          ...item,
-          policyAligned:
-            allowedBrands.length === 0 ||
-            allowedBrands.some((brand) => normalize(brand) === normalize(item.brand)),
-        }))
-        .sort((a, b) => {
-          if (a.policyAligned !== b.policyAligned) {
-            return a.policyAligned ? -1 : 1;
-          }
-          return b.available - a.available;
-        })
-      );
-    },
-    [availableBySize, preferredBrand, primaryPolicy]
-  );
+  const alternativeTyres = useMemo(() => {
+    const allowedBrands = Array.isArray(primaryPolicy?.allowedTyreBrands)
+      ? primaryPolicy.allowedTyreBrands
+      : [];
+    return availableBySize
+      .filter((item) => normalize(item.brand) !== normalize(preferredBrand))
+      .map((item) => ({
+        ...item,
+        policyAligned:
+          allowedBrands.length === 0 ||
+          allowedBrands.some(
+            (brand) => normalize(brand) === normalize(item.brand),
+          ),
+      }))
+      .sort((a, b) => {
+        if (a.policyAligned !== b.policyAligned) {
+          return a.policyAligned ? -1 : 1;
+        }
+        return b.available - a.available;
+      });
+  }, [availableBySize, preferredBrand, primaryPolicy]);
 
   return (
     <section className="space-y-6">
+      <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#1d3148_0%,#0f1b33_45%,#070b14_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
+              Inventory availability
+            </p>
+
+            <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
+              Check real-time availability of tyres across different brands and
+              categories.
+            </p>
+          </div>
+        </div>
+      </header>
       <section className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
@@ -328,8 +355,12 @@ function POSInventoryAvailabilityControl({
           </div>
 
           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-900">{availabilityResult.status}</p>
-            <p className="mt-1 text-sm text-slate-600">{availabilityResult.message}</p>
+            <p className="text-sm font-semibold text-slate-900">
+              {availabilityResult.status}
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              {availabilityResult.message}
+            </p>
           </div>
 
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
@@ -339,13 +370,16 @@ function POSInventoryAvailabilityControl({
               </p>
             ) : (
               availableBySize.map((item) => (
-                <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                <div
+                  key={item.id}
+                  className="rounded-xl border border-slate-200 bg-white p-3 text-sm"
+                >
                   <p className="font-semibold text-slate-900">
                     {item.brand} {item.size} ({item.category})
                   </p>
                   <p className="text-slate-600">
-                    Available: {item.available} | ETA restock: {item.etaDays} day(s) | Unit:{" "}
-                    {formatCurrency(item.unitPrice)}
+                    Available: {item.available} | ETA restock: {item.etaDays}{" "}
+                    day(s) | Unit: {formatCurrency(item.unitPrice)}
                   </p>
                 </div>
               ))
@@ -366,7 +400,10 @@ function POSInventoryAvailabilityControl({
                 </p>
               ) : (
                 alternativeTyres.slice(0, 6).map((item) => (
-                  <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <div
+                    key={item.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-slate-900">
                         {item.brand} ({item.category})
@@ -378,12 +415,14 @@ function POSInventoryAvailabilityControl({
                             : "bg-amber-100 text-amber-700"
                         }`}
                       >
-                        {item.policyAligned ? "Policy aligned" : "Needs approval"}
+                        {item.policyAligned
+                          ? "Policy aligned"
+                          : "Needs approval"}
                       </span>
                     </div>
                     <p className="mt-1 text-slate-600">
-                      Available: {item.available} | ETA: {item.etaDays} day(s) | Unit:{" "}
-                      {formatCurrency(item.unitPrice)}
+                      Available: {item.available} | ETA: {item.etaDays} day(s) |
+                      Unit: {formatCurrency(item.unitPrice)}
                     </p>
                   </div>
                 ))
@@ -398,17 +437,27 @@ function POSInventoryAvailabilityControl({
             </h2>
             <div className="card-list-scrollbar mt-4 max-h-[20rem] space-y-2 overflow-y-auto pr-1">
               {manufacturerIntegrationStatus.map((entry) => (
-                <div key={entry.manufacturer} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                <div
+                  key={entry.manufacturer}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm"
+                >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold text-slate-900">{entry.manufacturer}</p>
-                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${integrationBadgeClass(entry.status)}`}>
+                    <p className="font-semibold text-slate-900">
+                      {entry.manufacturer}
+                    </p>
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs font-semibold ${integrationBadgeClass(entry.status)}`}
+                    >
                       {entry.status}
                     </span>
                   </div>
                   <p className="mt-1 text-slate-600">{entry.syncHealth}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Last sync: {new Date(entry.lastSync).toLocaleString("en-US")} |{" "}
-                    {entry.responseMs > 0 ? `Latency ${entry.responseMs}ms` : "API unavailable"}
+                    Last sync:{" "}
+                    {new Date(entry.lastSync).toLocaleString("en-US")} |{" "}
+                    {entry.responseMs > 0
+                      ? `Latency ${entry.responseMs}ms`
+                      : "API unavailable"}
                   </p>
                 </div>
               ))}
@@ -416,7 +465,8 @@ function POSInventoryAvailabilityControl({
             <div className="mt-4 rounded-xl border border-slate-200 bg-slate-100 p-3 text-xs text-slate-600">
               <p className="inline-flex items-center gap-1">
                 <Link2Off size={14} />
-                Offline manufacturer catalogs fallback to cached prices and stock.
+                Offline manufacturer catalogs fallback to cached prices and
+                stock.
               </p>
             </div>
           </div>

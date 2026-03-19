@@ -123,8 +123,8 @@ function DriverCommunicationSection({
   return (
     <section className="min-w-0 space-y-4 sm:space-y-6">
       <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
-        <header className="border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
-          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Communication</h2>
+        <header className="border-b border-slate-200 bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-4 py-3 sm:px-5 sm:py-4">
+          <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">Communication</h2>
           {/* <p className="text-xs text-slate-500">
             Fleet-style chat view while keeping driver communication flow unchanged.
           </p> */}

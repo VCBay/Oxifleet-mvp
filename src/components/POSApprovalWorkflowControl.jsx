@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   CalendarClock,
   CheckCircle2,
@@ -27,7 +33,10 @@ import {
   subscribeServiceOrders,
 } from "../data/serviceOrderStore";
 
-const normalize = (value) => String(value || "").trim().toLowerCase();
+const normalize = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const toNumber = (value) => {
   const parsed = Number(value);
@@ -134,17 +143,18 @@ function POSApprovalWorkflowControl({
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
     getPosOrderState,
-    getPosOrderState
+    getPosOrderState,
   );
   const serviceOrderState = useSyncExternalStore(
     subscribeServiceOrders,
     getServiceOrderState,
-    getServiceOrderState
+    getServiceOrderState,
   );
 
   const [selectedPosOrderId, setSelectedPosOrderId] = useState("");
   const [approvalNote, setApprovalNote] = useState("");
-  const [selectedApprovalRequestId, setSelectedApprovalRequestId] = useState("");
+  const [selectedApprovalRequestId, setSelectedApprovalRequestId] =
+    useState("");
   const [correctionNote, setCorrectionNote] = useState("");
   const [detailsModal, setDetailsModal] = useState({
     open: false,
@@ -176,12 +186,12 @@ function POSApprovalWorkflowControl({
 
   const submittedOrders = useMemo(
     () => posOrderState.submittedOrders,
-    [posOrderState.submittedOrders]
+    [posOrderState.submittedOrders],
   );
 
   const vehiclesById = useMemo(
     () => new Map(vehicles.map((vehicle) => [vehicle.id, vehicle])),
-    [vehicles]
+    [vehicles],
   );
 
   const approvalRequests = useMemo(
@@ -197,7 +207,7 @@ function POSApprovalWorkflowControl({
           const tb = new Date(b.updatedAt || b.requestedAt).getTime() || 0;
           return tb - ta;
         }),
-    [serviceOrderState.orders]
+    [serviceOrderState.orders],
   );
 
   const latestRequestByOrderId = useMemo(() => {
@@ -215,7 +225,11 @@ function POSApprovalWorkflowControl({
       serviceOrderState.orders
         .filter((order) => {
           const status = normalize(order.status);
-          if (status.includes("rejected") || status.includes("completed") || status.includes("closed")) {
+          if (
+            status.includes("rejected") ||
+            status.includes("completed") ||
+            status.includes("closed")
+          ) {
             return false;
           }
           return (
@@ -230,12 +244,14 @@ function POSApprovalWorkflowControl({
           const tb = new Date(b.updatedAt || b.requestedAt).getTime() || 0;
           return tb - ta;
         }),
-    [serviceOrderState.orders]
+    [serviceOrderState.orders],
   );
 
   const selectedQueueOrder =
-    serviceQueue.find((order) => order.id === (selectedQueueOrderId || serviceQueue[0]?.id || "")) ||
-    null;
+    serviceQueue.find(
+      (order) =>
+        order.id === (selectedQueueOrderId || serviceQueue[0]?.id || ""),
+    ) || null;
 
   const posOrderStatusRows = useMemo(
     () =>
@@ -250,12 +266,13 @@ function POSApprovalWorkflowControl({
           requestedAt: latest?.requestedAt || "",
         };
       }),
-    [latestRequestByOrderId, submittedOrders]
+    [latestRequestByOrderId, submittedOrders],
   );
 
   const selectedPosOrder =
     submittedOrders.find(
-      (order) => order.id === (selectedPosOrderId || submittedOrders[0]?.id || "")
+      (order) =>
+        order.id === (selectedPosOrderId || submittedOrders[0]?.id || ""),
     ) || null;
 
   const selectedApprovalRequest = useMemo(
@@ -263,14 +280,16 @@ function POSApprovalWorkflowControl({
       approvalRequests.find(
         (request) =>
           request.id ===
-          (selectedApprovalRequestId || latestRequestByOrderId.get(selectedPosOrder?.id)?.id || "")
+          (selectedApprovalRequestId ||
+            latestRequestByOrderId.get(selectedPosOrder?.id)?.id ||
+            ""),
       ) || null,
     [
       approvalRequests,
       latestRequestByOrderId,
       selectedApprovalRequestId,
       selectedPosOrder?.id,
-    ]
+    ],
   );
 
   const statusSummary = useMemo(
@@ -297,9 +316,9 @@ function POSApprovalWorkflowControl({
           rejected: 0,
           resubmitted: 0,
           review: 0,
-        }
+        },
       ),
-    [approvalRequests]
+    [approvalRequests],
   );
 
   const approvalOverviewCards = useMemo(() => {
@@ -394,7 +413,9 @@ function POSApprovalWorkflowControl({
     });
     setSelectedApprovalRequestId(request.id);
     setApprovalNote("");
-    setFeedback(`Approval request ${request.id} sent for ${selectedPosOrder.id}.`);
+    setFeedback(
+      `Approval request ${request.id} sent for ${selectedPosOrder.id}.`,
+    );
   };
 
   const reSubmitCorrectedOrder = () => {
@@ -403,13 +424,15 @@ function POSApprovalWorkflowControl({
       return;
     }
     const posOrderId = selectedApprovalRequest.posOrderId;
-    const sourceOrder = submittedOrders.find((order) => order.id === posOrderId) || null;
+    const sourceOrder =
+      submittedOrders.find((order) => order.id === posOrderId) || null;
     if (!sourceOrder) {
       setFeedback("Source POS order not found for re-submission.");
       return;
     }
 
-    const correctionText = correctionNote.trim() || "Corrected details and re-submitted.";
+    const correctionText =
+      correctionNote.trim() || "Corrected details and re-submitted.";
 
     setOrderLifecycleStage(selectedApprovalRequest.id, {
       stage: "Re-submitted",
@@ -430,7 +453,8 @@ function POSApprovalWorkflowControl({
       status: "Pending approval",
       orderDetails: {
         description:
-          sourceOrder.description || "Corrected order re-submitted from POS approval workflow.",
+          sourceOrder.description ||
+          "Corrected order re-submitted from POS approval workflow.",
         vendor: "POS Booking Desk",
         estimatedCost: `$${sourceOrder.total}`,
         location: "POS Center",
@@ -457,7 +481,9 @@ function POSApprovalWorkflowControl({
       return;
     }
     if (!calendarChecked || !stockChecked) {
-      setFeedback("Calendar and stock checks are required before appointment confirmation.");
+      setFeedback(
+        "Calendar and stock checks are required before appointment confirmation.",
+      );
       return;
     }
     const appointmentAt = toIsoFromLocalInput(appointmentAtLocal);
@@ -544,10 +570,13 @@ function POSApprovalWorkflowControl({
   };
 
   const modalPosOrder =
-    submittedOrders.find((order) => order.id === detailsModal.posOrderId) || null;
+    submittedOrders.find((order) => order.id === detailsModal.posOrderId) ||
+    null;
   const modalRequest = useMemo(() => {
     if (detailsModal.requestId) {
-      const direct = approvalRequests.find((request) => request.id === detailsModal.requestId);
+      const direct = approvalRequests.find(
+        (request) => request.id === detailsModal.requestId,
+      );
       if (direct) {
         return direct;
       }
@@ -556,9 +585,16 @@ function POSApprovalWorkflowControl({
       return latestRequestByOrderId.get(detailsModal.posOrderId) || null;
     }
     return null;
-  }, [approvalRequests, detailsModal.posOrderId, detailsModal.requestId, latestRequestByOrderId]);
+  }, [
+    approvalRequests,
+    detailsModal.posOrderId,
+    detailsModal.requestId,
+    latestRequestByOrderId,
+  ]);
 
-  const modalStatus = modalRequest ? getApprovalState(modalRequest.status) : "Not requested";
+  const modalStatus = modalRequest
+    ? getApprovalState(modalRequest.status)
+    : "Not requested";
 
   const selectedQueueStatus = normalize(selectedQueueOrder?.status);
   const statusAllowsAppointment =
@@ -566,16 +602,20 @@ function POSApprovalWorkflowControl({
     selectedQueueStatus.includes("pending booking");
   const statusAllowsStart = selectedQueueStatus.includes("scheduled");
   const statusAllowsCompletion = selectedQueueStatus.includes("progress");
-  const hasValidAppointmentDate = Boolean(toIsoFromLocalInput(appointmentAtLocal));
+  const hasValidAppointmentDate = Boolean(
+    toIsoFromLocalInput(appointmentAtLocal),
+  );
   const canConfirmAppointment = Boolean(
     selectedQueueOrder &&
-      statusAllowsAppointment &&
-      calendarChecked &&
-      stockChecked &&
-      hasValidAppointmentDate
+    statusAllowsAppointment &&
+    calendarChecked &&
+    stockChecked &&
+    hasValidAppointmentDate,
   );
   const canStartService = Boolean(selectedQueueOrder && statusAllowsStart);
-  const canConfirmCompletion = Boolean(selectedQueueOrder && statusAllowsCompletion);
+  const canConfirmCompletion = Boolean(
+    selectedQueueOrder && statusAllowsCompletion,
+  );
 
   const showActionSuccess = ({ title, detail }) => {
     if (actionLoaderTimeoutRef.current) {
@@ -616,7 +656,7 @@ function POSApprovalWorkflowControl({
         window.clearTimeout(actionPopupTimeoutRef.current);
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -626,7 +666,9 @@ function POSApprovalWorkflowControl({
     if (!submittedOrders.some((order) => order.id === initialPosOrderId)) {
       return;
     }
-    setSelectedPosOrderId((prev) => (prev === initialPosOrderId ? prev : initialPosOrderId));
+    setSelectedPosOrderId((prev) =>
+      prev === initialPosOrderId ? prev : initialPosOrderId,
+    );
   }, [initialPosOrderId, submittedOrders]);
 
   useEffect(() => {
@@ -637,7 +679,7 @@ function POSApprovalWorkflowControl({
       return;
     }
     setSelectedQueueOrderId((prev) =>
-      prev === initialQueueOrderId ? prev : initialQueueOrderId
+      prev === initialQueueOrderId ? prev : initialQueueOrderId,
     );
   }, [initialQueueOrderId, serviceQueue]);
 
@@ -646,17 +688,17 @@ function POSApprovalWorkflowControl({
       return;
     }
     const request = approvalRequests.find(
-      (item) => item.id === initialApprovalRequestId
+      (item) => item.id === initialApprovalRequestId,
     );
     if (!request) {
       return;
     }
     setSelectedApprovalRequestId((prev) =>
-      prev === initialApprovalRequestId ? prev : initialApprovalRequestId
+      prev === initialApprovalRequestId ? prev : initialApprovalRequestId,
     );
     if (request.posOrderId) {
       setSelectedPosOrderId((prev) =>
-        prev === request.posOrderId ? prev : request.posOrderId
+        prev === request.posOrderId ? prev : request.posOrderId,
       );
     }
   }, [approvalRequests, initialApprovalRequestId]);
@@ -686,6 +728,21 @@ function POSApprovalWorkflowControl({
 
   return (
     <section className="space-y-6">
+      <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#1d3148_0%,#0f1b33_45%,#070b14_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
+              Approval Workflow
+            </p>
+
+            <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
+              Manage and track approval requests for POS orders, coordinate with
+              fleet service team, and oversee driver-to-completion workflow for
+              approved requests - all from one centralized dashboard.
+            </p>
+          </div>
+        </div>
+      </header>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {approvalOverviewCards.map(({ icon: Icon, ...card }) => (
           <article

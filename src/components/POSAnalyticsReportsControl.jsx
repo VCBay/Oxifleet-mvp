@@ -17,10 +17,7 @@ import {
   YAxis,
 } from "recharts";
 import { figmaChartCardStyle, figmaChartTheme } from "../lib/chartTheme";
-import {
-  getPosOrderState,
-  subscribePosOrders,
-} from "../data/posOrderStore";
+import { getPosOrderState, subscribePosOrders } from "../data/posOrderStore";
 import {
   getServiceOrderState,
   subscribeServiceOrders,
@@ -29,16 +26,16 @@ import {
   getBillingFinanceState,
   subscribeBillingFinance,
 } from "../data/billingFinanceStore";
-import {
-  getDriverState,
-  subscribeDrivers,
-} from "../data/driverStore";
+import { getDriverState, subscribeDrivers } from "../data/driverStore";
 import {
   getDriverOperationsState,
   subscribeDriverOperations,
 } from "../data/driverOperationsStore";
 
-const normalize = (value) => String(value || "").trim().toLowerCase();
+const normalize = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const toTime = (value) => {
   const parsed = new Date(value);
@@ -140,20 +137,32 @@ const renderOrdersPeriodTooltip = ({ active, payload, label }) => {
       >
         Orders Period
       </p>
-      <p className="mt-1 text-sm font-semibold" style={{ color: figmaChartTheme.tooltipTitle }}>
+      <p
+        className="mt-1 text-sm font-semibold"
+        style={{ color: figmaChartTheme.tooltipTitle }}
+      >
         {label}
       </p>
       <div className="mt-2 space-y-1.5">
         {rows.map((row) => (
-          <div className="flex items-center justify-between gap-3" key={row.key}>
-            <div className="flex items-center gap-2 text-xs" style={{ color: figmaChartTheme.tooltipLabel }}>
+          <div
+            className="flex items-center justify-between gap-3"
+            key={row.key}
+          >
+            <div
+              className="flex items-center gap-2 text-xs"
+              style={{ color: figmaChartTheme.tooltipLabel }}
+            >
               <span
                 className="inline-block size-2 rounded-full"
                 style={{ backgroundColor: row.color }}
               />
               {row.label}
             </div>
-            <p className="text-xs font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+            <p
+              className="text-xs font-semibold"
+              style={{ color: figmaChartTheme.tooltipValue }}
+            >
               {row.value}
             </p>
           </div>
@@ -161,10 +170,16 @@ const renderOrdersPeriodTooltip = ({ active, payload, label }) => {
       </div>
       <div
         className="mt-2 border-t pt-1.5 text-[11px]"
-        style={{ borderColor: figmaChartTheme.tooltipBorder, color: figmaChartTheme.tooltipLabel }}
+        style={{
+          borderColor: figmaChartTheme.tooltipBorder,
+          color: figmaChartTheme.tooltipLabel,
+        }}
       >
         Total touchpoints:{" "}
-        <span className="font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+        <span
+          className="font-semibold"
+          style={{ color: figmaChartTheme.tooltipValue }}
+        >
           {totalCount}
         </span>
       </div>
@@ -176,35 +191,37 @@ function POSAnalyticsReportsControl() {
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
     getPosOrderState,
-    getPosOrderState
+    getPosOrderState,
   );
   const serviceOrderState = useSyncExternalStore(
     subscribeServiceOrders,
     getServiceOrderState,
-    getServiceOrderState
+    getServiceOrderState,
   );
   const billingState = useSyncExternalStore(
     subscribeBillingFinance,
     getBillingFinanceState,
-    getBillingFinanceState
+    getBillingFinanceState,
   );
   const driverState = useSyncExternalStore(
     subscribeDrivers,
     getDriverState,
-    getDriverState
+    getDriverState,
   );
   const opsState = useSyncExternalStore(
     subscribeDriverOperations,
     getDriverOperationsState,
-    getDriverOperationsState
+    getDriverOperationsState,
   );
 
   const submittedOrders = useMemo(
     () =>
       [...posOrderState.submittedOrders].sort(
-        (a, b) => toTime(b.submittedAt || b.updatedAt) - toTime(a.submittedAt || a.updatedAt)
+        (a, b) =>
+          toTime(b.submittedAt || b.updatedAt) -
+          toTime(a.submittedAt || a.updatedAt),
       ),
-    [posOrderState.submittedOrders]
+    [posOrderState.submittedOrders],
   );
 
   const approvalRequests = useMemo(
@@ -215,7 +232,7 @@ function POSAnalyticsReportsControl() {
           posOrderId: extractPosOrderId(order),
         }))
         .filter((order) => order.posOrderId),
-    [serviceOrderState.orders]
+    [serviceOrderState.orders],
   );
 
   const latestApprovalByPosOrder = useMemo(() => {
@@ -223,7 +240,9 @@ function POSAnalyticsReportsControl() {
     approvalRequests.forEach((request) => {
       const existing = map.get(request.posOrderId);
       const currentTs = toTime(request.updatedAt || request.requestedAt);
-      const existingTs = existing ? toTime(existing.updatedAt || existing.requestedAt) : -1;
+      const existingTs = existing
+        ? toTime(existing.updatedAt || existing.requestedAt)
+        : -1;
       if (!existing || currentTs >= existingTs) {
         map.set(request.posOrderId, request);
       }
@@ -255,7 +274,9 @@ function POSAnalyticsReportsControl() {
       }
       row.total += 1;
       const linked = latestApprovalByPosOrder.get(order.id);
-      const approvalState = linked ? getApprovalState(linked.status) : "Pending";
+      const approvalState = linked
+        ? getApprovalState(linked.status)
+        : "Pending";
       if (approvalState === "Approved") {
         row.approved += 1;
       }
@@ -269,7 +290,8 @@ function POSAnalyticsReportsControl() {
       if (month.total > 0) {
         return month;
       }
-      const seed = ordersPerPeriodFallback[index % ordersPerPeriodFallback.length];
+      const seed =
+        ordersPerPeriodFallback[index % ordersPerPeriodFallback.length];
       if (!hasAnyLiveData) {
         return {
           ...month,
@@ -288,7 +310,7 @@ function POSAnalyticsReportsControl() {
   const revenueSummary = useMemo(() => {
     const totalRevenue = billingState.invoices.reduce(
       (sum, invoice) => sum + Number(invoice.totalAmount || 0),
-      0
+      0,
     );
     const paidRevenue = billingState.invoices
       .filter((invoice) => normalize(invoice.status) === "paid")
@@ -300,7 +322,9 @@ function POSAnalyticsReportsControl() {
       .filter((invoice) => normalize(invoice.status) === "unpaid")
       .reduce((sum, invoice) => sum + Number(invoice.totalAmount || 0), 0);
     const averageInvoice =
-      billingState.invoices.length > 0 ? Math.round(totalRevenue / billingState.invoices.length) : 0;
+      billingState.invoices.length > 0
+        ? Math.round(totalRevenue / billingState.invoices.length)
+        : 0;
     return {
       totalRevenue,
       paidRevenue,
@@ -316,16 +340,19 @@ function POSAnalyticsReportsControl() {
       .filter(Boolean);
 
     const rejected = considered.filter(
-      (request) => getApprovalState(request.status) === "Rejected"
+      (request) => getApprovalState(request.status) === "Rejected",
     ).length;
     const approved = considered.filter(
-      (request) => getApprovalState(request.status) === "Approved"
+      (request) => getApprovalState(request.status) === "Approved",
     ).length;
     const pending = considered.filter(
-      (request) => getApprovalState(request.status) === "Pending"
+      (request) => getApprovalState(request.status) === "Pending",
     ).length;
 
-    const rejectionRate = considered.length > 0 ? Math.round((rejected / considered.length) * 100) : 0;
+    const rejectionRate =
+      considered.length > 0
+        ? Math.round((rejected / considered.length) * 100)
+        : 0;
 
     return {
       considered: considered.length,
@@ -341,13 +368,15 @@ function POSAnalyticsReportsControl() {
       opsState.tenantAssignments.map((assignment) => [
         normalize(assignment.driverName),
         assignment,
-      ])
+      ]),
     );
-    const tenantById = new Map(opsState.tenants.map((tenant) => [tenant.id, tenant]));
+    const tenantById = new Map(
+      opsState.tenants.map((tenant) => [tenant.id, tenant]),
+    );
     const driverByVehicleId = new Map(
       driverState.drivers
         .filter((driver) => driver.assignedVehicleId)
-        .map((driver) => [driver.assignedVehicleId, driver])
+        .map((driver) => [driver.assignedVehicleId, driver]),
     );
 
     const rows = new Map();
@@ -370,7 +399,9 @@ function POSAnalyticsReportsControl() {
 
       entry.orders += 1;
       const linked = latestApprovalByPosOrder.get(order.id);
-      const approvalState = linked ? getApprovalState(linked.status) : "Pending";
+      const approvalState = linked
+        ? getApprovalState(linked.status)
+        : "Pending";
       if (approvalState === "Approved") {
         entry.approved += 1;
       } else if (approvalState === "Rejected") {
@@ -385,7 +416,9 @@ function POSAnalyticsReportsControl() {
       .map((entry) => ({
         ...entry,
         approvalRate:
-          entry.orders > 0 ? Math.round((entry.approved / entry.orders) * 100) : 0,
+          entry.orders > 0
+            ? Math.round((entry.approved / entry.orders) * 100)
+            : 0,
       }))
       .sort((a, b) => b.orders - a.orders);
   }, [
@@ -458,6 +491,21 @@ function POSAnalyticsReportsControl() {
 
   return (
     <section className="space-y-6">
+      <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#1d3148_0%,#0f1b33_45%,#070b14_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
+              Analytics & Reports
+            </p>
+
+            <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
+              Gain insights into your POS operations with comprehensive
+              analytics and reports, empowering you to make informed decisions
+              and optimize performance.
+            </p>
+          </div>
+        </div>
+      </header>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {revenueOverviewCards.map(({ icon: Icon, ...card }) => (
           <article
@@ -469,7 +517,7 @@ function POSAnalyticsReportsControl() {
                 <Icon className="text-slate-700" size={14} />
                 {card.title}
               </p>
-                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">
                 +{card.trendPercent}% ↑
               </span>
             </div>

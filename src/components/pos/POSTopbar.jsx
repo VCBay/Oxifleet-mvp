@@ -38,7 +38,7 @@ function POSTopbar({
   }, []);
 
   return (
-    <header className="w-full border border-slate-200/70 bg-white px-3 py-3 shadow-sm sm:px-4 sm:py-3.5">
+    <header className="w-full border-slate-200/70 px-3 py-3 sm:px-4 sm:py-3.5">
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2.5">
