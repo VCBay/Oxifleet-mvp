@@ -1797,6 +1797,7 @@ function DriverDashboard() {
           ) : null}
           {activeMenu === "profile" ? (
             <DriverProfileSection
+              attachedVehicle={vehicle}
               handleProfileReset={handleProfileReset}
               handleProfileSave={handleProfileSave}
               licenseReminder={licenseReminder}

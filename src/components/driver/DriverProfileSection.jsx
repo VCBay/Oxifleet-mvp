@@ -19,6 +19,7 @@ function DriverProfileSection({
   handleProfileReset,
   profileNotice,
   licenseReminder,
+  attachedVehicle,
 }) {
   const requiredProfileFields = [
     profileForm.photoUrl,
@@ -420,6 +421,14 @@ function DriverProfileSection({
                   <span className="font-semibold text-slate-900">
                     {profileForm.licenseClass || "N/A"} /{" "}
                     {profileForm.licenseExpiry || "N/A"}
+                  </span>
+                </p>
+                <p>
+                  Attached vehicle:{" "}
+                  <span className="font-semibold text-slate-900">
+                    {attachedVehicle
+                      ? `${attachedVehicle.id} - ${attachedVehicle.model} (${attachedVehicle.plate || "N/A"})`
+                      : "Not assigned"}
                   </span>
                 </p>
                 <p>
