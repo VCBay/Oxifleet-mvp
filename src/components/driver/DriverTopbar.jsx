@@ -60,14 +60,18 @@ function DriverTopbar({
     service_request: t("driver.topbar.service_request", "Service Request"),
     communication: t("driver.topbar.communication", "Communication"),
     booking_tracking: t("driver.topbar.booking_tracking", "Booking & Tracking"),
-    documents_history: t("driver.topbar.documents_history", "Documents & History"),
+    documents_history: t(
+      "driver.topbar.documents_history",
+      "Documents & History",
+    ),
     profile: t("driver.topbar.profile", "Profile"),
   };
-  const activePageTitle = pageTitleByMenu[activeMenu] || t("driver.topbar.overview", "Dashboard");
+  const activePageTitle =
+    pageTitleByMenu[activeMenu] || t("driver.topbar.overview", "Dashboard");
 
   return (
-    <header className="w-full border-slate-200/70 px-3 py-3 sm:px-4 sm:py-3.5">
-    {/* <header className="relative z-10 w-full rounded-none border border-slate-200/70 bg-white px-3 py-3 shadow-sm sm:px-4 sm:py-3.5"> */}
+    <header className="w-full border-slate-200/70 px-3 py-3 sm:px-4 sm:py-3.5 bg-white">
+      {/* <header className="relative z-10 w-full rounded-none border border-slate-200/70 bg-white px-3 py-3 shadow-sm sm:px-4 sm:py-3.5"> */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2.5">
@@ -141,7 +145,10 @@ function DriverTopbar({
                   <div className="sidebar-scrollbar mt-3 max-h-[min(62vh,24rem)] space-y-2 overflow-y-auto pr-1 sm:max-h-[22rem]">
                     {notificationCount === 0 ? (
                       <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
-                        {t("common.noNewNotifications", "No new notifications.")}
+                        {t(
+                          "common.noNewNotifications",
+                          "No new notifications.",
+                        )}
                       </p>
                     ) : (
                       notificationItems.map((item) => {
@@ -217,7 +224,9 @@ function DriverTopbar({
                 <p className="text-xs font-semibold text-slate-900 sm:text-sm">
                   {displayName}
                 </p>
-                <p className="truncate text-xs text-slate-500">{displayEmail}</p>
+                <p className="truncate text-xs text-slate-500">
+                  {displayEmail}
+                </p>
               </div>
             </div>
           </div>

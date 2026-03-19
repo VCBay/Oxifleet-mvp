@@ -12,6 +12,13 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import {
   doesCategoryRequireDescription,
@@ -132,6 +139,8 @@ function DriverServiceRequestSection({
   isSubmittingRequest,
   onPhotoChange,
   policyValidation,
+  lastRecordedOdometer,
+  odometerError,
   eligibilityClass,
   handleSubmitSimpleRequest,
   wizardFeedback,
@@ -156,7 +165,7 @@ function DriverServiceRequestSection({
   const loadMoreTimeoutRef = useRef(null);
   const nextSectionScrollTimeoutRef = useRef(null);
   const nearestPosSectionRef = useRef(null);
-  const subServiceSectionRef = useRef(null);
+  const serviceDetailsSectionRef = useRef(null);
   const dateSlotSectionRef = useRef(null);
   const optionalDetailsSectionRef = useRef(null);
   const photoInputRef = useRef(null);
@@ -260,7 +269,7 @@ function DriverServiceRequestSection({
     nextSectionScrollTimeoutRef.current = window.setTimeout(() => {
       targetRef.current?.scrollIntoView({
         behavior: "smooth",
-        block: "center",
+        block: "start",
       });
     }, 120);
   };
@@ -339,11 +348,7 @@ function DriverServiceRequestSection({
     if (closeModal) {
       setShowAllServices(false);
     }
-    if (doesCategoryRequireSubtype(serviceValue)) {
-      scrollToSection(subServiceSectionRef);
-      return;
-    }
-    scrollToSection(nearestPosSectionRef);
+    scrollToSection(serviceDetailsSectionRef);
   };
   const handleSubtypeSelect = (subtypeValue) => {
     setRequestForm((prev) => ({
@@ -490,6 +495,10 @@ function DriverServiceRequestSection({
       setIsLoadingMoreStations(false);
     }, 140);
   };
+  const recentDriverRequests = useMemo(
+    () => driverServiceRequests.slice(0, 4),
+    [driverServiceRequests],
+  );
 
   return (
     <section className="min-w-0 space-y-4 sm:space-y-6">
@@ -544,7 +553,7 @@ function DriverServiceRequestSection({
           {requestForm.problemType ? (
             <div
               className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5"
-              ref={subServiceSectionRef}
+              ref={serviceDetailsSectionRef}
             >
               <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
                 {categoryDetails?.selectionLabel || "Service details"}
@@ -556,7 +565,8 @@ function DriverServiceRequestSection({
               {categorySubOptions.length > 0 ? (
                 <div className="mt-4 grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {categorySubOptions.map((option) => {
-                    const isSelected = requestForm.problemSubtype === option.value;
+                    const isSelected =
+                      requestForm.problemSubtype === option.value;
                     return (
                       <button
                         className={`rounded-2xl border px-4 py-3 text-left transition ${
@@ -763,9 +773,7 @@ function DriverServiceRequestSection({
             ref={optionalDetailsSectionRef}
           >
             <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-              {requiresDescription || requiresPhotos
-                ? "Required details"
-                : "Optional details"}
+              Required details
             </h2>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">
               {requiresPhotos
@@ -775,6 +783,61 @@ function DriverServiceRequestSection({
                   : "Add short note or photos if available."}
             </p>
             <div className="mt-4 space-y-3">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
+                  <span className="font-medium text-slate-700">
+                    Current odometer reading
+                  </span>
+                  <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
+                    Required
+                  </span>
+                </div>
+                <Input
+                  inputMode="numeric"
+                  onChange={(event) =>
+                    setRequestForm((prev) => ({
+                      ...prev,
+                      odometerReading: event.target.value,
+                    }))
+                  }
+                  placeholder="Enter current odometer"
+                  value={requestForm.odometerReading}
+                />
+                <div className="max-w-[10rem]">
+                  <Select
+                    onValueChange={(value) =>
+                      setRequestForm((prev) => ({
+                        ...prev,
+                        odometerUnit: value === "miles" ? "miles" : "km",
+                      }))
+                    }
+                    value={requestForm.odometerUnit || "km"}
+                  >
+                    <SelectTrigger className="bg-slate-50">
+                      <SelectValue placeholder="Unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="km">km</SelectItem>
+                      <SelectItem value="miles">miles</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-[11px] text-slate-500 sm:text-xs">
+                  Last recorded:{" "}
+                  <span className="font-semibold text-slate-700">
+                    {lastRecordedOdometer?.reading !== null &&
+                    lastRecordedOdometer?.reading !== undefined
+                      ? `${lastRecordedOdometer.reading.toLocaleString()} ${lastRecordedOdometer.unit}`
+                      : "No previous reading"}
+                  </span>
+                  {lastRecordedOdometer?.isFallback ? " (sample)" : ""}
+                </p>
+                {odometerError ? (
+                  <p className="text-[11px] text-rose-700 sm:text-xs">
+                    {odometerError}
+                  </p>
+                ) : null}
+              </div>
               <Textarea
                 onChange={(event) =>
                   setRequestForm((prev) => ({
@@ -902,6 +965,19 @@ function DriverServiceRequestSection({
                 </span>
               </p>
               <p>
+                Odometer:{" "}
+                <span className="font-semibold text-slate-900">
+                  {requestForm.odometerReading
+                    ? `${Number(
+                        String(requestForm.odometerReading).replace(
+                          /[^0-9]/g,
+                          "",
+                        ),
+                      ).toLocaleString()} ${requestForm.odometerUnit || "km"}`
+                    : "Not entered"}
+                </span>
+              </p>
+              <p>
                 Nearest Point S:{" "}
                 <span className="font-semibold text-slate-900">
                   {selectedPos?.name || "Not selected"}
@@ -956,6 +1032,94 @@ function DriverServiceRequestSection({
               ) : null}
             </div>
           </div>
+
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
+                  Recent requests
+                </h3>
+                <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+                  Your latest submitted service requests.
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  const section = window.document.getElementById(
+                    "driver-service-request-details",
+                  );
+                  section?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
+                type="button"
+                variant="outline"
+              >
+                View full history
+              </Button>
+            </div>
+
+            {recentDriverRequests.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">No requests yet.</p>
+            ) : (
+              <div className="card-list-scrollbar mt-4 max-h-[18rem] space-y-2.5 overflow-y-auto pr-1">
+                {recentDriverRequests.map((order) => {
+                  const isActive = selectedRequest?.id === order.id;
+                  return (
+                    <button
+                      className={`w-full rounded-2xl border p-3 text-left transition ${
+                        isActive
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
+                      }`}
+                      key={`recent-${order.id}`}
+                      onClick={() => {
+                        setSelectedRequestId(order.id);
+                        const section = window.document.getElementById(
+                          "driver-service-request-details",
+                        );
+                        section?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                      }}
+                      type="button"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold sm:text-sm">
+                          {order.id}
+                        </p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            isActive
+                              ? "bg-white/20 text-white"
+                              : requestStatusClass(order.status)
+                          }`}
+                        >
+                          {order.status}
+                        </span>
+                      </div>
+                      <p
+                        className={`mt-1 text-[11px] sm:text-xs ${
+                          isActive ? "text-slate-200" : "text-slate-600"
+                        }`}
+                      >
+                        {order.serviceType}
+                      </p>
+                      <p
+                        className={`mt-1 text-[10px] sm:text-xs ${
+                          isActive ? "text-slate-300" : "text-slate-500"
+                        }`}
+                      >
+                        {formatDateTime(order.requestedAt)}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </aside>
       </section>
 
@@ -979,7 +1143,7 @@ function DriverServiceRequestSection({
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
-            Your service request details
+            Full request history
           </h3>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
             {driverServiceRequests.length} requests
@@ -1082,6 +1246,21 @@ function DriverServiceRequestSection({
                       Location:{" "}
                       <span className="font-semibold text-slate-900">
                         {selectedRequest.orderDetails?.location || "N/A"}
+                      </span>
+                    </p>
+                    <p>
+                      Odometer:{" "}
+                      <span className="font-semibold text-slate-900">
+                        {selectedRequest.orderDetails?.odometerReading !==
+                          null &&
+                        selectedRequest.orderDetails?.odometerReading !==
+                          undefined
+                          ? `${Number(
+                              selectedRequest.orderDetails.odometerReading,
+                            ).toLocaleString()} ${
+                              selectedRequest.orderDetails?.odometerUnit || "km"
+                            }`
+                          : "N/A"}
                       </span>
                     </p>
                     <p>

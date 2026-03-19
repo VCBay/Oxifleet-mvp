@@ -60,12 +60,20 @@ const toDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-const parseCost = (value) => {
-  const parsed = Number(String(value || "").replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(parsed) ? parsed : 0;
+const parseOdometerReading = (value) => {
+  const normalized = String(value || "").replace(/[^0-9]/g, "");
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : null;
 };
 
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const buildFallbackOdometer = (vehicleId, unit = "km") => {
+  const numericId = Number(String(vehicleId || "").replace(/\D/g, "")) || 0;
+  const baseKm = 120000 + (numericId % 17) * 1375;
+  return unit === "miles" ? Math.round(baseKm * 0.621371) : baseKm;
+};
 
 const toIsoDate = (value) => {
   const parsed = toDate(value) || new Date();
@@ -337,21 +345,6 @@ const parseDriverMenuFromPath = (pathname) => {
   return "overview";
 };
 
-const driverSpendFallback = [
-  { spend: 420, checks: 1 },
-  { spend: 520, checks: 2 },
-  { spend: 610, checks: 2 },
-  { spend: 560, checks: 2 },
-  { spend: 700, checks: 3 },
-  { spend: 640, checks: 2 },
-  { spend: 760, checks: 3 },
-  { spend: 810, checks: 3 },
-  { spend: 780, checks: 3 },
-  { spend: 860, checks: 4 },
-  { spend: 840, checks: 3 },
-  { spend: 910, checks: 4 },
-];
-
 function DriverDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -601,103 +594,14 @@ function DriverDashboard() {
           ? 68
           : 34;
 
-    const months = Array.from({ length: 12 }).map((_, index) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (11 - index), 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      return {
-        key,
-        label: d.toLocaleDateString("en-US", { month: "short" }),
-        spend: 0,
-        checks: 0,
-      };
-    });
-
-    const monthMap = new Map(months.map((item) => [item.key, item]));
-    (vehicle.serviceHistory || []).forEach((entry) => {
-      const d = toDate(entry.date);
-      if (!d) {
-        return;
-      }
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const row = monthMap.get(key);
-      if (!row) {
-        return;
-      }
-      row.spend += parseCost(entry.cost) || 300;
-      row.checks += 1;
-    });
-
-    const hasHistory = months.some(
-      (month) => month.spend > 0 || month.checks > 0,
-    );
-    const spendTrend = months.map((month, index) => {
-      const baseline = driverSpendFallback[index % driverSpendFallback.length];
-      if (!hasHistory) {
-        return {
-          label: month.label,
-          spend: baseline.spend,
-          checks: baseline.checks,
-        };
-      }
-      if (month.spend > 0 || month.checks > 0) {
-        return {
-          label: month.label,
-          spend: Math.round(month.spend),
-          checks: month.checks,
-        };
-      }
-      return {
-        label: month.label,
-        spend: Math.round(baseline.spend * 0.45),
-        checks: Math.max(1, Math.round(baseline.checks * 0.5)),
-      };
-    });
-
-    const tyreTarget = 100;
-    const frontPsi = Number(vehicle.tyreSpecs?.frontPsi) || tyreTarget;
-    const rearPsi = Number(vehicle.tyreSpecs?.rearPsi) || tyreTarget;
-    const tyreHealthScore = clamp(
-      100 -
-        Math.round(
-          (Math.abs(frontPsi - tyreTarget) + Math.abs(rearPsi - tyreTarget)) *
-            1.8,
-        ),
-      35,
-      100,
-    );
-
-    const warrantyScore =
-      warrantyDaysRemaining === null
-        ? 50
-        : warrantyDaysRemaining < 0
-          ? 20
-          : warrantyDaysRemaining <= 60
-            ? 55
-            : 88;
-
-    const serviceReadiness =
-      daysToNextService < 0 ? 35 : daysToNextService <= 10 ? 66 : 90;
-
-    const healthIndex = [
-      { name: "Tyre Health", score: tyreHealthScore },
-      { name: "Service Eligibility", score: serviceEligibilityScore },
-      { name: "Warranty Cover", score: warrantyScore },
-      { name: "Service Readiness", score: serviceReadiness },
-    ];
-
     return {
       daysToNextService,
       warrantyDaysRemaining,
       serviceEligibilityScore,
-      spendTrend,
-      healthIndex,
     };
   }, [
     nextService.date,
     serviceEligibility.status,
-    vehicle.serviceHistory,
-    vehicle.tyreSpecs?.frontPsi,
-    vehicle.tyreSpecs?.rearPsi,
     warranty.expiryDate,
   ]);
 
@@ -750,6 +654,8 @@ function DriverDashboard() {
     problemType: "",
     problemSubtype: "",
     description: "",
+    odometerReading: "",
+    odometerUnit: "km",
     emergency: false,
     photos: [],
     preferredPosId: "",
@@ -802,40 +708,6 @@ function DriverDashboard() {
       ) || null,
     [requestForm.preferredSlotId, slotAvailability],
   );
-  const isServiceRequestFormReady = useMemo(() => {
-    const hasProblemType = Boolean(
-      String(requestForm.problemType || "").trim(),
-    );
-    const hasSubtype =
-      !doesCategoryRequireSubtype(requestForm.problemType) ||
-      Boolean(String(requestForm.problemSubtype || "").trim());
-    const hasDescription =
-      !doesCategoryRequireDescription(
-        requestForm.problemType,
-        requestForm.problemSubtype,
-      ) || Boolean(String(requestForm.description || "").trim());
-    const hasPhotos =
-      !doesCategoryRequirePhotos(requestForm.problemType) ||
-      requestForm.photos.length > 0;
-
-    return (
-      hasProblemType &&
-      hasSubtype &&
-      hasDescription &&
-      hasPhotos &&
-      Boolean(requestForm.preferredPosId) &&
-      Boolean(requestForm.preferredDate) &&
-      Boolean(selectedSlot)
-    );
-  }, [
-    requestForm.description,
-    requestForm.preferredDate,
-    requestForm.preferredPosId,
-    requestForm.problemType,
-    requestForm.problemSubtype,
-    requestForm.photos.length,
-    selectedSlot,
-  ]);
 
   useEffect(() => {
     const expectedPath = `/driver-dashboard/${driverMenuRouteMap[activeMenu]}`;
@@ -928,6 +800,87 @@ function DriverDashboard() {
     [driverScopedOrders],
   );
 
+  const lastRecordedOdometer = useMemo(() => {
+    const latestWithReading = driverScopedOrders.find(
+      (order) =>
+        parseOdometerReading(order?.orderDetails?.odometerReading) !== null,
+    );
+    if (latestWithReading) {
+      return {
+        reading: parseOdometerReading(latestWithReading.orderDetails?.odometerReading),
+        unit:
+          String(latestWithReading.orderDetails?.odometerUnit || "km").toLowerCase() ===
+          "miles"
+            ? "miles"
+            : "km",
+        isFallback: false,
+      };
+    }
+    return {
+      reading: buildFallbackOdometer(vehicle.id, requestForm.odometerUnit),
+      unit: requestForm.odometerUnit,
+      isFallback: true,
+    };
+  }, [driverScopedOrders, requestForm.odometerUnit, vehicle.id]);
+
+  const currentOdometerReading = useMemo(
+    () => parseOdometerReading(requestForm.odometerReading),
+    [requestForm.odometerReading],
+  );
+
+  const odometerError = useMemo(() => {
+    if (!String(requestForm.odometerReading || "").trim()) {
+      return "Current odometer reading is required.";
+    }
+    if (currentOdometerReading === null) {
+      return "Enter a valid odometer reading.";
+    }
+    if (
+      lastRecordedOdometer?.reading !== null &&
+      currentOdometerReading < lastRecordedOdometer.reading
+    ) {
+      return `Current odometer cannot be less than the last recorded reading of ${lastRecordedOdometer.reading.toLocaleString()} ${lastRecordedOdometer.unit}.`;
+    }
+    return "";
+  }, [currentOdometerReading, lastRecordedOdometer, requestForm.odometerReading]);
+
+  const isServiceRequestFormReady = useMemo(() => {
+    const hasProblemType = Boolean(
+      String(requestForm.problemType || "").trim(),
+    );
+    const hasSubtype =
+      !doesCategoryRequireSubtype(requestForm.problemType) ||
+      Boolean(String(requestForm.problemSubtype || "").trim());
+    const hasDescription =
+      !doesCategoryRequireDescription(
+        requestForm.problemType,
+        requestForm.problemSubtype,
+      ) || Boolean(String(requestForm.description || "").trim());
+    const hasPhotos =
+      !doesCategoryRequirePhotos(requestForm.problemType) ||
+      requestForm.photos.length > 0;
+
+    return (
+      hasProblemType &&
+      hasSubtype &&
+      hasDescription &&
+      hasPhotos &&
+      !odometerError &&
+      Boolean(requestForm.preferredPosId) &&
+      Boolean(requestForm.preferredDate) &&
+      Boolean(selectedSlot)
+    );
+  }, [
+    odometerError,
+    requestForm.description,
+    requestForm.preferredDate,
+    requestForm.preferredPosId,
+    requestForm.problemType,
+    requestForm.problemSubtype,
+    requestForm.photos.length,
+    selectedSlot,
+  ]);
+
   const selectedRequest = useMemo(() => {
     if (driverServiceRequests.length === 0) {
       return null;
@@ -965,8 +918,8 @@ function DriverDashboard() {
   const driverNotificationCount = visibleBookingNotifications.length;
 
   const documentsHistoryRows = useMemo(() => {
-    const fromVehicleHistory = (vehicle.serviceHistory || []).map(
-      (entry, index) => {
+    return (vehicle.serviceHistory || [])
+      .map((entry, index) => {
         const event = String(entry?.event || "Service update");
         return {
           id: `VH-SVC-${index + 1}`,
@@ -976,48 +929,18 @@ function DriverDashboard() {
           isTyre: normalizeValue(event).includes("tyre"),
           cost: entry?.cost || "N/A",
           location: tenant?.region || "N/A",
-          details: `${event} recorded in assigned vehicle history.`,
-          documentNo: `INV-${String(vehicle.id || "VH")
+          details: `${event} recorded in assigned vehicle service history.`,
+          documentNo: `SVC-${String(vehicle.id || "VH")
             .replace(/[^A-Z0-9]/gi, "")
             .toUpperCase()}-${String(index + 1).padStart(3, "0")}`,
         };
-      },
-    );
-
-    const fromRequests = driverServiceRequests.map((order, index) => {
-      const type = String(order?.serviceType || "Service request");
-      return {
-        id: order.id,
-        source: "Service request",
-        date:
-          order?.updatedAt || order?.requestedAt || new Date().toISOString(),
-        title: type,
-        isTyre: normalizeValue(type).includes("tyre"),
-        cost: order?.orderDetails?.estimatedCost || "N/A",
-        location: order?.orderDetails?.location || tenant?.region || "N/A",
-        details:
-          order?.orderDetails?.description ||
-          order?.orderDetails?.notes ||
-          "No additional details.",
-        status: order?.status || "Pending",
-        documentNo: `RCPT-${String(order.id || `ROW-${index + 1}`)
-          .replace(/[^A-Z0-9-]/gi, "")
-          .toUpperCase()}`,
-      };
-    });
-
-    return [...fromRequests, ...fromVehicleHistory]
+      })
       .sort(
         (a, b) =>
           (toDate(b.date)?.getTime() || 0) - (toDate(a.date)?.getTime() || 0),
       )
       .slice(0, 30);
-  }, [
-    driverServiceRequests,
-    tenant?.region,
-    vehicle.id,
-    vehicle.serviceHistory,
-  ]);
+  }, [tenant?.region, vehicle.id, vehicle.serviceHistory]);
 
   const tyreReplacementHistory = useMemo(
     () => documentsHistoryRows.filter((row) => row.isTyre),
@@ -1027,6 +950,43 @@ function DriverDashboard() {
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [profileForm, setProfileForm] = useState(initialProfileForm);
   const [profileNotice, setProfileNotice] = useState("");
+  const licenseReminder = useMemo(() => {
+    const expiry = toDate(profileForm.licenseExpiry);
+    if (!expiry) {
+      return {
+        daysRemaining: null,
+        status: "Unknown",
+        tone: "bg-slate-100 text-slate-700",
+        note: "Add a license expiry date to enable reminders.",
+      };
+    }
+    const now = new Date();
+    const daysRemaining = Math.ceil(
+      (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    if (daysRemaining < 0) {
+      return {
+        daysRemaining,
+        status: "Expired",
+        tone: "bg-rose-100 text-rose-700",
+        note: `License expired on ${formatDate(profileForm.licenseExpiry)}. Update it immediately.`,
+      };
+    }
+    if (daysRemaining <= 30) {
+      return {
+        daysRemaining,
+        status: "Due soon",
+        tone: "bg-amber-100 text-amber-700",
+        note: `License check required within ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}.`,
+      };
+    }
+    return {
+      daysRemaining,
+      status: "Valid",
+      tone: "bg-emerald-100 text-emerald-700",
+      note: `License valid until ${formatDate(profileForm.licenseExpiry)}.`,
+    };
+  }, [formatDate, profileForm.licenseExpiry]);
   const selectedDocument = useMemo(() => {
     if (documentsHistoryRows.length === 0) {
       return null;
@@ -1305,6 +1265,8 @@ function DriverDashboard() {
     const serviceLabel = requestForm.problemSubtype
       ? `${requestForm.problemType} - ${requestForm.problemSubtype}`
       : requestForm.problemType;
+    const odometerReading = parseOdometerReading(requestForm.odometerReading);
+    const odometerUnit = requestForm.odometerUnit === "miles" ? "miles" : "km";
     const order = createServiceRequest({
       vehicleId: vehicle.id || "N/A",
       vehicleModel: vehicle.model || "Assigned Fleet Vehicle",
@@ -1321,10 +1283,13 @@ function DriverDashboard() {
         vendor: selectedPosName,
         estimatedCost: `$${estimatedCost.total}`,
         location: selectedPos?.address || tenant?.region || "N/A",
+        odometerReading,
+        odometerUnit,
         notes: [
           `Tenant: ${tenant?.name || "N/A"}`,
           `Category: ${requestForm.problemType || "N/A"}`,
           `Subcategory: ${requestForm.problemSubtype || "N/A"}`,
+          `Odometer reading: ${odometerReading?.toLocaleString() || "N/A"} ${odometerUnit}`,
           `Preferred Point S station: ${selectedPosName} (${selectedPos?.distanceKm ?? "N/A"} km, ETA ${
             selectedPos?.etaMin ?? "N/A"
           } min)`,
@@ -1373,6 +1338,14 @@ function DriverDashboard() {
       const message = "Upload at least one photo for the damage report.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
+      return;
+    }
+    if (odometerError) {
+      setWizardFeedback(odometerError);
+      toast.error("Request not sent", {
+        description: odometerError,
+        duration: 3200,
+      });
       return;
     }
     if (!requestForm.preferredPosId) {
@@ -1429,6 +1402,8 @@ function DriverDashboard() {
         problemType: "",
         problemSubtype: "",
         description: "",
+        odometerReading: "",
+        odometerUnit: requestForm.odometerUnit,
         emergency: false,
         photos: [],
         preferredPosId: "",
@@ -1445,31 +1420,65 @@ function DriverDashboard() {
     }
   };
 
-  const handleDownloadReceipt = (row) => {
+  const handleDownloadServiceDetails = (row) => {
     if (!row || typeof window === "undefined") {
       return;
     }
 
-    const content = [
-      "Oxifleet Service Receipt",
-      `Document: ${row.documentNo}`,
-      `Service: ${row.title}`,
-      `Date: ${formatDateTime(row.date)}`,
-      `Source: ${row.source}`,
-      `Cost: ${row.cost}`,
-      `Location: ${row.location}`,
+    const printWindow = window.open(
       "",
-      "Details:",
-      row.details || "N/A",
-    ].join("\n");
+      "_blank",
+      "noopener,noreferrer,width=900,height=700",
+    );
+    if (!printWindow) {
+      toast.error("Unable to open print dialog", {
+        description: "Please allow pop-ups to save service details as PDF.",
+        duration: 3600,
+      });
+      return;
+    }
 
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = window.URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${row.documentNo}.txt`;
-    anchor.click();
-    window.URL.revokeObjectURL(url);
+    const content = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${row.documentNo} - Service Details</title>
+    <style>
+      body { font-family: Arial, sans-serif; color: #0f172a; margin: 32px; }
+      h1 { font-size: 24px; margin: 0 0 8px; }
+      h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin: 24px 0 8px; }
+      .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; margin-top: 20px; }
+      .meta p { margin: 0; font-size: 14px; }
+      .label { color: #475569; font-weight: 600; }
+      .card { border: 1px solid #cbd5e1; border-radius: 16px; padding: 16px; background: #f8fafc; margin-top: 16px; }
+      .badge { display: inline-block; margin-top: 16px; padding: 6px 12px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 12px; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <h1>Service Details</h1>
+    <p>${row.title}</p>
+    <div class="meta">
+      <p><span class="label">Document:</span> ${row.documentNo}</p>
+      <p><span class="label">Source:</span> ${row.source}</p>
+      <p><span class="label">Date:</span> ${formatDateTime(row.date)}</p>
+      <p><span class="label">Location:</span> ${row.location}</p>
+    </div>
+    <div class="card">
+      <h2>Details</h2>
+      <p>${String(row.details || "N/A").replace(/\n/g, "<br />")}</p>
+    </div>
+    ${row.isTyre ? '<div class="badge">Tyre replacement history</div>' : ""}
+    <script>
+      window.onload = function () {
+        window.print();
+      };
+    </script>
+  </body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
   };
 
   const handleSendCommunicationMessage = () => {
@@ -1709,8 +1718,11 @@ function DriverDashboard() {
           {activeMenu === "overview" ? (
             <DriverOverviewSection
               analytics={analytics}
+              driverServiceRequests={driverServiceRequests}
               eligibilityClass={eligibilityClass}
               formatDate={formatDate}
+              formatDateTime={formatDateTime}
+              licenseReminder={licenseReminder}
               matchingPolicies={matchingPolicies}
               nextService={nextService}
               seasonalReminder={seasonalReminder}
@@ -1727,6 +1739,8 @@ function DriverDashboard() {
               handleSubmitSimpleRequest={handleSubmitSimpleRequest}
               nearestPosOptions={nearestPosOptions}
               onPhotoChange={onPhotoChange}
+              lastRecordedOdometer={lastRecordedOdometer}
+              odometerError={odometerError}
               policyValidation={policyValidation}
               requestForm={requestForm}
               requestStatusClass={requestStatusClass}
@@ -1746,7 +1760,7 @@ function DriverDashboard() {
             <DriverDocumentsHistorySection
               documentsHistoryRows={documentsHistoryRows}
               formatDateTime={formatDateTime}
-              handleDownloadReceipt={handleDownloadReceipt}
+              handleDownloadServiceDetails={handleDownloadServiceDetails}
               selectedDocument={selectedDocument}
               setSelectedDocumentId={setSelectedDocumentId}
               tyreReplacementHistory={tyreReplacementHistory}
@@ -1783,8 +1797,10 @@ function DriverDashboard() {
           ) : null}
           {activeMenu === "profile" ? (
             <DriverProfileSection
+              attachedVehicle={vehicle}
               handleProfileReset={handleProfileReset}
               handleProfileSave={handleProfileSave}
+              licenseReminder={licenseReminder}
               profileForm={profileForm}
               profileInitials={profileInitials}
               profileNotice={profileNotice}

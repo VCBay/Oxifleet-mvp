@@ -18,6 +18,8 @@ function DriverProfileSection({
   handleProfileSave,
   handleProfileReset,
   profileNotice,
+  licenseReminder,
+  attachedVehicle,
 }) {
   const requiredProfileFields = [
     profileForm.photoUrl,
@@ -260,6 +262,15 @@ function DriverProfileSection({
             <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
               <h3 className="text-base font-semibold text-slate-900 sm:text-lg">License details</h3>
               <div className="mt-4 space-y-3">
+                <div className={`rounded-2xl border px-3 py-3 text-xs font-medium ${licenseReminder.tone}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>License check reminder</span>
+                    <span className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-slate-900">
+                      {licenseReminder.status}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-700">{licenseReminder.note}</p>
+                </div>
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     License number
@@ -410,6 +421,14 @@ function DriverProfileSection({
                   <span className="font-semibold text-slate-900">
                     {profileForm.licenseClass || "N/A"} /{" "}
                     {profileForm.licenseExpiry || "N/A"}
+                  </span>
+                </p>
+                <p>
+                  Attached vehicle:{" "}
+                  <span className="font-semibold text-slate-900">
+                    {attachedVehicle
+                      ? `${attachedVehicle.id} - ${attachedVehicle.model} (${attachedVehicle.plate || "N/A"})`
+                      : "Not assigned"}
                   </span>
                 </p>
                 <p>
