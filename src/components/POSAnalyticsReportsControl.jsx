@@ -43,6 +43,9 @@ const toTime = (value) => {
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 };
 
+const isOrderVisibleToPos = (order) =>
+  normalize(order?.orderDetails?.routeTo || "pos") !== "fleet-only";
+
 const monthKey = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -229,6 +232,7 @@ function POSAnalyticsReportsControl() {
   const approvalRequests = useMemo(
     () =>
       serviceOrderState.orders
+        .filter(isOrderVisibleToPos)
         .map((order) => ({
           ...order,
           posOrderId: extractPosOrderId(order),
@@ -433,7 +437,7 @@ function POSAnalyticsReportsControl() {
 
   const topServicedVehicles = useMemo(() => {
     const map = new Map();
-    serviceOrderState.orders.forEach((order) => {
+    serviceOrderState.orders.filter(isOrderVisibleToPos).forEach((order) => {
       const key = order.vehicleId || "N/A";
       const entry = map.get(key) || {
         vehicleId: key,

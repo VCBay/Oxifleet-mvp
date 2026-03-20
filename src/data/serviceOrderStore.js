@@ -62,6 +62,17 @@ const normalizeLifecycleEntry = (entry) => ({
   note: String(entry?.note || "").trim(),
 });
 
+const normalizeAttachment = (attachment = {}) => ({
+  id: String(attachment?.id || "").trim(),
+  name: String(attachment?.name || "Attachment").trim(),
+  size: Number.isFinite(Number(attachment?.size))
+    ? Number(attachment.size)
+    : 0,
+  mimeType: String(attachment?.mimeType || "application/octet-stream").trim(),
+  uploadedAt: attachment?.uploadedAt ? toIsoString(attachment.uploadedAt) : "",
+  dataUrl: String(attachment?.dataUrl || "").trim(),
+});
+
 const normalizeAppointment = (appointment = {}) => ({
   dateTime: appointment?.dateTime ? toIsoString(appointment.dateTime) : "",
   confirmedBy: String(appointment?.confirmedBy || "").trim(),
@@ -96,6 +107,35 @@ const normalizeSettlement = (settlement = {}) => ({
   note: String(settlement?.note || "").trim(),
 });
 
+const normalizeRecommendation = (recommendation = null) => {
+  if (!recommendation || typeof recommendation !== "object") {
+    return null;
+  }
+  const levelRaw = String(recommendation?.level || "")
+    .trim()
+    .toLowerCase();
+  const level =
+    levelRaw === "high" || levelRaw === "medium" || levelRaw === "low"
+      ? levelRaw
+      : "low";
+  const title = String(recommendation?.title || "").trim();
+  const summary = String(recommendation?.summary || "").trim();
+  const suggestion = String(recommendation?.suggestion || "").trim();
+  const suggestedCategory = String(recommendation?.suggestedCategory || "").trim();
+
+  if (!title && !summary && !suggestion && !suggestedCategory) {
+    return null;
+  }
+
+  return {
+    level,
+    title,
+    summary,
+    suggestion,
+    suggestedCategory,
+  };
+};
+
 const normalizeOrder = (order = {}) => {
   const emergency = Boolean(order.emergency);
   const status = String(order.status || "Pending").trim() || "Pending";
@@ -128,6 +168,16 @@ const normalizeOrder = (order = {}) => {
       estimatedCost: String(order.orderDetails?.estimatedCost || "N/A").trim(),
       location: String(order.orderDetails?.location || "N/A").trim(),
       notes: String(order.orderDetails?.notes || "").trim(),
+      routeTo:
+        String(order.orderDetails?.routeTo || "pos").trim().toLowerCase() ===
+        "fleet-only"
+          ? "fleet-only"
+          : "pos",
+      attachments: Array.isArray(order.orderDetails?.attachments)
+        ? order.orderDetails.attachments
+            .map(normalizeAttachment)
+            .filter((item) => Boolean(item.dataUrl))
+        : [],
       odometerReading: toNullableNonNegativeInteger(
         order.orderDetails?.odometerReading,
       ),
@@ -136,6 +186,10 @@ const normalizeOrder = (order = {}) => {
         "miles"
           ? "miles"
           : "km",
+      recommendationAccepted: Boolean(
+        order.orderDetails?.recommendationAccepted,
+      ),
+      recommendation: normalizeRecommendation(order.orderDetails?.recommendation),
     },
     approval: {
       decision: String(order.approval?.decision || "").trim(),

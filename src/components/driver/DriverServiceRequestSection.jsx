@@ -5,6 +5,7 @@ import {
   CircleDashed,
   Loader2,
   MapPin,
+  Sparkles,
   Trash2,
   TriangleAlert,
   Wrench,
@@ -27,6 +28,7 @@ import {
   getCategoryDetails,
   getCategorySubOptions,
 } from "../../data/driverBookingCatalog";
+import { evaluateTyreStock } from "../../data/tyreInventoryStore";
 
 const problemPictogramMap = {
   tyre: {
@@ -77,6 +79,35 @@ const buildDateChips = (baseValue) => {
 const STATION_SEARCH_DEBOUNCE_MS = 300;
 const STATION_MODAL_BATCH_SIZE = 24;
 const STATION_MODAL_SCROLL_THROTTLE_MS = 180;
+const TYRE_SUPPLY_REQUIRED_SUBTYPES = new Set([
+  "Tyre change (seasonal change)",
+  "New tyre installation",
+]);
+
+const requiresTyreSupplySelection = (problemType, problemSubtype) =>
+  String(problemType || "").trim() === "Reifen" &&
+  TYRE_SUPPLY_REQUIRED_SUBTYPES.has(String(problemSubtype || "").trim());
+
+const normalizeText = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ");
+
+const toTimestamp = (value) => {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+};
+
+const getSlotKeyFromDateTime = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  const hours = String(parsed.getHours()).padStart(2, "0");
+  const minutes = String(parsed.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
 
 function ServiceCategoryCard({ option, isSelected, onSelect, cardKey }) {
   const pictogram =
@@ -85,49 +116,38 @@ function ServiceCategoryCard({ option, isSelected, onSelect, cardKey }) {
 
   return (
     <button
-      className={`min-w-0 rounded-2xl border p-2.5 text-left transition sm:p-4 ${
+      className={`min-w-0 rounded-xl border p-1.5 text-left transition sm:rounded-2xl sm:p-4 ${
         isSelected
-          ? "border-slate-900 bg-slate-900 text-white shadow-lg"
-          : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
+          ? "border-slate-900 bg-[linear-gradient(180deg,#1f2f47_0%,#0f1d33_52%,#0a1322_100%)] text-white shadow-lg"
+          : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400 hover:bg-white"
       }`}
       key={cardKey || option.value}
       onClick={onSelect}
       type="button"
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex min-h-[72px] flex-col items-center justify-center gap-1.5 sm:min-h-[96px] sm:gap-2.5">
         <span
-          className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg border shadow-sm sm:size-10 ${
+          className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg border shadow-sm sm:size-11 sm:rounded-xl ${
             isSelected
               ? "border-white/35 bg-white/15 text-white"
               : pictogram.accentClass
           }`}
         >
-          <Icon size={16} strokeWidth={2.2} />
+          <Icon size={14} strokeWidth={2.2} className="sm:size-[18px]" />
         </span>
-        <span
-          className={`max-w-[62%] truncate rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] sm:max-w-none sm:text-[11px] ${
-            isSelected
-              ? "bg-white/15 text-slate-100"
-              : "bg-slate-200 text-slate-600"
-          }`}
-          title={pictogram.badge}
+        <p
+          className="w-full truncate text-center text-[9px] font-semibold leading-tight sm:text-sm"
+          title={option.label}
         >
-          {pictogram.badge}
-        </span>
+          {option.label}
+        </p>
       </div>
-      <p className="mt-2.5 text-[13px] font-semibold leading-snug sm:mt-3 sm:text-sm">
-        {option.label}
-      </p>
-      <p
-        className={`mt-1 text-[11px] leading-snug sm:text-xs ${isSelected ? "text-slate-200" : "text-slate-500"}`}
-      >
-        {option.hint}
-      </p>
     </button>
   );
 }
 
 function DriverServiceRequestSection({
+  assignedVehicle = null,
   simpleIssueOptions,
   requestForm,
   setRequestForm,
@@ -141,6 +161,7 @@ function DriverServiceRequestSection({
   policyValidation,
   lastRecordedOdometer,
   odometerError,
+  odometerRecommendation,
   eligibilityClass,
   handleSubmitSimpleRequest,
   wizardFeedback,
@@ -155,6 +176,8 @@ function DriverServiceRequestSection({
     simpleIssueOptions.map((option) => option.value),
   );
   const [showAllStations, setShowAllStations] = useState(false);
+  const [showTyreSupplyModal, setShowTyreSupplyModal] = useState(false);
+  const [pendingPosSelection, setPendingPosSelection] = useState(null);
   const [stationSearch, setStationSearch] = useState("");
   const [debouncedStationSearch, setDebouncedStationSearch] = useState("");
   const [visibleStationCount, setVisibleStationCount] = useState(
@@ -228,6 +251,48 @@ function DriverServiceRequestSection({
   }, [nearestPosOptions, selectedPos]);
   const hasMoreStations = nearestPosOptions.length > inlineStationLimit;
   const totalStationsCount = nearestPosOptions.length;
+  const selectedServiceOption = useMemo(
+    () =>
+      simpleIssueOptions.find(
+        (item) => String(item.value || "").trim() === requestForm.problemType,
+      ) || null,
+    [requestForm.problemType, simpleIssueOptions],
+  );
+  const needsTyreSupplySelection = useMemo(
+    () =>
+      requiresTyreSupplySelection(
+        requestForm.problemType,
+        requestForm.problemSubtype,
+      ),
+    [requestForm.problemSubtype, requestForm.problemType],
+  );
+  const isDamageReportFlow = useMemo(
+    () => String(requestForm.problemType || "").trim() === "Schadensmeldung",
+    [requestForm.problemType],
+  );
+  const isTyreStockBlocked =
+    needsTyreSupplySelection &&
+    requestForm.tyreSupplySource === "pos" &&
+    requestForm.posTyreAvailability === false;
+  const requiredTyreQty = useMemo(
+    () => (needsTyreSupplySelection ? 4 : 1),
+    [needsTyreSupplySelection],
+  );
+  const tyreAvailabilityForSelectedSubtype = useMemo(() => {
+    if (!needsTyreSupplySelection) {
+      return null;
+    }
+    return evaluateTyreStock({
+      size: assignedVehicle?.tyreSpecs?.size || "",
+      preferredBrand: assignedVehicle?.tyreSpecs?.brand || "",
+      requiredQty: requiredTyreQty,
+    });
+  }, [
+    assignedVehicle?.tyreSpecs?.brand,
+    assignedVehicle?.tyreSpecs?.size,
+    needsTyreSupplySelection,
+    requiredTyreQty,
+  ]);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -329,7 +394,10 @@ function DriverServiceRequestSection({
       description: "",
       photos: [],
       preferredPosId: "",
+      preferredDate: "",
       preferredSlotId: "",
+      tyreSupplySource: "",
+      posTyreAvailability: null,
     }));
     if (moveToIndex !== null && Number.isInteger(moveToIndex)) {
       setServiceOrder((prev) => {
@@ -354,11 +422,48 @@ function DriverServiceRequestSection({
     setRequestForm((prev) => ({
       ...prev,
       problemSubtype: subtypeValue,
+      preferredPosId: "",
+      preferredDate: "",
+      preferredSlotId: "",
+      tyreSupplySource: "",
+      posTyreAvailability: null,
     }));
     scrollToSection(nearestPosSectionRef);
   };
   const policyStatusLabel = "Covered";
   const policyStatusClass = eligibilityClass("Allowed");
+  const recommendationTone = useMemo(() => {
+    if (!odometerRecommendation) {
+      return {
+        card: "",
+        badge: "",
+        icon: "bg-slate-100 text-slate-700",
+        check: "accent-slate-700",
+      };
+    }
+    if (odometerRecommendation.level === "high") {
+      return {
+        card: "border-rose-200 bg-gradient-to-br from-rose-50 via-rose-50 to-orange-50",
+        badge: "bg-rose-600 text-white",
+        icon: "bg-rose-100 text-rose-700",
+        check: "accent-rose-600",
+      };
+    }
+    if (odometerRecommendation.level === "medium") {
+      return {
+        card: "border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50",
+        badge: "bg-amber-600 text-white",
+        icon: "bg-amber-100 text-amber-700",
+        check: "accent-amber-600",
+      };
+    }
+    return {
+      card: "border-sky-200 bg-gradient-to-br from-sky-50 via-cyan-50 to-indigo-50",
+      badge: "bg-sky-600 text-white",
+      icon: "bg-sky-100 text-sky-700",
+      check: "accent-sky-600",
+    };
+  }, [odometerRecommendation]);
   const clearAllPhotos = () => {
     setRequestForm((prev) => ({ ...prev, photos: [] }));
     if (photoInputRef.current) {
@@ -376,29 +481,78 @@ function DriverServiceRequestSection({
       photoInputRef.current.value = "";
     }
   };
-  const renderStationCard = (pos, { closeOnSelect = false } = {}) => {
+  const applyPosSelection = (
+    pos,
+    {
+      closeOnSelect = false,
+      tyreSupplySource = "",
+      posTyreAvailability = null,
+    } = {},
+  ) => {
+    if (!pos?.id) {
+      return;
+    }
+    setRequestForm((prev) => ({
+      ...prev,
+      preferredPosId: pos.id,
+      preferredSlotId: "",
+      tyreSupplySource,
+      posTyreAvailability,
+      preferredDate:
+        tyreSupplySource === "pos" && posTyreAvailability === false
+          ? ""
+          : prev.preferredDate,
+    }));
+    if (closeOnSelect) {
+      setShowAllStations(false);
+    }
+    setShowTyreSupplyModal(false);
+    setPendingPosSelection(null);
+    scrollToSection(dateSlotSectionRef);
+  };
+  const handlePosSelection = (pos, { closeOnSelect = false } = {}) => {
+    if (!needsTyreSupplySelection) {
+      applyPosSelection(pos, {
+        closeOnSelect,
+        tyreSupplySource: "",
+        posTyreAvailability: null,
+      });
+      return;
+    }
+    setPendingPosSelection({ pos, closeOnSelect });
+    setShowTyreSupplyModal(true);
+  };
+  const renderStationCard = (
+    pos,
+    { closeOnSelect = false, isRecommended = false } = {},
+  ) => {
     const isSelected = requestForm.preferredPosId === pos.id;
     return (
       <button
-        className={`min-w-0 rounded-xl border p-2.5 text-left transition sm:p-3 ${
+        className={`relative min-w-0 rounded-xl border p-2.5 text-left transition sm:p-3 ${
           isSelected
             ? "border-slate-900 bg-slate-900 text-white"
             : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
+        } ${
+          isRecommended && !isSelected
+            ? "ring-1 ring-violet-300/70 ring-offset-1 ring-offset-white"
+            : ""
         }`}
         key={pos.id}
-        onClick={() => {
-          setRequestForm((prev) => ({
-            ...prev,
-            preferredPosId: pos.id,
-            preferredSlotId: "",
-          }));
-          if (closeOnSelect) {
-            setShowAllStations(false);
-          }
-          scrollToSection(dateSlotSectionRef);
-        }}
+        onClick={() => handlePosSelection(pos, { closeOnSelect })}
         type="button"
       >
+        {isRecommended ? (
+          <span
+            className={`pointer-events-none absolute -top-1.5 left-1/2 z-20 inline-flex -translate-x-1/2 rounded-full border px-2 py-[2px] text-[9px] font-bold uppercase tracking-[0.05em] shadow-lg ${
+              isSelected
+                ? "border-amber-200 bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-300 text-amber-950"
+                : "border-fuchsia-200 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 text-white"
+            }`}
+          >
+            Recommended
+          </span>
+        ) : null}
         <div className="flex min-h-[110px] flex-col">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -410,7 +564,7 @@ function DriverServiceRequestSection({
                       : "bg-sky-100 text-sky-700"
                   }`}
                 >
-                  Point S Partner
+                  PoS Partner
                 </p>
               ) : null}
               <p
@@ -441,6 +595,33 @@ function DriverServiceRequestSection({
           >
             ETA {pos.etaMin} mins
           </p>
+          {needsTyreSupplySelection && tyreAvailabilityForSelectedSubtype ? (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  tyreAvailabilityForSelectedSubtype.canFulfill
+                    ? isSelected
+                      ? "bg-emerald-200/30 text-emerald-100"
+                      : "bg-emerald-100 text-emerald-700"
+                    : isSelected
+                      ? "bg-rose-200/30 text-rose-100"
+                      : "bg-rose-100 text-rose-700"
+                }`}
+              >
+                {tyreAvailabilityForSelectedSubtype.canFulfill
+                  ? "Tyres available"
+                  : "Tyres unavailable"}
+              </span>
+              <span
+                className={`text-[10px] ${
+                  isSelected ? "text-slate-300" : "text-slate-500"
+                }`}
+              >
+                {tyreAvailabilityForSelectedSubtype.totalAvailable}/
+                {requiredTyreQty} available
+              </span>
+            </div>
+          ) : null}
           {Array.isArray(pos.capabilities) && pos.capabilities.length > 0 ? (
             <div className="mt-auto flex flex-wrap gap-1 pt-2">
               {pos.capabilities.slice(0, 3).map((tag) => (
@@ -499,6 +680,220 @@ function DriverServiceRequestSection({
     () => driverServiceRequests.slice(0, 4),
     [driverServiceRequests],
   );
+  const bestRecommendedStation = useMemo(() => {
+    if (nearestPosOptions.length === 0) {
+      return null;
+    }
+
+    const requestedType = normalizeText(requestForm.problemType);
+    const requestedCapability = String(selectedServiceOption?.capability || "")
+      .trim()
+      .toLowerCase();
+
+    const rankedStations = nearestPosOptions
+      .map((pos) => {
+        const posName = normalizeText(pos.name);
+        const distanceKm = Number(pos.distanceKm || 0);
+        const etaMin = Number(pos.etaMin || 0);
+        const capabilityMatch = requestedCapability
+          ? Array.isArray(pos.capabilities) &&
+            pos.capabilities
+              .map((item) => String(item).trim().toLowerCase())
+              .includes(requestedCapability)
+          : false;
+
+        let totalHistoryVisits = 0;
+        let sameIssueVisits = 0;
+        driverServiceRequests.forEach((order) => {
+          const vendor = normalizeText(order?.orderDetails?.vendor || "");
+          if (
+            !vendor ||
+            (!vendor.includes(posName) && !posName.includes(vendor))
+          ) {
+            return;
+          }
+          totalHistoryVisits += 1;
+          const serviceType = normalizeText(order?.serviceType || "");
+          if (requestedType && serviceType.includes(requestedType)) {
+            sameIssueVisits += 1;
+          }
+        });
+
+        const baseScore = 100 - distanceKm * 2.8 - etaMin * 0.45;
+        const historyScore = totalHistoryVisits * 6 + sameIssueVisits * 10;
+        const capabilityScore = capabilityMatch ? 7 : 0;
+        const score = baseScore + historyScore + capabilityScore;
+
+        const confidence = Math.max(
+          62,
+          Math.min(
+            96,
+            Math.round(
+              70 +
+                Math.max(0, 10 - distanceKm) +
+                Math.min(12, totalHistoryVisits * 3 + sameIssueVisits * 4),
+            ),
+          ),
+        );
+
+        const reasons = [];
+        if (distanceKm <= 8) {
+          reasons.push("nearby location");
+        }
+        if (etaMin <= 20) {
+          reasons.push("fast ETA");
+        }
+        if (sameIssueVisits > 0) {
+          reasons.push(`${sameIssueVisits} similar past service`);
+        } else if (totalHistoryVisits > 0) {
+          reasons.push(`${totalHistoryVisits} past visit`);
+        }
+        if (capabilityMatch) {
+          reasons.push("service match");
+        }
+
+        return {
+          pos,
+          score,
+          confidence,
+          reasons,
+        };
+      })
+      .sort((a, b) => b.score - a.score || a.pos.distanceKm - b.pos.distanceKm);
+
+    return rankedStations[0] || null;
+  }, [
+    driverServiceRequests,
+    nearestPosOptions,
+    requestForm.problemType,
+    selectedServiceOption?.capability,
+  ]);
+  const bestSlotRecommendation = useMemo(() => {
+    const freeSlots = slotAvailability.filter((slot) => slot.status === "Free");
+    if (freeSlots.length === 0 || !selectedPos || !requestForm.preferredDate) {
+      return null;
+    }
+
+    const selectedPosName = normalizeText(selectedPos.name);
+    const requestedType = normalizeText(requestForm.problemType);
+    const historyBySlot = new Map();
+
+    driverServiceRequests.forEach((order) => {
+      const appointmentAt = order?.appointment?.dateTime;
+      if (!appointmentAt) {
+        return;
+      }
+      const vendor = normalizeText(order?.orderDetails?.vendor || "");
+      if (
+        vendor &&
+        selectedPosName &&
+        !vendor.includes(selectedPosName) &&
+        !selectedPosName.includes(vendor)
+      ) {
+        return;
+      }
+      const serviceType = normalizeText(order?.serviceType || "");
+      if (
+        requestedType &&
+        serviceType &&
+        !serviceType.includes(requestedType)
+      ) {
+        return;
+      }
+      const slotKey = getSlotKeyFromDateTime(appointmentAt);
+      if (!slotKey) {
+        return;
+      }
+      const requestedAtTs = toTimestamp(order?.requestedAt);
+      const appointmentTs = toTimestamp(appointmentAt);
+      const delayHours =
+        requestedAtTs > 0 && appointmentTs > requestedAtTs
+          ? (appointmentTs - requestedAtTs) / (1000 * 60 * 60)
+          : null;
+
+      const existing = historyBySlot.get(slotKey) || {
+        count: 0,
+        totalDelayHours: 0,
+        withDelayCount: 0,
+      };
+      existing.count += 1;
+      if (delayHours !== null) {
+        existing.totalDelayHours += delayHours;
+        existing.withDelayCount += 1;
+      }
+      historyBySlot.set(slotKey, existing);
+    });
+
+    const ranked = freeSlots
+      .map((slot, index) => {
+        const history = historyBySlot.get(slot.slotTime) || null;
+        const avgDelayHours =
+          history && history.withDelayCount > 0
+            ? history.totalDelayHours / history.withDelayCount
+            : null;
+        const queuePenalty = Number(slot.queue || 0) * 2.1;
+        const delayPenalty =
+          avgDelayHours !== null ? Math.min(16, avgDelayHours * 0.8) : 4.5;
+        const congestionPenalty =
+          history && history.count > 0
+            ? Math.min(5, history.count * 0.35)
+            : 1.5;
+        const orderingPenalty = index * 0.12;
+        const score =
+          queuePenalty + delayPenalty + congestionPenalty + orderingPenalty;
+
+        const reasons = [];
+        if (Number(slot.queue || 0) <= 1) {
+          reasons.push("lowest live queue");
+        }
+        if (avgDelayHours !== null && avgDelayHours <= 12) {
+          reasons.push("historically low delay");
+        }
+        if (history && history.count > 0) {
+          reasons.push(`${history.count} similar past bookings`);
+        }
+
+        return {
+          slot,
+          score,
+          avgDelayHours,
+          historyCount: history?.count || 0,
+          reasons,
+        };
+      })
+      .sort((a, b) => a.score - b.score);
+
+    const winner = ranked[0];
+    if (!winner) {
+      return null;
+    }
+    const runnerUp = ranked[1];
+    const scoreGap = runnerUp
+      ? Math.max(0, runnerUp.score - winner.score)
+      : 2.5;
+    const confidence = Math.max(
+      61,
+      Math.min(
+        95,
+        Math.round(
+          70 +
+            Math.min(12, scoreGap * 5) +
+            Math.min(8, winner.historyCount * 2),
+        ),
+      ),
+    );
+
+    return {
+      ...winner,
+      confidence,
+    };
+  }, [
+    driverServiceRequests,
+    requestForm.preferredDate,
+    requestForm.problemType,
+    selectedPos,
+    slotAvailability,
+  ]);
 
   return (
     <section className="min-w-0 space-y-4 sm:space-y-6">
@@ -537,16 +932,18 @@ function DriverServiceRequestSection({
                 </Button>
               ) : null}
             </div>
-            <div className="mt-3 grid min-w-0 grid-cols-2 gap-2.5 sm:gap-3">
-              {inlineServiceOptions.map((option) => (
-                <ServiceCategoryCard
-                  cardKey={option.value}
-                  isSelected={requestForm.problemType === option.value}
-                  key={option.value}
-                  onSelect={() => handleServiceSelect(option.value)}
-                  option={option}
-                />
-              ))}
+            <div className="mt-3">
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+                {inlineServiceOptions.map((option) => (
+                  <ServiceCategoryCard
+                    cardKey={option.value}
+                    isSelected={requestForm.problemType === option.value}
+                    key={option.value}
+                    onSelect={() => handleServiceSelect(option.value)}
+                    option={option}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
@@ -617,156 +1014,253 @@ function DriverServiceRequestSection({
             </div>
           ) : null}
 
-          <div
-            className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
-            ref={nearestPosSectionRef}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-                  Nearest Point of Sale
-                </h2>
-                {/* <p className="mt-1 text-sm text-slate-500">
-                  Compact station cards with quick "See all stations" modal.
-                </p> */}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {hasMoreStations ? (
-                  <Button
-                    className="group border-sky-200 bg-gradient-to-r from-white to-sky-50 text-slate-800 shadow-sm transition hover:border-sky-300 hover:from-sky-50 hover:to-sky-100"
-                    onClick={() => {
-                      setVisibleStationCount(STATION_MODAL_BATCH_SIZE);
-                      lastStationModalScrollAt.current = 0;
-                      setIsLoadingMoreStations(false);
-                      setShowAllStations(true);
-                    }}
-                    type="button"
-                    variant="outline"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <span className="inline-flex size-5 items-center justify-center rounded-full bg-sky-100 text-sky-700">
-                        <MapPin size={12} />
+          {!isDamageReportFlow ? (
+            <>
+              <div
+                className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
+                ref={nearestPosSectionRef}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+                      Nearest Point of Sale
+                    </h2>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {hasMoreStations ? (
+                      <Button
+                        className="group border-sky-200 bg-gradient-to-r from-white to-sky-50 text-slate-800 shadow-sm transition hover:border-sky-300 hover:from-sky-50 hover:to-sky-100"
+                        onClick={() => {
+                          setVisibleStationCount(STATION_MODAL_BATCH_SIZE);
+                          lastStationModalScrollAt.current = 0;
+                          setIsLoadingMoreStations(false);
+                          setShowAllStations(true);
+                        }}
+                        type="button"
+                        variant="outline"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-flex size-5 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+                            <MapPin size={12} />
+                          </span>
+                          <span>See all</span>
+                          <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                            {totalStationsCount}
+                          </span>
+                        </span>
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                {bestRecommendedStation ? (
+                  <div className="mt-3 rounded-2xl border border-violet-200 bg-violet-50/70 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-800 sm:text-sm">
+                        <Sparkles size={14} />
+                        Best Point S recommendation
+                      </p>
+                      <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white sm:text-[11px]">
+                        {bestRecommendedStation.confidence}% match
                       </span>
-                      <span>See all</span>
-                      <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white">
-                        {totalStationsCount}
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {bestRecommendedStation.pos.name}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
+                      {bestRecommendedStation.reasons.length > 0
+                        ? bestRecommendedStation.reasons.join(" • ")
+                        : "Balanced score from distance, ETA, and service fit"}
+                    </p>
+                    {/* <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-600 sm:text-xs">
+                      <span>
+                        {bestRecommendedStation.pos.distanceKm} km • ETA{" "}
+                        {bestRecommendedStation.pos.etaMin} min
                       </span>
-                    </span>
-                  </Button>
+                      <Button
+                        className="h-7 px-2.5 text-[11px] sm:text-xs"
+                        onClick={() =>
+                          handlePosSelection(bestRecommendedStation.pos, {
+                            closeOnSelect: false,
+                          })
+                        }
+                        type="button"
+                        variant="outline"
+                      >
+                        {requestForm.preferredPosId === bestRecommendedStation.pos.id
+                          ? "Selected"
+                          : "Select recommended"}
+                      </Button>
+                    </div> */}
+                  </div>
                 ) : null}
-                {/* {selectedPos ? (
-                  <Button
-                    onClick={() => {
-                      setRequestForm((prev) => ({
-                        ...prev,
-                        preferredPosId: "",
-                        preferredSlotId: "",
-                      }));
-                    }}
-                    type="button"
-                    variant="outline"
-                  >
-                    Unselect station
-                  </Button>
-                ) : null} */}
+                <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 min-[520px]:grid-cols-2 lg:grid-cols-3">
+                  {inlineStations.length === 0 ? (
+                    <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+                      No nearby Point S stations found for selected service
+                      category.
+                    </p>
+                  ) : (
+                    inlineStations.map((pos) =>
+                      renderStationCard(pos, {
+                        isRecommended:
+                          bestRecommendedStation?.pos?.id === pos.id,
+                      }),
+                    )
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 min-[520px]:grid-cols-2 lg:grid-cols-3">
-              {inlineStations.length === 0 ? (
-                <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                  No nearby Point S stations found for selected service
-                  category.
-                </p>
-              ) : (
-                inlineStations.map((pos) => renderStationCard(pos))
-              )}
-            </div>
-          </div>
 
-          <div
-            className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
-            ref={dateSlotSectionRef}
-          >
-            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-              Select date and slot
-            </h2>
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-              {dateChips.map((chip) => {
-                const active = requestForm.preferredDate === chip.id;
-                return (
-                  <button
-                    className={`whitespace-nowrap rounded-xl border px-3 py-2 text-xs transition sm:text-sm ${
-                      active
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-400"
-                    }`}
-                    key={chip.id}
-                    onClick={() =>
-                      setRequestForm((prev) => ({
-                        ...prev,
-                        preferredDate: chip.id,
-                        preferredSlotId: "",
-                      }))
-                    }
-                    type="button"
-                  >
-                    {chip.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 xl:grid-cols-4">
-              {slotAvailability.length === 0 ? (
-                <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                  Select a Point S station to see slot availability.
-                </p>
-              ) : (
-                slotAvailability.map((slot) => {
-                  const isSelected = requestForm.preferredSlotId === slot.id;
-                  const isBusy = slot.status === "Busy";
-                  return (
-                    <button
-                      className={`min-w-0 rounded-xl border px-3 py-2 text-left transition ${
-                        isBusy
-                          ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                          : isSelected
-                            ? "border-emerald-600 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-500/40"
-                            : "border-slate-200 bg-white text-slate-800 hover:border-slate-400"
-                      }`}
-                      disabled={isBusy}
-                      key={slot.id}
-                      onClick={() => {
-                        setRequestForm((prev) => ({
-                          ...prev,
-                          preferredSlotId: slot.id,
-                        }));
-                        scrollToSection(optionalDetailsSectionRef);
-                      }}
-                      type="button"
-                    >
-                      <p className="text-xs font-semibold sm:text-sm">
-                        {slot.label}
+              <div
+                className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
+                ref={dateSlotSectionRef}
+              >
+                <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+                  Select date and slot
+                </h2>
+                {isTyreStockBlocked ? (
+                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:text-sm">
+                    Tyres are currently unavailable at selected POS for this
+                    service. We will notify you when tyres are available, then
+                    you can book date and slot.
+                  </div>
+                ) : null}
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                  {dateChips.map((chip) => {
+                    const active = requestForm.preferredDate === chip.id;
+                    return (
+                      <button
+                        className={`whitespace-nowrap rounded-xl border px-3 py-2 text-xs transition sm:text-sm ${
+                          isTyreStockBlocked
+                            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                            : active
+                              ? "border-slate-900 bg-slate-900 text-white"
+                              : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-400"
+                        }`}
+                        disabled={isTyreStockBlocked}
+                        key={chip.id}
+                        onClick={() =>
+                          setRequestForm((prev) => ({
+                            ...prev,
+                            preferredDate: chip.id,
+                            preferredSlotId: "",
+                          }))
+                        }
+                        type="button"
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {bestSlotRecommendation && !isTyreStockBlocked ? (
+                  <div className="mt-3 rounded-2xl border border-cyan-200 bg-cyan-50/80 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-800 sm:text-sm">
+                        <Sparkles size={14} />
+                        Best slot recommendation
                       </p>
-                      <p className="mt-1 text-[10px] sm:text-[11px]">
-                        {isBusy
-                          ? `Busy (${slot.queue} in queue)`
-                          : "Free to book"}
+                      {/* <span className="rounded-full bg-cyan-600 px-2 py-0.5 text-[10px] font-semibold text-white sm:text-[11px]">
+                        {bestSlotRecommendation.confidence}% match
+                      </span> */}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {bestSlotRecommendation.slot.label}
                       </p>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-            {selectedSlot ? (
-              <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700 sm:text-xs">
-                Selected slot:{" "}
-                <span className="font-semibold">{selectedSlot.label}</span> on{" "}
-                <span className="font-semibold">
-                  {requestForm.preferredDate}
-                </span>
+                      <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
+                        {bestSlotRecommendation.reasons.length > 0
+                          ? bestSlotRecommendation.reasons.join(" • ")
+                          : "Chosen using current queue and historical delay trends"}
+                      </p>
+                      {/* <Button
+                        className="h-7 px-2.5 text-[11px] sm:text-xs"
+                        onClick={() => {
+                          setRequestForm((prev) => ({
+                            ...prev,
+                            preferredSlotId: bestSlotRecommendation.slot.id,
+                          }));
+                          scrollToSection(optionalDetailsSectionRef);
+                        }}
+                        type="button"
+                        variant="outline"
+                      >
+                        {requestForm.preferredSlotId === bestSlotRecommendation.slot.id
+                          ? "Selected"
+                          : "Select recommended slot"}
+                      </Button> */}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 xl:grid-cols-4">
+                  {isTyreStockBlocked ? (
+                    <p className="col-span-full rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                      Slot selection is blocked until requested tyre stock is
+                      available at this POS.
+                    </p>
+                  ) : slotAvailability.length === 0 ? (
+                    <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+                      Select a Point S station to see slot availability.
+                    </p>
+                  ) : (
+                    slotAvailability.map((slot) => {
+                      const isSelected =
+                        requestForm.preferredSlotId === slot.id;
+                      const isBusy = slot.status === "Busy";
+                      const isRecommended =
+                        bestSlotRecommendation?.slot?.id === slot.id;
+                      return (
+                        <button
+                          className={`relative min-w-0 rounded-xl border px-3 py-2 text-left transition ${
+                            isBusy
+                              ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                              : isSelected
+                                ? "border-emerald-600 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-500/40"
+                                : isRecommended
+                                  ? "border-cyan-300 bg-cyan-50 text-cyan-900 ring-1 ring-cyan-300/70"
+                                  : "border-slate-200 bg-white text-slate-800 hover:border-slate-400"
+                          }`}
+                          disabled={isBusy}
+                          key={slot.id}
+                          onClick={() => {
+                            setRequestForm((prev) => ({
+                              ...prev,
+                              preferredSlotId: slot.id,
+                            }));
+                            scrollToSection(optionalDetailsSectionRef);
+                          }}
+                          type="button"
+                        >
+                          {isRecommended && !isBusy ? (
+                            <span className="pointer-events-none absolute -top-1.5 left-1/2 z-20 inline-flex -translate-x-1/2 rounded-full border border-fuchsia-200 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 px-2 py-[2px] text-[8px] font-bold uppercase tracking-[0.05em] text-white shadow-lg">
+                              Recommended
+                            </span>
+                          ) : null}
+                          <p className="text-xs font-semibold sm:text-sm">
+                            {slot.label}
+                          </p>
+                          <p className="mt-1 text-[10px] sm:text-[11px]">
+                            {isBusy
+                              ? `Busy (${slot.queue} in queue)`
+                              : "Free to book"}
+                          </p>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                {selectedSlot ? (
+                  <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700 sm:text-xs">
+                    Selected slot:{" "}
+                    <span className="font-semibold">{selectedSlot.label}</span>{" "}
+                    on{" "}
+                    <span className="font-semibold">
+                      {requestForm.preferredDate}
+                    </span>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
+            </>
+          ) : null}
 
           <div
             className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
@@ -980,17 +1474,102 @@ function DriverServiceRequestSection({
               <p>
                 Nearest Point S:{" "}
                 <span className="font-semibold text-slate-900">
-                  {selectedPos?.name || "Not selected"}
+                  {isDamageReportFlow
+                    ? "Not required (direct fleet handling)"
+                    : selectedPos?.name || "Not selected"}
                 </span>
               </p>
+              {needsTyreSupplySelection ? (
+                <p>
+                  Tyre supply:{" "}
+                  <span className="font-semibold text-slate-900">
+                    {requestForm.tyreSupplySource === "driver"
+                      ? "Driver bringing tyres"
+                      : requestForm.tyreSupplySource === "pos"
+                        ? requestForm.posTyreAvailability === false
+                          ? "From POS (currently unavailable)"
+                          : "From POS (available)"
+                        : "Not selected"}
+                  </span>
+                </p>
+              ) : null}
               <p>
                 Date & slot:{" "}
                 <span className="font-semibold text-slate-900">
-                  {selectedSlot
-                    ? `${requestForm.preferredDate}, ${selectedSlot.label}`
-                    : "Not selected"}
+                  {isDamageReportFlow
+                    ? "Not required for damage report"
+                    : selectedSlot
+                      ? `${requestForm.preferredDate}, ${selectedSlot.label}`
+                      : "Not selected"}
                 </span>
               </p>
+              {odometerRecommendation ? (
+                <div
+                  className={`relative overflow-hidden rounded-2xl border p-3.5 shadow-sm ${recommendationTone.card}`}
+                >
+                  <div className="pointer-events-none absolute -right-7 -top-7 size-20 rounded-full bg-white/45 blur-xl" />
+                  <div className="relative flex items-center justify-between gap-2">
+                    <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+                      <span
+                        className={`inline-flex size-6 items-center justify-center rounded-full ${recommendationTone.icon}`}
+                      >
+                        <Sparkles size={13} />
+                      </span>
+                      Odometer recommendation
+                    </p>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${recommendationTone.badge}`}
+                    >
+                      {odometerRecommendation.level === "high"
+                        ? "Priority"
+                        : odometerRecommendation.level === "medium"
+                          ? "Plan soon"
+                          : "Advisory"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">
+                    {odometerRecommendation.title}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {odometerRecommendation.summary}
+                  </p>
+                  <div className="mt-2 rounded-xl border border-white/70 bg-white/60 p-2.5">
+                    <p className="text-xs font-medium text-slate-700">
+                      Suggested action:{" "}
+                      <span className="font-semibold text-slate-900">
+                        {odometerRecommendation.suggestion}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Suggested category:{" "}
+                      <span className="font-semibold text-slate-900">
+                        {odometerRecommendation.suggestedCategory}
+                      </span>
+                    </p>
+                  </div>
+                  <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/70 bg-white/70 p-2.5 transition hover:bg-white/90">
+                    <input
+                      checked={Boolean(requestForm.recommendationAccepted)}
+                      className={`mt-0.5 size-4 rounded border-slate-300 ${recommendationTone.check}`}
+                      onChange={(event) =>
+                        setRequestForm((prev) => ({
+                          ...prev,
+                          recommendationAccepted: event.target.checked,
+                        }))
+                      }
+                      type="checkbox"
+                    />
+                    <span className="text-xs font-medium text-slate-800">
+                      Book service appointment with this recommendation
+                    </span>
+                  </label>
+                  {requestForm.recommendationAccepted ? (
+                    <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+                      Recommendation will be included in this request
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-500">
                   Policy validation
@@ -1020,14 +1599,19 @@ function DriverServiceRequestSection({
                     <Loader2 className="size-4 animate-spin" />
                     Sending...
                   </span>
+                ) : isDamageReportFlow ? (
+                  "Send damage report to fleet"
                 ) : (
                   "Book service appointment"
                 )}
               </Button>
               {!isSubmittingRequest && !isServiceRequestFormReady ? (
                 <p className="text-[11px] text-slate-500 sm:text-xs">
-                  Complete the required service details, then choose station,
-                  date, and a free slot to enable the request.
+                  {isTyreStockBlocked
+                    ? "Selected POS is out of stock for requested tyres. We will notify you once tyres are available, then you can book slot."
+                    : isDamageReportFlow
+                      ? "Complete required details and at least one photo to send this report directly to fleet."
+                      : "Complete the required service details, then choose station, date, and a free slot to enable the request."}
                 </p>
               ) : null}
             </div>
@@ -1345,27 +1929,29 @@ function DriverServiceRequestSection({
                 Close
               </Button>
             </div>
-            <div className="card-list-scrollbar mt-4 grid max-h-[60vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3">
-              {orderedServiceOptions.map((option) => (
-                <ServiceCategoryCard
-                  cardKey={`modal-${option.value}`}
-                  isSelected={requestForm.problemType === option.value}
-                  key={`modal-${option.value}`}
-                  onSelect={() =>
-                    handleServiceSelect(option.value, {
-                      closeModal: true,
-                      moveToIndex: 5,
-                    })
-                  }
-                  option={option}
-                />
-              ))}
+            <div className="mt-4">
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+                {orderedServiceOptions.map((option) => (
+                  <ServiceCategoryCard
+                    cardKey={`modal-${option.value}`}
+                    isSelected={requestForm.problemType === option.value}
+                    key={`modal-${option.value}`}
+                    onSelect={() =>
+                      handleServiceSelect(option.value, {
+                        closeModal: true,
+                        moveToIndex: 5,
+                      })
+                    }
+                    option={option}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
       ) : null}
 
-      {showAllStations ? (
+      {showAllStations && !isDamageReportFlow ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/45 p-2 sm:items-center sm:p-4">
           <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1431,7 +2017,10 @@ function DriverServiceRequestSection({
                 </p>
               ) : (
                 visibleFilteredStations.map((pos) =>
-                  renderStationCard(pos, { closeOnSelect: true }),
+                  renderStationCard(pos, {
+                    closeOnSelect: true,
+                    isRecommended: bestRecommendedStation?.pos?.id === pos.id,
+                  }),
                 )
               )}
               {isLoadingMoreStations ? (
@@ -1448,6 +2037,90 @@ function DriverServiceRequestSection({
                   </span>
                 </div>
               ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showTyreSupplyModal && pendingPosSelection?.pos ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/45 p-2 sm:items-center sm:p-4">
+          <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-lg font-semibold text-slate-900">
+                  Tyre choice
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  For{" "}
+                  <span className="font-semibold text-slate-900">
+                    {requestForm.problemSubtype || "this tyre request"}
+                  </span>
+                  , choose how tyres will be provided.
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Selected POS: {pendingPosSelection.pos.name}
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setShowTyreSupplyModal(false);
+                  setPendingPosSelection(null);
+                }}
+                type="button"
+                variant="outline"
+              >
+                Close
+              </Button>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <button
+                className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-100"
+                onClick={() =>
+                  applyPosSelection(pendingPosSelection.pos, {
+                    closeOnSelect: pendingPosSelection.closeOnSelect,
+                    tyreSupplySource: "driver",
+                    posTyreAvailability: true,
+                  })
+                }
+                type="button"
+              >
+                <p className="text-sm font-semibold text-emerald-900">
+                  I will bring tyres
+                </p>
+                <p className="mt-1 text-xs text-emerald-700">
+                  POS will be informed that tyres are driver-supplied.
+                </p>
+              </button>
+
+              <button
+                className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-left transition hover:border-sky-300 hover:bg-sky-100"
+                onClick={() => {
+                  const stockCheck = evaluateTyreStock({
+                    size: assignedVehicle?.tyreSpecs?.size || "",
+                    preferredBrand: assignedVehicle?.tyreSpecs?.brand || "",
+                    requiredQty: requiredTyreQty,
+                  });
+                  const available = Boolean(stockCheck.canFulfill);
+                  applyPosSelection(pendingPosSelection.pos, {
+                    closeOnSelect: pendingPosSelection.closeOnSelect,
+                    tyreSupplySource: "pos",
+                    posTyreAvailability: available,
+                  });
+                }}
+                type="button"
+              >
+                <p className="text-sm font-semibold text-sky-900">
+                  Get tyres from POS
+                </p>
+                <p className="mt-1 text-xs text-sky-700">
+                  Slot booking opens only if stock is available.
+                </p>
+                <p className="mt-1 text-[11px] text-sky-800">
+                  Vehicle spec: {assignedVehicle?.tyreSpecs?.size || "N/A"} |
+                  Qty: {requiredTyreQty}
+                </p>
+              </button>
             </div>
           </div>
         </div>
