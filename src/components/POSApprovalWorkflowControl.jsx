@@ -20,6 +20,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   autoApproveServiceRequest,
   checkInServiceVehicle,
@@ -228,6 +229,7 @@ function POSApprovalWorkflowControl({
   initialQueueOrderId = "",
   initialFocus = "",
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const serviceOrderState = useSyncExternalStore(
     subscribeServiceOrders,
@@ -590,13 +592,14 @@ function POSApprovalWorkflowControl({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
-              Approval Workflow
+              {t("pos.approval.headerTitle", "Approval Workflow")}
             </p>
 
             <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
-              Manage and track approval requests for POS orders, coordinate with
-              fleet service team, and oversee driver-to-completion workflow for
-              approved requests - all from one centralized dashboard.
+              {t(
+                "pos.approval.headerDesc",
+                "Manage and track approval requests for POS orders, coordinate with fleet service team, and oversee driver-to-completion workflow for approved requests from one centralized dashboard.",
+              )}
             </p>
           </div>
         </div>
@@ -661,10 +664,14 @@ function POSApprovalWorkflowControl({
           className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm"
           ref={queueSectionRef}
         >
-          <h2 className="text-lg font-semibold text-slate-900">Approval queue</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t("pos.approval.queueTitle", "Approval queue")}
+          </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Shared-calendar bookings can be auto-approved. POS only intervenes for exceptions,
-            rejection, and check-in.
+            {t(
+              "pos.approval.queueDesc",
+              "Shared-calendar bookings can be auto-approved. POS only intervenes for exceptions, rejection, and check-in.",
+            )}
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -696,7 +703,10 @@ function POSApprovalWorkflowControl({
             <Input
               className="pl-9"
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search by request, vehicle, driver"
+              placeholder={t(
+                "pos.approval.searchPlaceholder",
+                "Search by request, vehicle, driver",
+              )}
               value={searchQuery}
             />
           </div>
@@ -756,7 +766,10 @@ function POSApprovalWorkflowControl({
           >
             {!selectedOrder ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                Select a request to manage approval, rejection, and check-in.
+                {t(
+                  "pos.approval.selectRequest",
+                  "Select a request to manage approval, rejection, and check-in.",
+                )}
               </p>
             ) : (
               <>
@@ -780,7 +793,9 @@ function POSApprovalWorkflowControl({
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                    <p className="text-slate-500">Submitted odometer</p>
+                    <p className="text-slate-500">
+                      {t("pos.approval.submittedOdometer", "Submitted odometer")}
+                    </p>
                     <p className="mt-1 font-semibold text-slate-900">
                       {formatOdometer(
                         selectedOrder.orderDetails?.odometerReading,
@@ -789,7 +804,9 @@ function POSApprovalWorkflowControl({
                     </p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                    <p className="text-slate-500">Verified at check-in</p>
+                    <p className="text-slate-500">
+                      {t("pos.approval.verifiedAtCheckIn", "Verified at check-in")}
+                    </p>
                     <p className="mt-1 font-semibold text-slate-900">
                       {formatOdometer(
                         selectedOrder.checkIn?.odometerReading,
@@ -798,17 +815,21 @@ function POSApprovalWorkflowControl({
                     </p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                    <p className="text-slate-500">Requested at</p>
+                    <p className="text-slate-500">
+                      {t("pos.approval.requestedAt", "Requested at")}
+                    </p>
                     <p className="mt-1 font-semibold text-slate-900">
                       {formatDateTime(selectedOrder.requestedAt)}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                    <p className="text-slate-500">Booking slot</p>
+                    <p className="text-slate-500">
+                      {t("pos.approval.bookingSlot", "Booking slot")}
+                    </p>
                     <p className="mt-1 font-semibold text-slate-900">
                       {selectedOrder.appointment?.dateTime
                         ? formatDateTime(selectedOrder.appointment.dateTime)
-                        : "Not booked"}
+                        : t("pos.approval.notBooked", "Not booked")}
                     </p>
                   </div>
                 </div>
@@ -817,7 +838,7 @@ function POSApprovalWorkflowControl({
                   <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
                     <div className="flex items-center gap-2 text-sm font-semibold text-amber-800">
                       <ShieldAlert className="size-4" />
-                      Manual review required
+                      {t("pos.approval.manualReviewRequired", "Manual review required")}
                     </div>
                     <div className="mt-2 space-y-1 text-xs text-amber-800">
                       {selectedReviewFlags.map((flag) => (
@@ -831,17 +852,25 @@ function POSApprovalWorkflowControl({
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <h3 className="text-sm font-semibold text-slate-900">
                       {selectedStage === "needs_review"
-                        ? "POS approval"
-                        : "Shared calendar status"}
+                        ? t("pos.approval.posApproval", "POS approval")
+                        : t("pos.approval.sharedCalendarStatus", "Shared calendar status")}
                     </h3>
                     <p className="mt-1 text-xs text-slate-500">
                       {selectedStage === "needs_review"
-                        ? "This booking needs POS review before it can be confirmed."
-                        : "This booking is auto-approved by the shared calendar when slot and stock rules pass."}
+                        ? t(
+                            "pos.approval.posApprovalDesc",
+                            "This booking needs POS review before it can be confirmed.",
+                          )
+                        : t(
+                            "pos.approval.sharedCalendarDesc",
+                            "This booking is auto-approved by the shared calendar when slot and stock rules pass.",
+                          )}
                     </p>
                     <div className="mt-4 grid gap-3">
                       <div className="grid gap-2">
-                        <Label htmlFor="appointment-datetime">Confirmed slot</Label>
+                        <Label htmlFor="appointment-datetime">
+                          {t("pos.approval.confirmedSlot", "Confirmed slot")}
+                        </Label>
                         <Input
                           id="appointment-datetime"
                           onChange={(event) => setAppointmentAtLocal(event.target.value)}
@@ -850,11 +879,16 @@ function POSApprovalWorkflowControl({
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="appointment-note">Booking note</Label>
+                        <Label htmlFor="appointment-note">
+                          {t("pos.approval.bookingNote", "Booking note")}
+                        </Label>
                         <Textarea
                           id="appointment-note"
                           onChange={(event) => setAppointmentNote(event.target.value)}
-                          placeholder="Shared calendar confirmation or booking context"
+                          placeholder={t(
+                            "pos.approval.bookingNotePlaceholder",
+                            "Shared calendar confirmation or booking context",
+                          )}
                           rows={3}
                           value={appointmentNote}
                         />
@@ -888,7 +922,7 @@ function POSApprovalWorkflowControl({
                             type="button"
                           >
                             <CalendarClock className="mr-2 size-4" />
-                            Approve booking
+                            {t("pos.approval.approveBooking", "Approve booking")}
                           </Button>
                           <Button
                             className="bg-rose-600 text-white hover:bg-rose-500"
@@ -897,12 +931,15 @@ function POSApprovalWorkflowControl({
                             type="button"
                           >
                             <XCircle className="mr-2 size-4" />
-                            Reject
+                            {t("pos.approval.reject", "Reject")}
                           </Button>
                         </div>
                       ) : selectedStage === "auto_approved" || selectedStage === "ready_auto" ? (
                         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                          Auto-approved through shared calendar rules. No manual approval action is required.
+                          {t(
+                            "pos.approval.autoApprovedNote",
+                            "Auto-approved through shared calendar rules. No manual approval action is required.",
+                          )}
                         </div>
                       ) : (
                         <div className="rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
@@ -912,7 +949,9 @@ function POSApprovalWorkflowControl({
                       {showRejectForm && selectedStage === "needs_review" ? (
                         <div className="grid gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3">
                           <div className="grid gap-2">
-                            <Label htmlFor="rejection-reason">Rejection reason</Label>
+                            <Label htmlFor="rejection-reason">
+                              {t("pos.approval.rejectionReason", "Rejection reason")}
+                            </Label>
                             <select
                               className="h-10 rounded-md border border-rose-200 bg-white px-3 text-sm text-slate-900"
                               id="rejection-reason"
@@ -931,11 +970,16 @@ function POSApprovalWorkflowControl({
                             </p>
                           </div>
                           <div className="grid gap-2">
-                            <Label htmlFor="rejection-note">Reason note</Label>
+                            <Label htmlFor="rejection-note">
+                              {t("pos.approval.reasonNote", "Reason note")}
+                            </Label>
                             <Textarea
                               id="rejection-note"
                               onChange={(event) => setRejectionNote(event.target.value)}
-                              placeholder="Optional context for driver and fleet"
+                              placeholder={t(
+                                "pos.approval.reasonNotePlaceholder",
+                                "Optional context for driver and fleet",
+                              )}
                               rows={3}
                               value={rejectionNote}
                             />
@@ -956,24 +1000,33 @@ function POSApprovalWorkflowControl({
 
                 <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <h3 className="text-sm font-semibold text-slate-900">POS vehicle check-in</h3>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {t("pos.approval.vehicleCheckIn", "POS vehicle check-in")}
+                    </h3>
                     <p className="mt-1 text-xs text-slate-500">
                       Only POS can check in the vehicle. Verified odometer is stored as the latest
                       Oxifleet vehicle reading.
                     </p>
                     <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_120px]">
                       <div className="grid gap-2">
-                        <Label htmlFor="checkin-odometer">Verified odometer</Label>
+                        <Label htmlFor="checkin-odometer">
+                          {t("pos.approval.verifiedOdometer", "Verified odometer")}
+                        </Label>
                         <Input
                           id="checkin-odometer"
                           inputMode="numeric"
                           onChange={(event) => setCheckInOdometer(event.target.value)}
-                          placeholder="Enter verified odometer"
+                          placeholder={t(
+                            "pos.approval.enterVerifiedOdometer",
+                            "Enter verified odometer",
+                          )}
                           value={checkInOdometer}
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="checkin-unit">Unit</Label>
+                        <Label htmlFor="checkin-unit">
+                          {t("pos.approval.unit", "Unit")}
+                        </Label>
                         <select
                           className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900"
                           id="checkin-unit"
@@ -988,11 +1041,16 @@ function POSApprovalWorkflowControl({
                       </div>
                     </div>
                     <div className="mt-3 grid gap-2">
-                      <Label htmlFor="checkin-note">Check-in note</Label>
+                      <Label htmlFor="checkin-note">
+                        {t("pos.approval.checkInNote", "Check-in note")}
+                      </Label>
                       <Textarea
                         id="checkin-note"
                         onChange={(event) => setCheckInNote(event.target.value)}
-                        placeholder="Arrival condition, late arrival, mismatch note"
+                        placeholder={t(
+                          "pos.approval.checkInNotePlaceholder",
+                          "Arrival condition, late arrival, mismatch note",
+                        )}
                         rows={3}
                         value={checkInNote}
                       />
@@ -1012,7 +1070,7 @@ function POSApprovalWorkflowControl({
                         type="button"
                       >
                         <CheckCircle2 className="mr-2 size-4" />
-                        Check in vehicle
+                        {t("pos.approval.checkInVehicle", "Check in vehicle")}
                       </Button>
                       <Button
                         className="bg-sky-600 text-white hover:bg-sky-500"
@@ -1024,13 +1082,15 @@ function POSApprovalWorkflowControl({
                         onClick={handleContinueToOrderManagement}
                         type="button"
                       >
-                        Create Order
+                        {t("pos.approval.createOrder", "Create Order")}
                       </Button>
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <h3 className="text-sm font-semibold text-slate-900">Vehicle context</h3>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {t("pos.approval.vehicleContext", "Vehicle context")}
+                    </h3>
                     <div className="mt-3 space-y-2 text-xs text-slate-700">
                       <p>
                         Plate:{" "}
@@ -1074,7 +1134,9 @@ function POSApprovalWorkflowControl({
             className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm"
             ref={historySectionRef}
           >
-            <h2 className="text-lg font-semibold text-slate-900">Workflow history</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t("pos.approval.workflowHistory", "Workflow history")}
+            </h2>
             <p className="mt-1 text-sm text-slate-500">
               Every approval, rejection, booking, and check-in event is recorded here.
             </p>
@@ -1120,7 +1182,9 @@ function POSApprovalWorkflowControl({
             <span className="inline-flex size-11 items-center justify-center rounded-full bg-sky-100 text-sky-700">
               <Loader2 className="size-5 animate-spin" />
             </span>
-            <p className="mt-3 text-sm font-semibold text-slate-900">Processing workflow action...</p>
+            <p className="mt-3 text-sm font-semibold text-slate-900">
+              {t("pos.approval.processing", "Processing workflow action...")}
+            </p>
             <p className="mt-1 text-xs text-slate-500">
               Updating booking state and syncing related operational data.
             </p>

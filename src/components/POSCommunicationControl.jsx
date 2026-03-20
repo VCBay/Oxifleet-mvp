@@ -15,6 +15,7 @@ import {
   sendWorkshopMessage,
   subscribeCommunication,
 } from "../data/communicationStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
 const toTimestamp = (value) => new Date(value).getTime() || 0;
@@ -64,6 +65,7 @@ const fallbackFleetOwners = [
 ];
 
 function POSCommunicationControl({ session = null }) {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const driverState = useSyncExternalStore(
     subscribeDrivers,
@@ -343,9 +345,14 @@ function POSCommunicationControl({ session = null }) {
     <section className="min-w-0 space-y-4 sm:space-y-6">
       <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
         <header className="border-b border-slate-200 bg-[radial-gradient(circle_at_20%_20%,#1f2937_0%,#0f172a_45%,#0b0d12_100%)] px-4 py-3 sm:px-5 sm:py-4">
-          <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">Communication</h2>
+          <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
+            {t("pos.communication.title", "Communication")}
+          </h2>
           <p className="text-xs text-white/50 sm:text-sm">
-            POS chat with multiple drivers and fleet owners in one view.
+            {t(
+              "pos.communication.headerDesc",
+              "POS chat with multiple drivers and fleet owners in one view.",
+            )}
           </p>
         </header>
 
@@ -361,12 +368,12 @@ function POSCommunicationControl({ session = null }) {
                   <Input
                     className="h-8 rounded-full border-slate-200 bg-slate-50 pl-9 pr-9 text-xs sm:h-9 sm:text-sm"
                     onChange={(event) => setSearchText(event.target.value)}
-                    placeholder="Search contact"
+                    placeholder={t("pos.communication.searchContact", "Search contact")}
                     value={searchText}
                   />
                   {searchText ? (
                     <button
-                      aria-label="Clear search"
+                      aria-label={t("pos.communication.clearSearch", "Clear search")}
                       className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                       onClick={() => setSearchText("")}
                       type="button"
@@ -386,7 +393,7 @@ function POSCommunicationControl({ session = null }) {
                     onClick={() => setActiveTab("drivers")}
                     type="button"
                   >
-                    Drivers
+                    {t("pos.communication.drivers", "Drivers")}
                   </button>
                   <button
                     className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:text-xs ${
@@ -397,7 +404,7 @@ function POSCommunicationControl({ session = null }) {
                     onClick={() => setActiveTab("fleets")}
                     type="button"
                   >
-                    Fleet owners
+                    {t("pos.communication.fleetOwners", "Fleet owners")}
                   </button>
                 </div>
               </div>
@@ -405,7 +412,7 @@ function POSCommunicationControl({ session = null }) {
               <div className="card-list-scrollbar max-h-[560px] space-y-1 overflow-y-auto p-2 pr-1">
                 {listRows.length === 0 ? (
                   <div className="m-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-500">
-                    No contacts found.
+                    {t("pos.communication.noContacts", "No contacts found.")}
                   </div>
                 ) : (
                   listRows.map((contact) => {
@@ -451,7 +458,7 @@ function POSCommunicationControl({ session = null }) {
                 <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5">
                   <div className="flex min-w-0 items-center gap-2">
                     <button
-                      aria-label="Back to contacts"
+                      aria-label={t("pos.communication.backToContacts", "Back to contacts")}
                       className="grid size-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600"
                       onClick={() => setIsMobileThreadOpen(false)}
                       type="button"
@@ -460,10 +467,10 @@ function POSCommunicationControl({ session = null }) {
                     </button>
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-slate-800">
-                        {activeContact?.name || "Select contact"}
+                        {activeContact?.name || t("pos.communication.selectContact", "Select contact")}
                       </p>
                       <p className="truncate text-[10px] text-slate-500">
-                        {activeContact?.subtitle || "Communication"}
+                        {activeContact?.subtitle || t("pos.communication.title", "Communication")}
                       </p>
                     </div>
                   </div>
@@ -476,10 +483,11 @@ function POSCommunicationControl({ session = null }) {
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-slate-800">
-                        {activeContact?.name || "Select contact"}
+                        {activeContact?.name || t("pos.communication.selectContact", "Select contact")}
                       </p>
                       <p className="truncate text-xs text-slate-500">
-                        {activeContact?.subtitle || "Communication channel"}
+                        {activeContact?.subtitle ||
+                          t("pos.communication.channel", "Communication channel")}
                       </p>
                     </div>
                   </div>
@@ -489,7 +497,7 @@ function POSCommunicationControl({ session = null }) {
               <div className="card-list-scrollbar max-h-[470px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3 pr-1 sm:max-h-[510px] sm:p-4">
                 {chatMessages.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-white/80 p-3 text-xs text-slate-500">
-                    No messages yet.
+                    {t("pos.communication.noMessages", "No messages yet.")}
                   </p>
                 ) : (
                   chatMessages.map((message) => (
@@ -532,8 +540,8 @@ function POSCommunicationControl({ session = null }) {
                     onChange={(event) => setDraft(event.target.value)}
                     placeholder={
                       activeTab === "drivers"
-                        ? "Message driver..."
-                        : "Message fleet owner..."
+                        ? t("pos.communication.messageDriver", "Message driver...")
+                        : t("pos.communication.messageFleetOwner", "Message fleet owner...")
                     }
                     rows={1}
                     value={draft}
@@ -547,7 +555,7 @@ function POSCommunicationControl({ session = null }) {
                   // disabled={isCompletionSubmitting}
                   >
                     <Send className="mr-2" size={14} />
-                    Send
+                    {t("pos.communication.send", "Send")}
                   </Button>
                 </div>
               </div>

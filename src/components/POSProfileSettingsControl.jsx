@@ -10,6 +10,7 @@ import {
   sendWorkshopMessage,
   subscribeCommunication,
 } from "../data/communicationStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const defaultWorkshopProfile = {
   workshopName: "Oxifleet POS Service Hub",
@@ -102,6 +103,7 @@ const createStaffId = () =>
   `STF-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
 function POSProfileSettingsControl({ session = null }) {
+  const { t } = useTranslation();
   const communicationState = useSyncExternalStore(
     subscribeCommunication,
     getCommunicationState,
@@ -248,22 +250,29 @@ function POSProfileSettingsControl({ session = null }) {
     <section className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Workshop profile owner</p>
+          <p className="text-xs text-slate-500">
+            {t("pos.profile.workshopProfileOwner", "Workshop profile owner")}
+          </p>
           <p className="mt-2 text-lg font-semibold text-slate-900">
             {session?.name || "POS User"}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Staff count</p>
+          <p className="text-xs text-slate-500">{t("pos.profile.staffCount", "Staff count")}</p>
           <p className="mt-2 text-lg font-semibold text-slate-900">
             {staffSummary.total}
           </p>
           <p className="text-xs text-slate-500">
-            Active {staffSummary.active} | On leave {staffSummary.onLeave}
+            {t("pos.profile.staffStatusSummary", "Active {{active}} | On leave {{onLeave}}", {
+              active: staffSummary.active,
+              onLeave: staffSummary.onLeave,
+            })}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Primary location</p>
+          <p className="text-xs text-slate-500">
+            {t("pos.profile.primaryLocation", "Primary location")}
+          </p>
           <p className="mt-2 text-lg font-semibold text-slate-900">
             {locationSettings.locationName}
           </p>
@@ -277,11 +286,11 @@ function POSProfileSettingsControl({ session = null }) {
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <Settings size={18} />
-            Workshop profile
+            {t("pos.profile.workshopProfile", "Workshop profile")}
           </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>Workshop name</Label>
+              <Label>{t("pos.profile.workshopName", "Workshop name")}</Label>
               <Input
                 onChange={(event) =>
                   setWorkshopProfile((prev) => ({
@@ -293,7 +302,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Workshop type</Label>
+              <Label>{t("pos.profile.workshopType", "Workshop type")}</Label>
               <Input
                 onChange={(event) =>
                   setWorkshopProfile((prev) => ({
@@ -305,7 +314,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Contact email</Label>
+              <Label>{t("pos.profile.contactEmail", "Contact email")}</Label>
               <Input
                 onChange={(event) =>
                   setWorkshopProfile((prev) => ({
@@ -317,7 +326,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Contact phone</Label>
+              <Label>{t("pos.profile.contactPhone", "Contact phone")}</Label>
               <Input
                 onChange={(event) =>
                   setWorkshopProfile((prev) => ({
@@ -329,7 +338,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label>Certifications</Label>
+              <Label>{t("pos.profile.certifications", "Certifications")}</Label>
               <Textarea
                 onChange={(event) =>
                   setWorkshopProfile((prev) => ({
@@ -342,7 +351,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label>Tax registration</Label>
+              <Label>{t("pos.profile.taxRegistration", "Tax registration")}</Label>
               <Input
                 onChange={(event) =>
                   setWorkshopProfile((prev) => ({
@@ -359,14 +368,14 @@ function POSProfileSettingsControl({ session = null }) {
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <Users size={18} />
-            Staff management
+            {t("pos.profile.staffManagement", "Staff management")}
           </h2>
           <div className="mt-4 grid gap-2">
             <Input
               onChange={(event) =>
                 setStaffDraft((prev) => ({ ...prev, name: event.target.value }))
               }
-              placeholder="Staff name"
+              placeholder={t("pos.profile.staffName", "Staff name")}
               value={staffDraft.name}
             />
             <div className="grid gap-2 sm:grid-cols-3">
@@ -376,7 +385,7 @@ function POSProfileSettingsControl({ session = null }) {
                 }
                 options={ROLE_OPTIONS}
                 value={staffDraft.role || ""}
-                placeholder="Role"
+                placeholder={t("pos.profile.role", "Role")}
                 searchPlaceholder="Search roles"
                 emptyLabel="No roles"
                 noMatchLabel="No matching roles"
@@ -389,7 +398,7 @@ function POSProfileSettingsControl({ session = null }) {
                 }
                 options={SHIFT_OPTIONS}
                 value={staffDraft.shift || ""}
-                placeholder="Shift"
+                placeholder={t("pos.profile.shift", "Shift")}
                 searchPlaceholder="Search shifts"
                 emptyLabel="No shifts"
                 noMatchLabel="No matching shifts"
@@ -402,7 +411,7 @@ function POSProfileSettingsControl({ session = null }) {
                 }
                 options={STATUS_OPTIONS}
                 value={staffDraft.status || ""}
-                placeholder="Status"
+                placeholder={t("pos.profile.status", "Status")}
                 searchPlaceholder="Search status"
                 emptyLabel="No status options"
                 noMatchLabel="No matching status"
@@ -410,7 +419,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <Button onClick={addStaffMember} type="button" variant="outline">
-              Add staff member
+              {t("pos.profile.addStaffMember", "Add staff member")}
             </Button>
           </div>
 
@@ -427,7 +436,7 @@ function POSProfileSettingsControl({ session = null }) {
                     onClick={removeStaffMember(member.id)}
                     type="button"
                   >
-                    Remove
+                    {t("pos.profile.remove", "Remove")}
                   </button>
                 </div>
                 <p className="text-slate-600">
@@ -442,7 +451,7 @@ function POSProfileSettingsControl({ session = null }) {
       <section className="grid gap-6 2xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">
-            Working hours
+            {t("pos.profile.workingHours", "Working hours")}
           </h2>
           <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-2 overflow-y-auto pr-1">
             {workingHours.map((item) => (
@@ -481,7 +490,7 @@ function POSProfileSettingsControl({ session = null }) {
                     }
                     type="checkbox"
                   />
-                  Closed
+                  {t("pos.profile.closed", "Closed")}
                 </label>
               </div>
             ))}
@@ -491,11 +500,11 @@ function POSProfileSettingsControl({ session = null }) {
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <MapPin size={18} />
-            POS location settings
+            {t("pos.profile.locationSettings", "POS location settings")}
           </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2 sm:col-span-2">
-              <Label>Location name</Label>
+              <Label>{t("pos.profile.locationName", "Location name")}</Label>
               <Input
                 onChange={(event) =>
                   setLocationSettings((prev) => ({
@@ -507,7 +516,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label>Address line 1</Label>
+              <Label>{t("pos.profile.addressLine1", "Address line 1")}</Label>
               <Input
                 onChange={(event) =>
                   setLocationSettings((prev) => ({
@@ -519,7 +528,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label>Address line 2</Label>
+              <Label>{t("pos.profile.addressLine2", "Address line 2")}</Label>
               <Input
                 onChange={(event) =>
                   setLocationSettings((prev) => ({
@@ -531,7 +540,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>City</Label>
+              <Label>{t("pos.profile.city", "City")}</Label>
               <Input
                 onChange={(event) =>
                   setLocationSettings((prev) => ({
@@ -543,7 +552,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>State</Label>
+              <Label>{t("pos.profile.state", "State")}</Label>
               <Input
                 onChange={(event) =>
                   setLocationSettings((prev) => ({
@@ -555,7 +564,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Postal code</Label>
+              <Label>{t("pos.profile.postalCode", "Postal code")}</Label>
               <Input
                 onChange={(event) =>
                   setLocationSettings((prev) => ({
@@ -567,7 +576,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Timezone</Label>
+              <Label>{t("pos.profile.timezone", "Timezone")}</Label>
               <Input
                 onChange={(event) =>
                   setLocationSettings((prev) => ({
@@ -579,7 +588,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Geo-fence radius (km)</Label>
+              <Label>{t("pos.profile.geoFenceRadius", "Geo-fence radius (km)")}</Label>
               <Input
                 onChange={(event) =>
                   setLocationSettings((prev) => ({
@@ -591,7 +600,7 @@ function POSProfileSettingsControl({ session = null }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Service coverage (km)</Label>
+              <Label>{t("pos.profile.serviceCoverage", "Service coverage (km)")}</Label>
               <Input
                 onChange={(event) =>
                   setLocationSettings((prev) => ({
@@ -612,7 +621,7 @@ function POSProfileSettingsControl({ session = null }) {
           type="button"
           className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
         >
-          Save profile & settings
+          {t("pos.profile.save", "Save profile & settings")}
         </Button>
         {feedback ? (
           <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700">
