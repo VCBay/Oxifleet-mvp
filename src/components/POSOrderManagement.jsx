@@ -167,6 +167,15 @@ const TYRE_CATALOG = [
     unitPrice: 458,
   },
   {
+    id: "TY-004S",
+    code: "MI-29575-22S",
+    manufacturer: "Michelin",
+    material: "Summer road compound",
+    seasonality: "Summer",
+    size: "295/75R22.5",
+    unitPrice: 452,
+  },
+  {
     id: "TY-005",
     code: "MI-29575-22A",
     manufacturer: "Michelin",
@@ -230,6 +239,15 @@ const TYRE_CATALOG = [
     unitPrice: 424,
   },
   {
+    id: "TY-011S",
+    code: "PI-27580-S",
+    manufacturer: "Pirelli",
+    material: "Summer performance compound",
+    seasonality: "Summer",
+    size: "275/80R22.5",
+    unitPrice: 418,
+  },
+  {
     id: "TY-012",
     code: "PI-29575-H",
     manufacturer: "Pirelli",
@@ -264,6 +282,15 @@ const TYRE_CATALOG = [
     seasonality: "Winter",
     size: "11R22.5",
     unitPrice: 456,
+  },
+  {
+    id: "TY-015S",
+    code: "CO-11R22-S",
+    manufacturer: "Continental",
+    material: "Summer touring compound",
+    seasonality: "Summer",
+    size: "11R22.5",
+    unitPrice: 448,
   },
   {
     id: "TY-016",
@@ -462,7 +489,7 @@ const applyRequestServices = (serviceType) => {
 
 const buildWizardPricing = (orderForm) => {
   const tyreTotal = (orderForm.tyreSelections || []).reduce((sum, item) => {
-    if (!item.selectedTyreId || item.action !== "Replace") {
+    if (!item.selectedTyreId) {
       return sum;
     }
     return sum + normalizeNumber(item.unitPrice);
@@ -486,7 +513,7 @@ const buildWizardPricing = (orderForm) => {
 
 const buildOrderPayload = (orderForm) => {
   const tyreParts = (orderForm.tyreSelections || [])
-    .filter((item) => item.selectedTyreId && item.action === "Replace")
+    .filter((item) => item.selectedTyreId)
     .map((item) => ({
       id: createLineId("PART"),
       name: `${item.position}: ${item.selectedTyreLabel}`,

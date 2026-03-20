@@ -15,6 +15,7 @@ const CATEGORY_OPTIONS = [
   { value: "all", label: "All categories" },
   { value: "all-season", label: "All-season" },
   { value: "highway", label: "Highway" },
+  { value: "summer", label: "Summer" },
   { value: "winter", label: "Winter" },
 ];
 

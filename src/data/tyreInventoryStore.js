@@ -44,6 +44,17 @@ const tyreInventory = [
     unitPrice: 452,
   },
   {
+    id: "TY-004S",
+    size: "11R22.5",
+    brand: "Michelin",
+    category: "Summer",
+    manufacturer: "Michelin",
+    onHand: 9,
+    reserved: 2,
+    etaDays: 3,
+    unitPrice: 446,
+  },
+  {
     id: "TY-005",
     size: "11R22.5",
     brand: "Goodyear",
@@ -77,6 +88,17 @@ const tyreInventory = [
     unitPrice: 396,
   },
   {
+    id: "TY-007S",
+    size: "275/80R22.5",
+    brand: "Pirelli",
+    category: "Summer",
+    manufacturer: "Pirelli",
+    onHand: 8,
+    reserved: 1,
+    etaDays: 5,
+    unitPrice: 404,
+  },
+  {
     id: "TY-008",
     size: "315/80R22.5",
     brand: "Continental",
@@ -97,6 +119,17 @@ const tyreInventory = [
     reserved: 1,
     etaDays: 9,
     unitPrice: 454,
+  },
+  {
+    id: "TY-010S",
+    size: "315/80R22.5",
+    brand: "Continental",
+    category: "Summer",
+    manufacturer: "Continental",
+    onHand: 6,
+    reserved: 2,
+    etaDays: 6,
+    unitPrice: 462,
   },
 ];
 
