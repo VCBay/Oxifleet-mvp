@@ -103,6 +103,14 @@ const normalizeServiceEntry = (entry) => ({
   cost: entry?.cost?.trim() || "N/A",
 });
 
+const normalizeOdometerValue = (value) => {
+  const parsed = Number(String(value ?? "").replace(/[^0-9]/g, ""));
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return Math.round(parsed);
+};
+
 const normalizeVehicle = (vehicle = {}) => {
   const id = vehicle.id?.trim() || createVehicleId();
   const status = vehicle.status?.trim() || "Active";
@@ -136,6 +144,11 @@ const normalizeVehicle = (vehicle = {}) => {
       getWarrantyStatus(normalizedWarrantyDate || ""),
     replacementVehicleId: vehicle.replacementVehicleId?.trim() || "",
     replacementNotes: vehicle.replacementNotes?.trim() || "",
+    odometerReading: normalizeOdometerValue(vehicle.odometerReading),
+    odometerUnit:
+      String(vehicle.odometerUnit || "km").trim().toLowerCase() === "miles"
+        ? "miles"
+        : "km",
     createdAt: vehicle.createdAt || new Date().toISOString(),
   };
 };

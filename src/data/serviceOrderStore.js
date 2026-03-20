@@ -1,3 +1,5 @@
+import { updateVehicle } from "./vehicleStore";
+
 const STORAGE_KEY = "oxifleet:service-orders";
 
 const readStorage = () => {
@@ -78,6 +80,18 @@ const normalizeAppointment = (appointment = {}) => ({
   note: String(appointment?.note || "").trim(),
   calendarChecked: Boolean(appointment?.calendarChecked),
   stockChecked: Boolean(appointment?.stockChecked),
+  autoApproved: Boolean(appointment?.autoApproved),
+});
+
+const normalizeCheckIn = (checkIn = {}) => ({
+  checkedInAt: checkIn?.checkedInAt ? toIsoString(checkIn.checkedInAt) : "",
+  checkedInBy: String(checkIn?.checkedInBy || "").trim(),
+  note: String(checkIn?.note || "").trim(),
+  odometerReading: toNullableNonNegativeInteger(checkIn?.odometerReading),
+  odometerUnit:
+    String(checkIn?.odometerUnit || "km").trim().toLowerCase() === "miles"
+      ? "miles"
+      : "km",
 });
 
 const normalizeSettlement = (settlement = {}) => ({
@@ -181,10 +195,12 @@ const normalizeOrder = (order = {}) => {
       decision: String(order.approval?.decision || "").trim(),
       approver: String(order.approval?.approver || "").trim(),
       note: String(order.approval?.note || "").trim(),
+      reasonCode: String(order.approval?.reasonCode || "").trim(),
       decidedAt: order.approval?.decidedAt ? toIsoString(order.approval.decidedAt) : "",
       manualOverride: Boolean(order.approval?.manualOverride),
     },
     appointment: normalizeAppointment(order.appointment),
+    checkIn: normalizeCheckIn(order.checkIn),
     settlement: normalizeSettlement(order.settlement),
     lifecycle: lifecycle.slice(0, 25),
     updatedAt: toIsoString(order.updatedAt),
@@ -336,6 +352,35 @@ const getDefaultOrders = () => {
           time: minusHours(8),
           actor: "Dispatch Control",
           note: "Emergency escalation.",
+        },
+      ],
+    }),
+    normalizeOrder({
+      id: "SR-1005",
+      vehicleId: "VH-617",
+      vehicleModel: "International LT",
+      serviceType: "Transmission diagnostics",
+      requestTitle: "Transmission inspection with parts review",
+      requestedBy: "Riley Carter",
+      requestedAt: minusHours(6),
+      priority: "High",
+      status: "Pending approval",
+      emergency: true,
+      orderDetails: {
+        description: "Driver reported delayed gear engagement and warning indicator during route.",
+        vendor: "Central Powertrain Hub",
+        estimatedCost: "$3,480",
+        location: "San Antonio, TX",
+        notes: "Review required for policy scope and stock readiness before booking.",
+        odometerReading: 184920,
+        odometerUnit: "km",
+      },
+      lifecycle: [
+        {
+          stage: "Requested",
+          time: minusHours(6),
+          actor: "Riley Carter",
+          note: "High-cost diagnostics request requires POS review before approval.",
         },
       ],
     }),
@@ -554,7 +599,7 @@ export const getServiceOrderState = () => state;
 
 export const decideServiceRequest = (
   orderId,
-  { decision, approver, note, manualOverride = false }
+  { decision, approver, note, reasonCode = "", manualOverride = false }
 ) =>
   updateOrderInternal(orderId, (order) => {
     const approved = decision === "Approved";
@@ -571,6 +616,7 @@ export const decideServiceRequest = (
         decision,
         approver: String(approver || "Supervisor").trim() || "Supervisor",
         note: String(note || "").trim(),
+        reasonCode: String(reasonCode || "").trim(),
         decidedAt: new Date().toISOString(),
         manualOverride: Boolean(manualOverride),
       },
@@ -640,6 +686,7 @@ export const confirmServiceAppointment = (
     note,
     calendarChecked = true,
     stockChecked = true,
+    autoApproved = false,
   } = {}
 ) =>
   updateOrderInternal(orderId, (order) => {
@@ -669,6 +716,7 @@ export const confirmServiceAppointment = (
         note: noteText,
         calendarChecked: checkedCalendar,
         stockChecked: checkedStock,
+        autoApproved: Boolean(autoApproved),
       },
       lifecycle: [
         ...order.lifecycle,
@@ -698,6 +746,144 @@ export const startServiceExecution = (orderId, { actor, note } = {}) =>
           time: now,
           actor: performedBy,
           note: noteText || "Service execution started at POS.",
+        },
+      ],
+      updatedAt: now,
+    };
+  });
+
+export const autoApproveServiceRequest = (
+  orderId,
+  {
+    appointmentAt,
+    actor,
+    note,
+    calendarChecked = true,
+    stockChecked = true,
+  } = {}
+) =>
+  updateOrderInternal(orderId, (order) => {
+    const now = new Date().toISOString();
+    const confirmedBy = String(actor || "POS Desk").trim() || "POS Desk";
+    const appointmentDateTime = appointmentAt ? toIsoString(appointmentAt) : now;
+    const noteText =
+      String(note || "").trim() ||
+      "Shared calendar slot confirmed and booking auto-approved.";
+
+    return {
+      ...order,
+      status: "Scheduled",
+      approval: {
+        decision: "Auto-approved",
+        approver: confirmedBy,
+        note: noteText,
+        reasonCode: "",
+        decidedAt: now,
+        manualOverride: false,
+      },
+      appointment: {
+        ...order.appointment,
+        dateTime: appointmentDateTime,
+        confirmedBy,
+        confirmedAt: now,
+        note: noteText,
+        calendarChecked: Boolean(calendarChecked),
+        stockChecked: Boolean(stockChecked),
+        autoApproved: true,
+      },
+      lifecycle: [
+        ...order.lifecycle,
+        {
+          stage: "Auto-approved",
+          time: now,
+          actor: confirmedBy,
+          note: noteText,
+        },
+        {
+          stage: "Scheduled",
+          time: now,
+          actor: confirmedBy,
+          note: `Appointment confirmed for ${new Date(appointmentDateTime).toLocaleString("en-US")}.`,
+        },
+      ],
+      updatedAt: now,
+    };
+  });
+
+export const rejectServiceRequest = (
+  orderId,
+  { actor, reasonCode, note } = {}
+) =>
+  updateOrderInternal(orderId, (order) => {
+    const now = new Date().toISOString();
+    const rejectedBy = String(actor || "POS Desk").trim() || "POS Desk";
+    const code = String(reasonCode || "").trim();
+    const noteText = String(note || "").trim();
+    return {
+      ...order,
+      status: "Rejected",
+      approval: {
+        decision: "Rejected",
+        approver: rejectedBy,
+        note: noteText,
+        reasonCode: code,
+        decidedAt: now,
+        manualOverride: false,
+      },
+      lifecycle: [
+        ...order.lifecycle,
+        {
+          stage: "Rejected",
+          time: now,
+          actor: rejectedBy,
+          note: code ? `${code}${noteText ? `: ${noteText}` : ""}` : noteText,
+        },
+      ],
+      updatedAt: now,
+    };
+  });
+
+export const checkInServiceVehicle = (
+  orderId,
+  { actor, odometerReading, odometerUnit = "km", note } = {}
+) =>
+  updateOrderInternal(orderId, (order) => {
+    const now = new Date().toISOString();
+    const checkedInBy = String(actor || "POS Desk").trim() || "POS Desk";
+    const odometer = toNullableNonNegativeInteger(odometerReading);
+    const unit =
+      String(odometerUnit || "km").trim().toLowerCase() === "miles"
+        ? "miles"
+        : "km";
+    const noteText = String(note || "").trim();
+
+    if (odometer !== null && order.vehicleId) {
+      updateVehicle(order.vehicleId, {
+        odometerReading: odometer,
+        odometerUnit: unit,
+      });
+    }
+
+    return {
+      ...order,
+      status: "Checked in",
+      checkIn: {
+        checkedInAt: now,
+        checkedInBy,
+        note: noteText,
+        odometerReading: odometer,
+        odometerUnit: unit,
+      },
+      lifecycle: [
+        ...order.lifecycle,
+        {
+          stage: "Checked in",
+          time: now,
+          actor: checkedInBy,
+          note:
+            odometer !== null
+              ? `Vehicle checked in at ${odometer.toLocaleString()} ${unit}.${noteText ? ` ${noteText}` : ""}`
+              : noteText || "Vehicle checked in at POS.",
         },
       ],
       updatedAt: now,
