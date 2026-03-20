@@ -49,8 +49,8 @@ const fallbackVehicles = [
     plate: "TX-8841",
     type: "Truck",
     tyreSpecs: {
-      brand: "Goodyear",
-      size: "295/75R22.5",
+      brand: "Continental",
+      size: "315/80R22.5",
       frontPsi: 102,
       rearPsi: 98,
     },
@@ -187,6 +187,9 @@ const toTimestamp = (value) => {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 };
+
+const isOrderVisibleToPos = (order) =>
+  normalize(order?.orderDetails?.routeTo || "pos") !== "fleet-only";
 
 const monthlyComparisonFallback = [
   { completed: 4, pending: 3, total: 8, estimatedCost: 4600 },
@@ -350,6 +353,10 @@ function POSDashboard() {
 
   const vehicles =
     vehicleState.vehicles.length > 0 ? vehicleState.vehicles : fallbackVehicles;
+  const posVisibleServiceOrders = useMemo(
+    () => (serviceOrderState.orders || []).filter(isOrderVisibleToPos),
+    [serviceOrderState.orders],
+  );
   const [plateQuery, setPlateQuery] = useState(() => vehicles[0]?.plate || "");
   const [notifications, setNotifications] = useState(initialPosNotifications);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -435,14 +442,14 @@ function POSDashboard() {
     if (!selectedVehicle) {
       return [];
     }
-    return serviceOrderState.orders
+    return posVisibleServiceOrders
       .filter((order) => order.vehicleId === selectedVehicle.id)
       .sort((a, b) => {
         const timeA = new Date(a.requestedAt).getTime() || 0;
         const timeB = new Date(b.requestedAt).getTime() || 0;
         return timeB - timeA;
       });
-  }, [selectedVehicle, serviceOrderState.orders]);
+  }, [posVisibleServiceOrders, selectedVehicle]);
 
   const requestSummary = useMemo(() => {
     const summary = {
@@ -643,7 +650,7 @@ function POSDashboard() {
           )
         : 0;
 
-    const approvalLinked = serviceOrderState.orders
+    const approvalLinked = posVisibleServiceOrders
       .map((order) => ({
         ...order,
         posOrderId: extractPosOrderId(order),
@@ -763,7 +770,7 @@ function POSDashboard() {
     primaryPolicy,
     requestSummary.avgCycleHours,
     requestSummary.onTimeRate,
-    serviceOrderState.orders,
+    posVisibleServiceOrders,
     session?.name,
     spareSummary.inventoryValue,
     spareSummary.lowStockCount,
@@ -843,7 +850,7 @@ function POSDashboard() {
 
   const approvalLinkedRequests = useMemo(
     () =>
-      serviceOrderState.orders
+      posVisibleServiceOrders
         .map((order) => ({
           ...order,
           posOrderId: extractPosOrderId(order),
@@ -854,12 +861,12 @@ function POSDashboard() {
             toTimestamp(b.updatedAt || b.requestedAt) -
             toTimestamp(a.updatedAt || a.requestedAt),
         ),
-    [serviceOrderState.orders],
+    [posVisibleServiceOrders],
   );
 
   const queueOrders = useMemo(
     () =>
-      serviceOrderState.orders
+      posVisibleServiceOrders
         .filter((order) => {
           const status = normalize(order.status);
           if (
@@ -881,7 +888,7 @@ function POSDashboard() {
             toTimestamp(b.updatedAt || b.requestedAt) -
             toTimestamp(a.updatedAt || a.requestedAt),
         ),
-    [serviceOrderState.orders],
+    [posVisibleServiceOrders],
   );
 
   const actionableNotifications = useMemo(() => {

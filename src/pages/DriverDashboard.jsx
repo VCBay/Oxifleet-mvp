@@ -69,6 +69,16 @@ const parseOdometerReading = (value) => {
   return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : null;
 };
 
+const toKilometers = (value, unit = "km") => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) {
+    return null;
+  }
+  return String(unit).toLowerCase() === "miles"
+    ? numeric * 1.60934
+    : numeric;
+};
+
 const buildFallbackOdometer = (vehicleId, unit = "km") => {
   const numericId = Number(String(vehicleId || "").replace(/\D/g, "")) || 0;
   const baseKm = 120000 + (numericId % 17) * 1375;
@@ -275,12 +285,51 @@ const slotTemplates = [
   { id: "16:30", label: "16:30 - 17:15" },
 ];
 
+const DAMAGE_REPORT_CATEGORY = "Schadensmeldung";
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    if (typeof FileReader === "undefined") {
+      reject(new Error("FileReader is not available."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error(`Unable to read file ${file?.name || ""}`));
+    reader.readAsDataURL(file);
+  });
+
+const buildPhotoAttachments = async (files = []) => {
+  const safeFiles = Array.isArray(files) ? files : [];
+  if (safeFiles.length === 0) {
+    return [];
+  }
+  const attachments = await Promise.all(
+    safeFiles.map(async (file) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}`,
+      name: file.name,
+      size: file.size,
+      mimeType: file.type || "image/*",
+      uploadedAt: new Date().toISOString(),
+      dataUrl: await readFileAsDataUrl(file),
+    })),
+  );
+  return attachments.filter((item) => Boolean(item.dataUrl));
+};
+
 const getNearestPosForProblem = (problemType) => {
   if (!String(problemType || "").trim()) {
     return [...POINT_S_STATIONS].sort((a, b) => a.distanceKm - b.distanceKm);
   }
   return getNearestPointSStationsForCategory(problemType);
 };
+
+const tyreSupplySelectionRequired = (problemType, problemSubtype) =>
+  String(problemType || "").trim() === "Reifen" &&
+  [
+    "Tyre change (seasonal change)",
+    "New tyre installation",
+  ].includes(String(problemSubtype || "").trim());
 
 const hashText = (text) => {
   let hash = 0;
@@ -661,6 +710,9 @@ function DriverDashboard() {
     preferredPosId: "",
     preferredDate: "",
     preferredSlotId: "",
+    tyreSupplySource: "",
+    posTyreAvailability: null,
+    recommendationAccepted: false,
   });
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [wizardFeedback, setWizardFeedback] = useState("");
@@ -687,14 +739,38 @@ function DriverDashboard() {
     );
     return byId || null;
   }, [nearestPosOptions, requestForm.preferredPosId]);
-  const slotAvailability = useMemo(
+  const requiresTyreSupplySelection = useMemo(
     () =>
-      buildSlotAvailability({
+      tyreSupplySelectionRequired(
+        requestForm.problemType,
+        requestForm.problemSubtype,
+      ),
+    [requestForm.problemSubtype, requestForm.problemType],
+  );
+  const isPosTyreUnavailableForBooking = useMemo(
+    () =>
+      requiresTyreSupplySelection &&
+      requestForm.tyreSupplySource === "pos" &&
+      requestForm.posTyreAvailability === false,
+    [
+      requestForm.posTyreAvailability,
+      requestForm.tyreSupplySource,
+      requiresTyreSupplySelection,
+    ],
+  );
+  const slotAvailability = useMemo(
+    () => {
+      if (isPosTyreUnavailableForBooking) {
+        return [];
+      }
+      return buildSlotAvailability({
         posId: requestForm.preferredPosId,
         date: requestForm.preferredDate,
         problemType: requestForm.problemType,
-      }),
+      });
+    },
     [
+      isPosTyreUnavailableForBooking,
       requestForm.preferredDate,
       requestForm.preferredPosId,
       requestForm.problemType,
@@ -707,6 +783,10 @@ function DriverDashboard() {
           slot.id === requestForm.preferredSlotId && slot.status === "Free",
       ) || null,
     [requestForm.preferredSlotId, slotAvailability],
+  );
+  const isDamageReportFlow = useMemo(
+    () => String(requestForm.problemType || "").trim() === DAMAGE_REPORT_CATEGORY,
+    [requestForm.problemType],
   );
 
   useEffect(() => {
@@ -730,6 +810,8 @@ function DriverDashboard() {
           ...prev,
           preferredPosId: "",
           preferredSlotId: "",
+          tyreSupplySource: "",
+          posTyreAvailability: null,
         };
       });
       return;
@@ -748,6 +830,8 @@ function DriverDashboard() {
         ...prev,
         preferredPosId: "",
         preferredSlotId: "",
+        tyreSupplySource: "",
+        posTyreAvailability: null,
       };
     });
   }, [nearestPosOptions]);
@@ -843,6 +927,83 @@ function DriverDashboard() {
     }
     return "";
   }, [currentOdometerReading, lastRecordedOdometer, requestForm.odometerReading]);
+  const odometerRecommendation = useMemo(() => {
+    if (!String(requestForm.odometerReading || "").trim()) {
+      return null;
+    }
+    if (currentOdometerReading === null || odometerError) {
+      return null;
+    }
+
+    const currentKm = toKilometers(
+      currentOdometerReading,
+      requestForm.odometerUnit,
+    );
+    const lastKm = toKilometers(
+      lastRecordedOdometer?.reading,
+      lastRecordedOdometer?.unit || "km",
+    );
+    if (currentKm === null || lastKm === null || currentKm <= lastKm) {
+      return null;
+    }
+
+    const distanceKm = Math.round(currentKm - lastKm);
+    if (distanceKm < 300) {
+      return null;
+    }
+
+    if (distanceKm >= 12000) {
+      return {
+        level: "high",
+        title: "Comprehensive service recommended",
+        summary: `${distanceKm.toLocaleString()} km driven since last recorded reading.`,
+        suggestion: "Book Service with tyre inspection and brake safety check.",
+        suggestedCategory: "Service",
+      };
+    }
+    if (distanceKm >= 8000) {
+      return {
+        level: "medium",
+        title: "Scheduled service is due soon",
+        summary: `${distanceKm.toLocaleString()} km driven since last recorded reading.`,
+        suggestion: "Book Service to avoid overdue maintenance.",
+        suggestedCategory: "Service",
+      };
+    }
+    if (distanceKm >= 5000) {
+      return {
+        level: "medium",
+        title: "Tyre check recommended",
+        summary: `${distanceKm.toLocaleString()} km driven since last recorded reading.`,
+        suggestion: "Consider Reifen for pressure, wear, and alignment check.",
+        suggestedCategory: "Reifen",
+      };
+    }
+    return {
+      level: "low",
+      title: "Preventive inspection suggested",
+      summary: `${distanceKm.toLocaleString()} km driven since last recorded reading.`,
+      suggestion: "A quick Service check can prevent small issues from growing.",
+      suggestedCategory: "Service",
+    };
+  }, [
+    currentOdometerReading,
+    lastRecordedOdometer?.reading,
+    lastRecordedOdometer?.unit,
+    odometerError,
+    requestForm.odometerReading,
+    requestForm.odometerUnit,
+  ]);
+  useEffect(() => {
+    if (odometerRecommendation || !requestForm.recommendationAccepted) {
+      return;
+    }
+    setRequestForm((prev) =>
+      prev.recommendationAccepted
+        ? { ...prev, recommendationAccepted: false }
+        : prev,
+    );
+  }, [odometerRecommendation, requestForm.recommendationAccepted]);
 
   const isServiceRequestFormReady = useMemo(() => {
     const hasProblemType = Boolean(
@@ -859,25 +1020,39 @@ function DriverDashboard() {
     const hasPhotos =
       !doesCategoryRequirePhotos(requestForm.problemType) ||
       requestForm.photos.length > 0;
+    const hasTyreSupplySelection =
+      !requiresTyreSupplySelection ||
+      (requestForm.tyreSupplySource === "driver" &&
+        requestForm.posTyreAvailability === true) ||
+      (requestForm.tyreSupplySource === "pos" &&
+        requestForm.posTyreAvailability === true);
+    const hasBookingSelection = isDamageReportFlow
+      ? true
+      : Boolean(requestForm.preferredPosId) &&
+        Boolean(requestForm.preferredDate) &&
+        Boolean(selectedSlot);
 
     return (
       hasProblemType &&
       hasSubtype &&
       hasDescription &&
       hasPhotos &&
+      hasTyreSupplySelection &&
       !odometerError &&
-      Boolean(requestForm.preferredPosId) &&
-      Boolean(requestForm.preferredDate) &&
-      Boolean(selectedSlot)
+      hasBookingSelection
     );
   }, [
+    isDamageReportFlow,
     odometerError,
     requestForm.description,
     requestForm.preferredDate,
     requestForm.preferredPosId,
     requestForm.problemType,
     requestForm.problemSubtype,
+    requestForm.posTyreAvailability,
     requestForm.photos.length,
+    requestForm.tyreSupplySource,
+    requiresTyreSupplySelection,
     selectedSlot,
   ]);
 
@@ -1255,16 +1430,28 @@ function DriverDashboard() {
   const createDriverServiceRequest = ({
     emergency = false,
     approval = true,
+    attachments = [],
+    routeToFleetOnly = false,
   } = {}) => {
-    const selectedPosName =
-      selectedPos?.name ||
-      tenant?.workshopLead ||
-      "Point S station (unassigned)";
+    const selectedPosName = routeToFleetOnly
+      ? "Fleet Damage Desk"
+      : selectedPos?.name || tenant?.workshopLead || "Point S station (unassigned)";
     const slotLabel = selectedSlot?.label || "Not selected";
     const preferredDateLabel = formatDate(requestForm.preferredDate);
     const serviceLabel = requestForm.problemSubtype
       ? `${requestForm.problemType} - ${requestForm.problemSubtype}`
       : requestForm.problemType;
+    const tyreSupplyText =
+      requestForm.tyreSupplySource === "driver"
+        ? "Driver bringing tyres"
+        : requestForm.tyreSupplySource === "pos"
+          ? requestForm.posTyreAvailability
+            ? "Tyres requested from POS (stock available)"
+            : "Tyres requested from POS (stock unavailable)"
+          : "Not applicable";
+    const includeOdometerRecommendation = Boolean(
+      requestForm.recommendationAccepted && odometerRecommendation,
+    );
     const odometerReading = parseOdometerReading(requestForm.odometerReading);
     const odometerUnit = requestForm.odometerUnit === "miles" ? "miles" : "km";
     const order = createServiceRequest({
@@ -1275,31 +1462,53 @@ function DriverDashboard() {
       requestedBy: displayName,
       priority: emergency ? "Emergency" : "Normal",
       emergency,
-      status: approval ? "Pending approval" : "Pending booking",
+      status: routeToFleetOnly || approval ? "Pending approval" : "Pending booking",
       orderDetails: {
         description:
           requestForm.description ||
-          `${serviceLabel} reported by driver. Preferred slot: ${slotLabel} on ${preferredDateLabel}.`,
+          (routeToFleetOnly
+            ? `${serviceLabel} reported by driver and routed to fleet for direct triage.`
+            : `${serviceLabel} reported by driver. Preferred slot: ${slotLabel} on ${preferredDateLabel}.`),
         vendor: selectedPosName,
         estimatedCost: `$${estimatedCost.total}`,
-        location: selectedPos?.address || tenant?.region || "N/A",
+        location: routeToFleetOnly
+          ? tenant?.region || "N/A"
+          : selectedPos?.address || tenant?.region || "N/A",
         odometerReading,
         odometerUnit,
+        routeTo: routeToFleetOnly ? "fleet-only" : "pos",
+        attachments,
+        recommendationAccepted: includeOdometerRecommendation,
+        recommendation: includeOdometerRecommendation
+          ? {
+              level: odometerRecommendation.level,
+              title: odometerRecommendation.title,
+              summary: odometerRecommendation.summary,
+              suggestion: odometerRecommendation.suggestion,
+              suggestedCategory: odometerRecommendation.suggestedCategory,
+            }
+          : null,
         notes: [
           `Tenant: ${tenant?.name || "N/A"}`,
           `Category: ${requestForm.problemType || "N/A"}`,
           `Subcategory: ${requestForm.problemSubtype || "N/A"}`,
           `Odometer reading: ${odometerReading?.toLocaleString() || "N/A"} ${odometerUnit}`,
-          `Preferred Point S station: ${selectedPosName} (${selectedPos?.distanceKm ?? "N/A"} km, ETA ${
-            selectedPos?.etaMin ?? "N/A"
-          } min)`,
-          `Preferred date: ${requestForm.preferredDate}`,
-          `Preferred slot: ${slotLabel}`,
+          routeToFleetOnly
+            ? "Routing: Direct to fleet manager (damage workflow)."
+            : `Preferred Point S station: ${selectedPosName} (${selectedPos?.distanceKm ?? "N/A"} km, ETA ${
+                selectedPos?.etaMin ?? "N/A"
+              } min)`,
+          `Tyre supply: ${tyreSupplyText}`,
+          `Preferred date: ${requestForm.preferredDate || "N/A"}`,
+          `Preferred slot: ${routeToFleetOnly ? "N/A" : slotLabel}`,
           `Photos: ${requestForm.photos.map((file) => file.name).join(", ") || "None"}`,
           `Policy check: ${policyValidation.status}`,
+          includeOdometerRecommendation
+            ? `Driver accepted odometer recommendation: ${odometerRecommendation.title} | ${odometerRecommendation.suggestion} | Suggested category: ${odometerRecommendation.suggestedCategory}`
+            : "Driver accepted odometer recommendation: No",
         ].join(" | "),
       },
-      appointment: selectedSlot
+      appointment: !routeToFleetOnly && selectedSlot
         ? {
             dateTime: selectedSlot.dateTime,
             note: `Preferred slot selected by driver at ${selectedPosName}.`,
@@ -1348,19 +1557,32 @@ function DriverDashboard() {
       });
       return;
     }
-    if (!requestForm.preferredPosId) {
+    if (!isDamageReportFlow && !requestForm.preferredPosId) {
       const message = "Select a nearby Point S station first.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
       return;
     }
-    if (!requestForm.preferredDate) {
+    if (
+      requiresTyreSupplySelection &&
+      (!requestForm.tyreSupplySource || requestForm.posTyreAvailability !== true)
+    ) {
+      const message =
+        requestForm.tyreSupplySource === "pos" &&
+        requestForm.posTyreAvailability === false
+          ? "Selected POS has no tyre stock for this request. We will notify you when stock is available."
+          : "Select tyre supply option after choosing Point S station.";
+      setWizardFeedback(message);
+      toast.error("Request not sent", { description: message, duration: 3600 });
+      return;
+    }
+    if (!isDamageReportFlow && !requestForm.preferredDate) {
       const message = "Select a booking date first.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
       return;
     }
-    if (!selectedSlot) {
+    if (!isDamageReportFlow && !selectedSlot) {
       const message = "Select a free slot to continue.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
@@ -1369,17 +1591,33 @@ function DriverDashboard() {
     setIsSubmittingRequest(true);
     try {
       const approvalRequired =
-        requestForm.emergency || policyValidation.status !== "Allowed";
+        isDamageReportFlow ||
+        requestForm.emergency ||
+        policyValidation.status !== "Allowed";
+      let attachments = [];
+      try {
+        attachments = await buildPhotoAttachments(requestForm.photos);
+      } catch (error) {
+        const message =
+          "Could not process uploaded photos. Please re-upload and try again.";
+        setWizardFeedback(message);
+        toast.error("Request not sent", { description: message, duration: 3600 });
+        return;
+      }
       await new Promise((resolve) => {
         submitRequestTimeoutRef.current = window.setTimeout(resolve, 900);
       });
       const createdOrder = createDriverServiceRequest({
-        emergency: requestForm.emergency,
+        emergency: requestForm.emergency || isDamageReportFlow,
         approval: approvalRequired,
+        attachments,
+        routeToFleetOnly: isDamageReportFlow,
       });
-      const successMessage = approvalRequired
-        ? "Request sent. Fleet manager approval is required."
-        : "Request sent. Booking flow has started.";
+      const successMessage = isDamageReportFlow
+        ? "Damage report sent directly to fleet manager with your photos."
+        : approvalRequired
+          ? "Request sent. Fleet manager approval is required."
+          : "Request sent. Booking flow has started.";
 
       setWizardFeedback(successMessage);
       if (createdOrder?.id) {
@@ -1409,6 +1647,9 @@ function DriverDashboard() {
         preferredPosId: "",
         preferredDate: "",
         preferredSlotId: "",
+        tyreSupplySource: "",
+        posTyreAvailability: null,
+        recommendationAccepted: false,
       });
     } catch (error) {
       const message = "Unable to send service request. Please try again.";
@@ -1733,6 +1974,7 @@ function DriverDashboard() {
           ) : null}
           {activeMenu === "service_request" ? (
             <DriverServiceRequestSection
+              assignedVehicle={vehicle}
               driverServiceRequests={driverServiceRequests}
               eligibilityClass={eligibilityClass}
               formatDateTime={formatDateTime}
@@ -1753,6 +1995,7 @@ function DriverDashboard() {
               setSelectedRequestId={setSelectedRequestId}
               slotAvailability={slotAvailability}
               simpleIssueOptions={simpleIssueOptions}
+              odometerRecommendation={odometerRecommendation}
               wizardFeedback={wizardFeedback}
             />
           ) : null}

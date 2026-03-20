@@ -90,6 +90,7 @@ function ServiceOrderControl() {
   const [decisionApprover, setDecisionApprover] = useState("Operations Lead");
   const [lifecycleStage, setLifecycleStage] = useState("In progress");
   const [lifecycleNote, setLifecycleNote] = useState("");
+  const [previewAttachment, setPreviewAttachment] = useState(null);
 
   const orders = useMemo(
     () =>
@@ -491,6 +492,45 @@ function ServiceOrderControl() {
                       Location: {selectedOrder.orderDetails.location}
                     </p>
                   </div>
+                  {Array.isArray(selectedOrder.orderDetails?.attachments) &&
+                  selectedOrder.orderDetails.attachments.length > 0 ? (
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Attached photos
+                        </p>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                          {selectedOrder.orderDetails.attachments.length}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {selectedOrder.orderDetails.attachments.map((attachment) => (
+                          <div
+                            key={`${selectedOrder.id}-${attachment.id || attachment.name}`}
+                            className="rounded-lg border border-slate-200 bg-slate-50 p-2"
+                          >
+                            <p
+                              className="truncate text-xs font-semibold text-slate-800"
+                              title={attachment.name}
+                            >
+                              {attachment.name}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">
+                              {Math.max(1, Math.round((attachment.size || 0) / 1024))} KB
+                            </p>
+                            <Button
+                              className="mt-2 h-7 text-xs"
+                              onClick={() => setPreviewAttachment(attachment)}
+                              type="button"
+                              variant="outline"
+                            >
+                              View
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -623,6 +663,36 @@ function ServiceOrderControl() {
           </div>
         </div>
       </div>
+      {previewAttachment ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">
+                  {previewAttachment.name || "Attachment"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {Math.max(1, Math.round((previewAttachment.size || 0) / 1024))} KB
+                </p>
+              </div>
+              <Button
+                onClick={() => setPreviewAttachment(null)}
+                type="button"
+                variant="outline"
+              >
+                Close
+              </Button>
+            </div>
+            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+              <img
+                alt={previewAttachment.name || "Attachment preview"}
+                className="max-h-[65vh] w-full object-contain"
+                src={previewAttachment.dataUrl}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
