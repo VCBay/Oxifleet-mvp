@@ -61,6 +61,27 @@ const normalizeLabourItem = (item = {}) => {
   };
 };
 
+const normalizeServiceLine = (item = {}) => ({
+  id: String(item.id || createId("SRV")).trim(),
+  name: String(item.name || "Service line").trim() || "Service line",
+  count: Math.max(0, toNumber(item.count || 0)),
+  unitPrice: Math.max(0, toNumber(item.unitPrice || 0)),
+  favorite: Boolean(item.favorite),
+});
+
+const normalizeTyreSelection = (item = {}) => ({
+  position: String(item.position || "Position").trim() || "Position",
+  action: String(item.action || "Inspect").trim() || "Inspect",
+  reason: String(item.reason || "").trim(),
+  selectedTyreId: String(item.selectedTyreId || "").trim(),
+  selectedTyreLabel: String(item.selectedTyreLabel || "").trim(),
+  tyreCode: String(item.tyreCode || "").trim(),
+  manufacturer: String(item.manufacturer || "").trim(),
+  material: String(item.material || "").trim(),
+  seasonality: String(item.seasonality || "").trim(),
+  unitPrice: Math.max(0, toNumber(item.unitPrice || 0)),
+});
+
 const normalizeOrder = (order = {}, forcedStatus) => {
   const parts = Array.isArray(order.parts) ? order.parts.map(normalizePartItem) : [];
   const labour = Array.isArray(order.labour)
@@ -71,25 +92,59 @@ const normalizeOrder = (order = {}, forcedStatus) => {
   const attachments = Array.isArray(order.attachments)
     ? order.attachments.map(normalizeAttachment)
     : [];
+  const tyreSelections = Array.isArray(order.tyreSelections)
+    ? order.tyreSelections.map(normalizeTyreSelection)
+    : [];
+  const serviceLines = Array.isArray(order.serviceLines)
+    ? order.serviceLines.map(normalizeServiceLine)
+    : [];
   const status = forcedStatus || String(order.status || "Draft").trim() || "Draft";
   const createdAt = order.createdAt || new Date().toISOString();
+  const subtotal = Math.max(0, toNumber(order.subtotal || partsTotal + labourTotal));
+  const vatRate = toNumber(order.vatRate || 0);
+  const vatAmount = Math.max(0, toNumber(order.vatAmount || subtotal * vatRate));
+  const grossTotal = Math.max(
+    0,
+    toNumber(order.total || order.totalGross || subtotal + vatAmount)
+  );
   return {
     id: String(order.id || createId("POSO")).trim(),
     status,
     vehicleId: String(order.vehicleId || "").trim(),
     vehiclePlate: String(order.vehiclePlate || "").trim(),
+    requestId: String(order.requestId || "").trim(),
+    srCode: String(order.srCode || "").trim(),
+    driverName: String(order.driverName || "").trim(),
+    driverLicense: String(order.driverLicense || "").trim(),
+    fleetName: String(order.fleetName || "").trim(),
+    checkInDateTime: String(order.checkInDateTime || "").trim(),
+    driverOdometerReading: Math.max(0, toNumber(order.driverOdometerReading || 0)),
+    driverOdometerUnit:
+      String(order.driverOdometerUnit || "km").trim().toLowerCase() === "miles"
+        ? "miles"
+        : "km",
+    verifiedOdometerReading: Math.max(0, toNumber(order.verifiedOdometerReading || 0)),
+    verifiedOdometerUnit:
+      String(order.verifiedOdometerUnit || "km").trim().toLowerCase() === "miles"
+        ? "miles"
+        : "km",
     serviceType: String(order.serviceType || "General service").trim(),
     problemType: String(order.problemType || "").trim(),
     description: String(order.description || "").trim(),
     priority: String(order.priority || "Normal").trim(),
     parts,
     labour,
+    tyreSelections,
+    serviceLines,
     attachments,
     notes: String(order.notes || "").trim(),
     submittedBy: String(order.submittedBy || "").trim(),
     partsTotal,
     labourTotal,
-    total: Math.round(partsTotal + labourTotal),
+    subtotal: Math.round(subtotal),
+    vatRate,
+    vatAmount: Math.round(vatAmount),
+    total: Math.round(grossTotal),
     createdAt,
     updatedAt: new Date().toISOString(),
     submittedAt:

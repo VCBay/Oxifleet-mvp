@@ -16,6 +16,7 @@ import {
   getServiceOrderState,
   subscribeServiceOrders,
 } from "../data/serviceOrderStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const normalize = (value) =>
   String(value || "")
@@ -124,6 +125,7 @@ function POSBillingSettlementControl({
   initialFocus = "",
   initialInvoiceId = "",
 }) {
+  const { t } = useTranslation();
   const billingState = useSyncExternalStore(
     subscribeBillingFinance,
     getBillingFinanceState,
@@ -294,25 +296,25 @@ function POSBillingSettlementControl({
       [
         {
           key: "submittedOrders",
-          title: "Submitted",
+          title: t("pos.billing.cards.submitted", "Submitted"),
           value: submittedOrdersList.length,
           icon: History,
         },
         {
           key: "validatedOrders",
-          title: "Validated",
+          title: t("pos.billing.cards.validated", "Validated"),
           value: validatedOrders.length,
           icon: CheckCircle2,
         },
         {
           key: "rejectedOrders",
-          title: "Rejected",
+          title: t("pos.billing.cards.rejected", "Rejected"),
           value: rejectedOrders.length,
           icon: FileWarning,
         },
         {
           key: "creditMemos",
-          title: "Credit memos",
+          title: t("pos.billing.cards.creditMemos", "Credit memos"),
           value: creditMemoRows.length,
           icon: CreditCard,
         },
@@ -392,12 +394,14 @@ function POSBillingSettlementControl({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
-              Billing & Settlement
+              {t("pos.billing.headerTitle", "Billing & Settlement")}
             </p>
 
             <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
-              Monitor and manage your billing, settlements, and financial
-              records with ease.
+              {t(
+                "pos.billing.headerDesc",
+                "Monitor and manage your billing, settlements, and financial records with ease.",
+              )}
             </p>
           </div>
         </div>
@@ -421,7 +425,7 @@ function POSBillingSettlementControl({
               {card.value}
             </p>
             <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
-              Last month: {card.lastMonthValue}
+              {t("pos.billing.lastMonth", "Last month")}: {card.lastMonthValue}
             </p>
           </article>
         ))}
@@ -433,12 +437,12 @@ function POSBillingSettlementControl({
           ref={paymentScheduleSectionRef}
         >
           <h2 className="text-lg font-semibold text-slate-900">
-            Submitted orders list
+            {t("pos.billing.submittedOrdersList", "Submitted orders list")}
           </h2>
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {submittedOrdersList.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No submitted orders found.
+                {t("pos.billing.noSubmittedOrders", "No submitted orders found.")}
               </p>
             ) : (
               submittedOrdersList.map((order) => {
@@ -455,11 +459,13 @@ function POSBillingSettlementControl({
                       {order.id} - {order.serviceType}
                     </p>
                     <p className="text-slate-600">
-                      Total: {formatCurrency(order.total)} | Status:{" "}
+                      {t("pos.billing.total", "Total")}: {formatCurrency(order.total)} |{" "}
+                      {t("pos.billing.status", "Status")}:{" "}
                       {order.approvalStatus}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Linked request: {order.linkedRequestId || "Not created"}
+                      {t("pos.billing.linkedRequest", "Linked request")}:{" "}
+                      {order.linkedRequestId || t("pos.billing.notCreated", "Not created")}
                     </p>
                     <div className="mt-2 flex justify-end">
                       <Button
@@ -470,7 +476,7 @@ function POSBillingSettlementControl({
                         variant="outline"
                         className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                       >
-                        Download invoice
+                        {t("pos.billing.downloadInvoice", "Download invoice")}
                       </Button>
                     </div>
                   </div>
@@ -483,12 +489,12 @@ function POSBillingSettlementControl({
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <CheckCircle2 size={18} />
-            Validated orders
+            {t("pos.billing.validatedOrders", "Validated orders")}
           </h2>
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {validatedOrders.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No validated orders yet.
+                {t("pos.billing.noValidatedOrders", "No validated orders yet.")}
               </p>
             ) : (
               validatedOrders.map((order) => {
@@ -505,7 +511,8 @@ function POSBillingSettlementControl({
                       {order.id} - {order.serviceType}
                     </p>
                     <p className="text-emerald-700">
-                      Approved amount: {formatCurrency(order.total)} |{" "}
+                      {t("pos.billing.approvedAmount", "Approved amount")}:{" "}
+                      {formatCurrency(order.total)} |{" "}
                       {order.approvalStatus}
                     </p>
                     <div className="mt-2 flex justify-end">
@@ -517,7 +524,7 @@ function POSBillingSettlementControl({
                         variant="outline"
                         className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                       >
-                        Download invoice
+                        {t("pos.billing.downloadInvoice", "Download invoice")}
                       </Button>
                     </div>
                   </div>
@@ -532,12 +539,12 @@ function POSBillingSettlementControl({
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <FileWarning size={18} />
-            Rejected orders with reason
+            {t("pos.billing.rejectedOrders", "Rejected orders with reason")}
           </h2>
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {rejectedOrders.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No rejected orders.
+                {t("pos.billing.noRejectedOrders", "No rejected orders.")}
               </p>
             ) : (
               rejectedOrders.map((order) => (
@@ -548,9 +555,12 @@ function POSBillingSettlementControl({
                   <p className="font-semibold text-rose-900">
                     {order.id} - {order.serviceType}
                   </p>
-                  <p className="text-rose-700">Reason: {order.reason}</p>
+                  <p className="text-rose-700">
+                    {t("pos.billing.reason", "Reason")}: {order.reason}
+                  </p>
                   <p className="text-xs text-rose-600">
-                    Request {order.requestId} | {formatDate(order.rejectedAt)}
+                    {t("pos.billing.request", "Request")} {order.requestId} |{" "}
+                    {formatDate(order.rejectedAt)}
                   </p>
                   <div className="mt-2 flex justify-end">
                     <Button
@@ -565,7 +575,7 @@ function POSBillingSettlementControl({
                       variant="outline"
                       className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                     >
-                      Download invoice
+                      {t("pos.billing.downloadInvoice", "Download invoice")}
                     </Button>
                   </div>
                 </div>
@@ -577,12 +587,12 @@ function POSBillingSettlementControl({
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <CreditCard size={18} />
-            Credit memo tracking
+            {t("pos.billing.creditMemoTracking", "Credit memo tracking")}
           </h2>
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {creditMemoRows.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No credit memos found.
+                {t("pos.billing.noCreditMemos", "No credit memos found.")}
               </p>
             ) : (
               creditMemoRows.map((memo) => (
@@ -597,7 +607,8 @@ function POSBillingSettlementControl({
                     {memo.reason} | {formatCurrency(memo.amount)}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Invoice: {memo.invoiceId} | Order: {memo.orderId} |{" "}
+                    {t("pos.billing.invoice", "Invoice")}: {memo.invoiceId} |{" "}
+                    {t("pos.billing.order", "Order")}: {memo.orderId} |{" "}
                     {formatDate(memo.date)}
                   </p>
                   <div className="mt-2 flex justify-end">
@@ -611,7 +622,7 @@ function POSBillingSettlementControl({
                       variant="outline"
                       className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                     >
-                      Download invoice
+                      {t("pos.billing.downloadInvoice", "Download invoice")}
                     </Button>
                   </div>
                 </div>

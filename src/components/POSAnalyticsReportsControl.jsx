@@ -31,6 +31,7 @@ import {
   getDriverOperationsState,
   subscribeDriverOperations,
 } from "../data/driverOperationsStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const normalize = (value) =>
   String(value || "")
@@ -191,6 +192,7 @@ const renderOrdersPeriodTooltip = ({ active, payload, label }) => {
 };
 
 function POSAnalyticsReportsControl() {
+  const { t } = useTranslation();
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
     getPosOrderState,
@@ -499,13 +501,14 @@ function POSAnalyticsReportsControl() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
-              Analytics & Reports
+              {t("pos.analytics.headerTitle", "Analytics & Reports")}
             </p>
 
             <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
-              Gain insights into your POS operations with comprehensive
-              analytics and reports, empowering you to make informed decisions
-              and optimize performance.
+              {t(
+                "pos.analytics.headerDesc",
+                "Gain insights into your POS operations with comprehensive analytics and reports, empowering you to make informed decisions and optimize performance.",
+              )}
             </p>
           </div>
         </div>
@@ -534,7 +537,7 @@ function POSAnalyticsReportsControl() {
               </span> */}
             </div>
             <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
-              Last month: {formatCurrency(card.lastMonthValue)}
+              {t("pos.analytics.lastMonth", "Last month")}: {formatCurrency(card.lastMonthValue)}
             </p>
           </article>
         ))}
@@ -545,7 +548,7 @@ function POSAnalyticsReportsControl() {
           className="text-lg font-semibold"
           style={{ color: figmaChartTheme.title }}
         >
-          Orders per period
+          {t("pos.analytics.ordersPerPeriod", "Orders per period")}
         </h2>
         <div className="mt-4 h-72">
           <ResponsiveContainer width="100%" height="100%">
@@ -591,29 +594,33 @@ function POSAnalyticsReportsControl() {
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">
-            Rejection rate
+            {t("pos.analytics.rejectionRate", "Rejection rate")}
           </h2>
           <p className="mt-2 text-3xl font-semibold text-rose-600">
             {rejectionRateSummary.rejectionRate}%
           </p>
           <p className="mt-1 text-sm text-slate-500">
-            Based on {rejectionRateSummary.considered} approval-linked orders.
+            {t(
+              "pos.analytics.rejectionRateDesc",
+              "Based on {{count}} approval-linked orders.",
+              { count: rejectionRateSummary.considered },
+            )}
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Approved</p>
+              <p className="text-slate-500">{t("pos.analytics.approved", "Approved")}</p>
               <p className="mt-1 text-lg font-semibold text-emerald-600">
                 {rejectionRateSummary.approved}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Rejected</p>
+              <p className="text-slate-500">{t("pos.analytics.rejected", "Rejected")}</p>
               <p className="mt-1 text-lg font-semibold text-rose-600">
                 {rejectionRateSummary.rejected}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Pending</p>
+              <p className="text-slate-500">{t("pos.analytics.pending", "Pending")}</p>
               <p className="mt-1 text-lg font-semibold text-amber-600">
                 {rejectionRateSummary.pending}
               </p>
@@ -623,12 +630,12 @@ function POSAnalyticsReportsControl() {
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">
-            Top serviced vehicles
+            {t("pos.analytics.topServicedVehicles", "Top serviced vehicles")}
           </h2>
           <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
             {topServicedVehicles.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No service history available.
+                {t("pos.analytics.noServiceHistory", "No service history available.")}
               </p>
             ) : (
               topServicedVehicles.map((vehicle) => (
@@ -640,7 +647,8 @@ function POSAnalyticsReportsControl() {
                     {vehicle.vehicleId} - {vehicle.vehicleModel}
                   </p>
                   <p className="text-slate-600">
-                    Services: {vehicle.services} | Last:{" "}
+                    {t("pos.analytics.services", "Services")}: {vehicle.services} |{" "}
+                    {t("pos.analytics.last", "Last")}:{" "}
                     {new Date(vehicle.latestServiceAt).toLocaleDateString(
                       "en-US",
                     )}
@@ -654,13 +662,13 @@ function POSAnalyticsReportsControl() {
 
       <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">
-          Fleet-wise performance
+          {t("pos.analytics.fleetWisePerformance", "Fleet-wise performance")}
         </h2>
         <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
           {fleetWisePerformance.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-              No fleet performance data available.
-            </p>
+              {t("pos.analytics.noFleetData", "No fleet performance data available.")}
+              </p>
           ) : (
             fleetWisePerformance.map((fleet) => (
               <div
@@ -670,12 +678,20 @@ function POSAnalyticsReportsControl() {
                 <div>
                   <p className="font-semibold text-slate-900">{fleet.fleet}</p>
                   <p className="text-slate-600">
-                    Orders {fleet.orders} | Approved {fleet.approved} | Rejected{" "}
-                    {fleet.rejected} | Pending {fleet.pending}
+                    {t(
+                      "pos.analytics.fleetMetrics",
+                      "Orders {{orders}} | Approved {{approved}} | Rejected {{rejected}} | Pending {{pending}}",
+                      {
+                        orders: fleet.orders,
+                        approved: fleet.approved,
+                        rejected: fleet.rejected,
+                        pending: fleet.pending,
+                      },
+                    )}
                   </p>
                 </div>
                 <div className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
-                  Approval rate {fleet.approvalRate}%
+                  {t("pos.analytics.approvalRate", "Approval rate")} {fleet.approvalRate}%
                 </div>
               </div>
             ))

@@ -29,6 +29,7 @@ import {
 } from "recharts";
 import { Input } from "./ui/input";
 import { figmaChartCardStyle, figmaChartTheme } from "../lib/chartTheme";
+import { useTranslation } from "../i18n/useTranslation";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -108,6 +109,7 @@ function POSDashboardOverview({
   spareParts,
   operationDetails,
 }) {
+  const { t } = useTranslation();
   const op = operationDetails || {
     orderManagement: { drafts: 0, submitted: 0, averageValue: 0 },
     validation: { policyMapped: false, overLimitDrafts: 0, missingRequired: 0 },
@@ -130,7 +132,7 @@ function POSDashboardOverview({
     {
       key: "orders",
       to: "/pos-dashboard/order-management",
-      title: "Order Management",
+      title: t("pos.menu.order-management", "Order Management"),
       icon: ClipboardList,
       highlight: `${op.orderManagement.submitted} Submitted`,
       metrics: [
@@ -143,7 +145,7 @@ function POSDashboardOverview({
     {
       key: "validation",
       to: "/pos-dashboard/validation",
-      title: "Validation",
+      title: t("pos.menu.validation", "Validation"),
       icon: ShieldAlert,
       highlight: op.validation.policyMapped ? "Policy Mapped" : "Policy Missing",
       metrics: [
@@ -156,7 +158,7 @@ function POSDashboardOverview({
     {
       key: "approval",
       to: "/pos-dashboard/approval-workflow",
-      title: "Approval Workflow",
+      title: t("pos.menu.approval-workflow", "Approval Workflow"),
       icon: FileText,
       highlight: `${op.approval.total} Requests`,
       metrics: [
@@ -169,7 +171,7 @@ function POSDashboardOverview({
     {
       key: "billing",
       to: "/pos-dashboard/billing-settlement",
-      title: "Billing & Settlement",
+      title: t("pos.menu.billing-settlement", "Billing & Settlement"),
       icon: BadgeDollarSign,
       highlight: `${op.billing.invoices} Invoices`,
       metrics: [
@@ -182,7 +184,7 @@ function POSDashboardOverview({
     {
       key: "inventory",
       to: "/pos-dashboard/inventory-availability",
-      title: "Inventory & Availability",
+      title: t("pos.menu.inventory-availability", "Inventory & Availability"),
       icon: ChartNoAxesColumnIncreasing,
       highlight: `${op.inventory.availableUnits} Units available`,
       metrics: [
@@ -195,7 +197,7 @@ function POSDashboardOverview({
     {
       key: "analytics",
       to: "/pos-dashboard/analytics-reports",
-      title: "Analytics & Reports",
+      title: t("pos.menu.analytics-reports", "Analytics & Reports"),
       icon: ChartColumnBig,
       highlight: `Peak month ${op.analytics.peakMonth}`,
       metrics: [
@@ -208,7 +210,7 @@ function POSDashboardOverview({
     {
       key: "profile",
       to: "/pos-dashboard/profile-settings",
-      title: "Profile & Settings",
+      title: t("pos.menu.profile-settings", "Profile & Settings"),
       icon: Settings2,
       highlight: op.profile.user,
       metrics: [
@@ -363,7 +365,9 @@ function POSDashboardOverview({
               <h2 className="text-lg font-semibold" style={{ color: figmaChartTheme.title }}>
                 Requests comparison
               </h2>
-              <p className="mt-1 text-sm text-slate-400">Total request distribution by period.</p>
+              <p className="mt-1 text-sm text-slate-400">
+                {t("pos.overview.requestDistribution", "Total request distribution by period.")}
+              </p>
             </div>
             {/* <button
               type="button"
@@ -520,7 +524,9 @@ function POSDashboardOverview({
               </p>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-500">No vehicle found for this search.</p>
+            <p className="mt-3 text-sm text-slate-500">
+              {t("pos.overview.noVehicleFound", "No vehicle found for this search.")}
+            </p>
           )}
         </div>
 
@@ -540,7 +546,9 @@ function POSDashboardOverview({
                 </div>
               ))
             ) : (
-              <p className="text-slate-500">No service whitelist found in policy.</p>
+              <p className="text-slate-500">
+                {t("pos.overview.noServiceWhitelist", "No service whitelist found in policy.")}
+              </p>
             )}
           </div>
         </div>
@@ -548,7 +556,9 @@ function POSDashboardOverview({
 
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Allowed tyre brands/specs</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t("pos.overview.allowedTyreBrands", "Allowed tyre brands/specs")}
+          </h2>
           <div className="mt-4 space-y-2 text-sm text-slate-700">
             <p>
               Vehicle tyre brand:{" "}
@@ -619,22 +629,24 @@ function POSDashboardOverview({
 
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Spare parts availability</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t("pos.overview.sparePartsAvailability", "Spare parts availability")}
+          </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Available units</p>
+              <p className="text-slate-500">{t("pos.overview.availableUnits", "Available units")}</p>
               <p className="mt-1 text-lg font-semibold text-slate-900">{spareSummary.totalAvailable}</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Low stock</p>
+              <p className="text-slate-500">{t("pos.overview.lowStock", "Low stock")}</p>
               <p className="mt-1 text-lg font-semibold text-amber-600">{spareSummary.lowStockCount}</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Out of stock</p>
+              <p className="text-slate-500">{t("pos.overview.outOfStock", "Out of stock")}</p>
               <p className="mt-1 text-lg font-semibold text-rose-600">{spareSummary.outOfStockCount}</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Inventory value</p>
+              <p className="text-slate-500">{t("pos.overview.inventoryValue", "Inventory value")}</p>
               <p className="mt-1 text-lg font-semibold text-slate-900">${spareSummary.inventoryValue}</p>
             </div>
           </div>
@@ -671,22 +683,24 @@ function POSDashboardOverview({
         </div>
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Additional POS operational insights</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t("pos.overview.operationalInsights", "Additional POS operational insights")}
+          </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Average cycle time</p>
+              <p className="text-slate-500">{t("pos.overview.avgCycleTime", "Average cycle time")}</p>
               <p className="mt-1 text-lg font-semibold text-slate-900">{requestSummary.avgCycleHours} hrs</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">On-time completion</p>
+              <p className="text-slate-500">{t("pos.overview.onTimeCompletion", "On-time completion")}</p>
               <p className="mt-1 text-lg font-semibold text-emerald-600">{requestSummary.onTimeRate}%</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Rejected requests</p>
+              <p className="text-slate-500">{t("pos.overview.rejectedRequests", "Rejected requests")}</p>
               <p className="mt-1 text-lg font-semibold text-rose-600">{requestSummary.rejected}</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Estimated request value</p>
+              <p className="text-slate-500">{t("pos.overview.estimatedRequestValue", "Estimated request value")}</p>
               <p className="mt-1 text-lg font-semibold text-slate-900">
                 ${Math.round(requestSummary.estimatedCostTotal)}
               </p>
@@ -694,7 +708,9 @@ function POSDashboardOverview({
           </div>
 
           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            <p className="font-semibold text-slate-900">Recommendations</p>
+            <p className="font-semibold text-slate-900">
+              {t("pos.overview.recommendations", "Recommendations")}
+            </p>
             <p className="mt-2">
               1) Prioritize low-stock parts with high request frequency to avoid booking delays.
             </p>
@@ -712,5 +728,3 @@ function POSDashboardOverview({
 }
 
 export default POSDashboardOverview;
-
-

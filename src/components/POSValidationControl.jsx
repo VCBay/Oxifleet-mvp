@@ -4,6 +4,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { SearchableSelect } from "./ui/searchable-select";
 import { getPosOrderState, subscribePosOrders } from "../data/posOrderStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const kbPriceList = [
   { serviceType: "Oil change", min: 120, max: 350 },
@@ -165,6 +166,7 @@ const evaluateValidation = ({ candidate, policy }) => {
 };
 
 function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPolicy = null }) {
+  const { t } = useTranslation();
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
     getPosOrderState,
@@ -242,12 +244,12 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
 
   const kbStatusLabel =
     validation.kbStatus === "within"
-      ? "Within KB range"
+      ? t("pos.validation.kb.within", "Within KB range")
       : validation.kbStatus === "above"
-      ? "Above KB range"
-      : validation.kbStatus === "below"
-      ? "Below KB range"
-      : "No KB benchmark";
+        ? t("pos.validation.kb.above", "Above KB range")
+        : validation.kbStatus === "below"
+          ? t("pos.validation.kb.below", "Below KB range")
+          : t("pos.validation.kb.none", "No KB benchmark");
 
   const policyScore = validation.policyCompliance ? 96 : 42;
   const kbScore =
@@ -265,31 +267,42 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
   const validationSummaryCards = [
     {
       key: "policy",
-      title: "Policy compliance",
+      title: t("pos.validation.cards.policyCompliance", "Policy compliance"),
       value: policyScore,
       icon: ShieldCheck,
-      state: validation.policyCompliance ? "Compliant" : "Not compliant",
+      state: validation.policyCompliance
+        ? t("pos.validation.state.compliant", "Compliant")
+        : t("pos.validation.state.notCompliant", "Not compliant"),
     },
     {
       key: "kb",
-      title: "Price validation (KB)",
+      title: t("pos.validation.cards.priceValidation", "Price validation (KB)"),
       value: kbScore,
       icon: CircleAlert,
       state: kbStatusLabel,
     },
     {
       key: "approval",
-      title: "Approval indicator",
+      title: t("pos.validation.cards.approvalIndicator", "Approval indicator"),
       value: approvalScore,
       icon: AlertTriangle,
-      state: validation.approvalRequired ? "Approval required" : "No approval required",
+      state: validation.approvalRequired
+        ? t("pos.validation.state.approvalRequired", "Approval required")
+        : t("pos.validation.state.noApprovalRequired", "No approval required"),
     },
     {
       key: "alerts",
-      title: "Error/warning alerts",
+      title: t("pos.validation.cards.alerts", "Error/warning alerts"),
       value: alertScore,
       icon: CircleAlert,
-      state: `${validation.errorCount} error(s), ${validation.warningCount} warning(s)`,
+      state: t(
+        "pos.validation.state.alertCounts",
+        "{{errors}} error(s), {{warnings}} warning(s)",
+        {
+          errors: validation.errorCount,
+          warnings: validation.warningCount,
+        },
+      ),
     },
   ].map((card) => {
     const lastMonthValue = Math.max(0, card.value - 12);
@@ -312,11 +325,14 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
-              Service order validation
+              {t("pos.validation.headerTitle", "Service order validation")}
             </p>
 
             <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
-              Validate policy compliance, KB pricing, and approval rules before final submission.
+              {t(
+                "pos.validation.headerDesc",
+                "Validate policy compliance, KB pricing, and approval rules before final submission.",
+              )}
             </p>
           </div>
         
@@ -352,7 +368,7 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                 </span>
               </div>
               <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
-                Last month: {card.lastMonthValue}%
+                {t("pos.validation.lastMonth", "Last month")}: {card.lastMonthValue}%
               </p>
               <p className="mt-1 text-[10px] font-medium text-slate-700 sm:text-xs">
                 {card.state}
@@ -364,29 +380,34 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Validation input</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t("pos.validation.inputTitle", "Validation input")}
+          </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Validate policy compliance, KB pricing, and approval rules before final submission.
+            {t(
+              "pos.validation.headerDesc",
+              "Validate policy compliance, KB pricing, and approval rules before final submission.",
+            )}
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>Validation mode</Label>
+              <Label>{t("pos.validation.validationMode", "Validation mode")}</Label>
               <SearchableSelect
                 onValueChange={setValidationMode}
                 options={VALIDATION_MODE_OPTIONS}
                 value={validationMode || ""}
-                placeholder="Select mode"
-                searchPlaceholder="Search modes"
-                emptyLabel="No modes available"
-                noMatchLabel="No matching mode"
+                placeholder={t("pos.validation.selectMode", "Select mode")}
+                searchPlaceholder={t("pos.validation.searchModes", "Search modes")}
+                emptyLabel={t("pos.validation.noModes", "No modes available")}
+                noMatchLabel={t("pos.validation.noMatchingMode", "No matching mode")}
                 triggerClassName="w-full"
               />
             </div>
 
             {validationMode === "draft" ? (
               <div className="grid gap-2">
-                <Label>Draft order</Label>
+                <Label>{t("pos.validation.draftOrder", "Draft order")}</Label>
                 <SearchableSelect
                   onValueChange={setSelectedDraftId}
                   options={posOrderState.draftOrders.map((draft) => ({
@@ -395,10 +416,10 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                     description: draft.orderDetails?.description,
                   }))}
                   value={effectiveDraftId || ""}
-                  placeholder="Select draft"
-                  searchPlaceholder="Search drafts"
-                  emptyLabel="No drafts available"
-                  noMatchLabel="No matching drafts"
+                  placeholder={t("pos.validation.selectDraft", "Select draft")}
+                  searchPlaceholder={t("pos.validation.searchDrafts", "Search drafts")}
+                  emptyLabel={t("pos.validation.noDrafts", "No drafts available")}
+                  noMatchLabel={t("pos.validation.noMatchingDrafts", "No matching drafts")}
                   triggerClassName="w-full"
                 />
               </div>
@@ -408,7 +429,7 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
           {validationMode === "manual" ? (
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label>Vehicle</Label>
+                <Label>{t("pos.validation.vehicle", "Vehicle")}</Label>
                 <SearchableSelect
                   onValueChange={(value) => {
                     const vehicle = vehiclesById.get(value);
@@ -425,15 +446,15 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                     meta: vehicle.status,
                   }))}
                   value={manualForm.vehicleId || ""}
-                  placeholder="Select vehicle"
-                  searchPlaceholder="Search vehicles"
-                  emptyLabel="No vehicles available"
-                  noMatchLabel="No matching vehicles"
+                  placeholder={t("pos.validation.selectVehicle", "Select vehicle")}
+                  searchPlaceholder={t("pos.validation.searchVehicles", "Search vehicles")}
+                  emptyLabel={t("pos.validation.noVehicles", "No vehicles available")}
+                  noMatchLabel={t("pos.validation.noMatchingVehicles", "No matching vehicles")}
                   triggerClassName="w-full min-w-0 max-w-full overflow-hidden"
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Service type</Label>
+                <Label>{t("pos.validation.serviceType", "Service type")}</Label>
                 <SearchableSelect
                   onValueChange={(value) =>
                     setManualForm((prev) => ({
@@ -446,15 +467,15 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                     label: item,
                   }))}
                   value={manualForm.serviceType || ""}
-                  placeholder="Select service type"
-                  searchPlaceholder="Search service types"
-                  emptyLabel="No service types"
-                  noMatchLabel="No matching service types"
+                  placeholder={t("pos.validation.selectServiceType", "Select service type")}
+                  searchPlaceholder={t("pos.validation.searchServiceTypes", "Search service types")}
+                  emptyLabel={t("pos.validation.noServiceTypes", "No service types")}
+                  noMatchLabel={t("pos.validation.noMatchingServiceTypes", "No matching service types")}
                   triggerClassName="w-full"
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Estimated cost</Label>
+                <Label>{t("pos.validation.estimatedCost", "Estimated cost")}</Label>
                 <Input
                   min="0"
                   onChange={(event) =>
@@ -469,7 +490,7 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Tyre brand</Label>
+                <Label>{t("pos.validation.tyreBrand", "Tyre brand")}</Label>
                 <Input
                   onChange={(event) =>
                     setManualForm((prev) => ({
@@ -477,7 +498,7 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                       tyreBrand: event.target.value,
                     }))
                   }
-                  placeholder="e.g. Michelin"
+                  placeholder={t("pos.validation.tyreBrandExample", "e.g. Michelin")}
                   value={manualForm.tyreBrand}
                 />
               </div>
@@ -490,18 +511,23 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                     {selectedDraft.id} - {selectedDraft.serviceType}
                   </p>
                   <p className="mt-1 text-slate-600">
-                    Estimated total: ${selectedDraft.total} | Priority: {selectedDraft.priority}
+                    {t("pos.validation.estimatedTotal", "Estimated total")}: ${selectedDraft.total} |{" "}
+                    {t("pos.validation.priority", "Priority")}: {selectedDraft.priority}
                   </p>
                 </>
               ) : (
-                <p className="text-slate-500">No draft selected for validation.</p>
+                <p className="text-slate-500">
+                  {t("pos.validation.noDraftSelected", "No draft selected for validation.")}
+                </p>
               )}
             </div>
           )}
         </div>
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Validation results</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t("pos.validation.resultsTitle", "Validation results")}
+          </h2>
           <div className="mt-4 space-y-2 text-sm">
             <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
               <ShieldCheck
@@ -509,9 +535,11 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                 size={16}
               />
               <p className="text-slate-700">
-                Policy compliance:{" "}
+                {t("pos.validation.policyCompliance", "Policy compliance")}:{" "}
                 <span className="font-semibold">
-                  {validation.policyCompliance ? "Pass" : "Fail"}
+                  {validation.policyCompliance
+                    ? t("pos.validation.pass", "Pass")
+                    : t("pos.validation.fail", "Fail")}
                 </span>
               </p>
             </div>
@@ -523,7 +551,8 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                 size={16}
               />
               <p className="text-slate-700">
-                KB price validation: <span className="font-semibold">{kbStatusLabel}</span>
+                {t("pos.validation.kbPriceValidation", "KB price validation")}:{" "}
+                <span className="font-semibold">{kbStatusLabel}</span>
               </p>
             </div>
             <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -532,9 +561,11 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                 size={16}
               />
               <p className="text-slate-700">
-                Approval:{" "}
+                {t("pos.validation.approval", "Approval")}:{" "}
                 <span className="font-semibold">
-                  {validation.approvalRequired ? "Required" : "Not required"}
+                  {validation.approvalRequired
+                    ? t("pos.validation.required", "Required")
+                    : t("pos.validation.notRequired", "Not required")}
                 </span>
                 {validation.approvalTriggerAmount != null
                   ? ` (trigger > $${validation.approvalTriggerAmount})`
@@ -546,7 +577,10 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
           <div className="card-list-scrollbar mt-4 max-h-[18rem] space-y-2 overflow-y-auto pr-1">
             {validation.alerts.length === 0 ? (
               <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-                No warnings or errors. Order is ready for submission.
+                {t(
+                  "pos.validation.noWarnings",
+                  "No warnings or errors. Order is ready for submission.",
+                )}
               </p>
             ) : (
               validation.alerts.map((alert, index) => (
@@ -567,15 +601,20 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
       </div>
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Pre-submission draft alerts</h2>
+        <h2 className="text-lg font-semibold text-slate-900">
+          {t("pos.validation.preSubmissionTitle", "Pre-submission draft alerts")}
+        </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Review draft orders for policy and pricing issues before final submission.
+          {t(
+            "pos.validation.preSubmissionDesc",
+            "Review draft orders for policy and pricing issues before final submission.",
+          )}
         </p>
         <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
           {draftValidationRows.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-              No draft orders to validate.
-            </p>
+              {t("pos.validation.noDraftOrders", "No draft orders to validate.")}
+              </p>
           ) : (
             draftValidationRows.map((row) => (
               <div
@@ -586,7 +625,9 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                   <p className="font-semibold text-slate-900">
                     {row.id} - {row.serviceType}
                   </p>
-                  <p className="text-slate-600">Estimated total: ${row.total}</p>
+                  <p className="text-slate-600">
+                    {t("pos.validation.estimatedTotal", "Estimated total")}: ${row.total}
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span
@@ -596,10 +637,14 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                         : "bg-emerald-100 text-emerald-700"
                     }`}
                   >
-                    {row.errorCount} error(s)
+                    {t("pos.validation.errorCount", "{{count}} error(s)", {
+                      count: row.errorCount,
+                    })}
                   </span>
                   <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-700">
-                    {row.warningCount} warning(s)
+                    {t("pos.validation.warningCount", "{{count}} warning(s)", {
+                      count: row.warningCount,
+                    })}
                   </span>
                   <span
                     className={`rounded-full px-2 py-1 font-semibold ${
@@ -608,7 +653,9 @@ function POSValidationControl({ vehicles = [], selectedVehicle = null, primaryPo
                         : "bg-slate-200 text-slate-700"
                     }`}
                   >
-                    {row.approvalRequired ? "Approval required" : "No approval"}
+                    {row.approvalRequired
+                      ? t("pos.validation.state.approvalRequired", "Approval required")
+                      : t("pos.validation.noApproval", "No approval")}
                   </span>
                 </div>
               </div>

@@ -3,6 +3,8 @@ import { Boxes, CheckCircle2, CircleAlert, Link2Off } from "lucide-react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { SearchableSelect } from "./ui/searchable-select";
+import { useTranslation } from "../i18n/useTranslation";
+
 import {
   evaluateTyreStock,
   getTyreInventoryBySize,
@@ -13,6 +15,7 @@ const CATEGORY_OPTIONS = [
   { value: "all", label: "All categories" },
   { value: "all-season", label: "All-season" },
   { value: "highway", label: "Highway" },
+  { value: "summer", label: "Summer" },
   { value: "winter", label: "Winter" },
 ];
 
@@ -83,6 +86,7 @@ function POSInventoryAvailabilityControl({
   selectedVehicle = null,
   primaryPolicy = null,
 }) {
+  const { t } = useTranslation();
   const [vehicleId, setVehicleId] = useState(
     () => selectedVehicle?.id || vehicles[0]?.id || "",
   );
@@ -126,7 +130,13 @@ function POSInventoryAvailabilityControl({
         requiredQty,
         category,
       }),
-    [category, preferredBrand, requiredQty, selected?.tyreSpecs?.brand, tyreSize],
+    [
+      category,
+      preferredBrand,
+      requiredQty,
+      selected?.tyreSpecs?.brand,
+      tyreSize,
+    ],
   );
 
   const alternativeTyres = useMemo(() => {
@@ -157,12 +167,14 @@ function POSInventoryAvailabilityControl({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
-              Inventory availability
+              {t("pos.inventory.headerTitle", "Inventory availability")}
             </p>
 
             <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
-              Check real-time availability of tyres across different brands and
-              categories.
+              {t(
+                "pos.inventory.headerDesc",
+                "Check real-time availability of tyres across different brands and categories.",
+              )}
             </p>
           </div>
         </div>
@@ -171,12 +183,12 @@ function POSInventoryAvailabilityControl({
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <Boxes size={18} />
-            Tyre availability check
+            {t("pos.inventory.availabilityCheck", "Tyre availability check")}
           </h2>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="grid min-w-0 gap-2">
-              <Label>Vehicle</Label>
+              <Label>{t("pos.inventory.vehicle", "Vehicle")}</Label>
               <SearchableSelect
                 onValueChange={setVehicleId}
                 options={vehicles.map((vehicle) => ({
@@ -186,27 +198,37 @@ function POSInventoryAvailabilityControl({
                   meta: vehicle.status,
                 }))}
                 value={vehicleId || ""}
-                placeholder="Select vehicle"
-                searchPlaceholder="Search vehicles"
-                emptyLabel="No vehicles"
-                noMatchLabel="No matching vehicles"
+                placeholder={t("pos.inventory.selectVehicle", "Select vehicle")}
+                searchPlaceholder={t(
+                  "pos.inventory.searchVehicles",
+                  "Search vehicles",
+                )}
+                emptyLabel={t("pos.inventory.noVehicles", "No vehicles")}
+                noMatchLabel={t(
+                  "pos.inventory.noMatchingVehicles",
+                  "No matching vehicles",
+                )}
                 triggerClassName="w-full min-w-0 max-w-full overflow-hidden"
               />
             </div>
             <div className="grid gap-2">
-              <Label>Tyre size</Label>
+              <Label>{t("pos.inventory.tyreSize", "Tyre size")}</Label>
               <Input value={tyreSize} readOnly />
             </div>
             <div className="grid gap-2">
-              <Label>Preferred brand</Label>
+              <Label>
+                {t("pos.inventory.preferredBrand", "Preferred brand")}
+              </Label>
               <Input
                 onChange={(event) => setPreferredBrand(event.target.value)}
-                placeholder="e.g. Michelin"
+                placeholder={t("pos.inventory.brandExample", "e.g. Michelin")}
                 value={preferredBrand}
               />
             </div>
             <div className="grid gap-2">
-              <Label>Required quantity</Label>
+              <Label>
+                {t("pos.inventory.requiredQuantity", "Required quantity")}
+              </Label>
               <Input
                 min="1"
                 onChange={(event) => setRequestedQty(event.target.value)}
@@ -215,15 +237,26 @@ function POSInventoryAvailabilityControl({
               />
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label>Category filter</Label>
+              <Label>
+                {t("pos.inventory.categoryFilter", "Category filter")}
+              </Label>
               <SearchableSelect
                 onValueChange={setCategory}
                 options={CATEGORY_OPTIONS}
                 value={category || ""}
-                placeholder="Category"
-                searchPlaceholder="Search categories"
-                emptyLabel="No categories available"
-                noMatchLabel="No matching categories"
+                placeholder={t("pos.inventory.category", "Category")}
+                searchPlaceholder={t(
+                  "pos.inventory.searchCategories",
+                  "Search categories",
+                )}
+                emptyLabel={t(
+                  "pos.inventory.noCategories",
+                  "No categories available",
+                )}
+                noMatchLabel={t(
+                  "pos.inventory.noMatchingCategories",
+                  "No matching categories",
+                )}
                 triggerClassName="w-full"
               />
             </div>
@@ -241,7 +274,10 @@ function POSInventoryAvailabilityControl({
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {availableBySize.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
-                No tyre stock found for selected size/category.
+                {t(
+                  "pos.inventory.noStock",
+                  "No tyre stock found for selected size/category.",
+                )}
               </p>
             ) : (
               availableBySize.map((item) => (
@@ -266,12 +302,15 @@ function POSInventoryAvailabilityControl({
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
               <CircleAlert size={18} />
-              Suggested alternative tyres
+              {t("pos.inventory.alternatives", "Suggested alternative tyres")}
             </h2>
             <div className="card-list-scrollbar mt-4 max-h-[18rem] space-y-2 overflow-y-auto pr-1">
               {alternativeTyres.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                  No alternatives found for current tyre size.
+                  {t(
+                    "pos.inventory.noAlternatives",
+                    "No alternatives found for current tyre size.",
+                  )}
                 </p>
               ) : (
                 alternativeTyres.slice(0, 6).map((item) => (
@@ -291,8 +330,8 @@ function POSInventoryAvailabilityControl({
                         }`}
                       >
                         {item.policyAligned
-                          ? "Policy aligned"
-                          : "Needs approval"}
+                          ? t("pos.inventory.policyAligned", "Policy aligned")
+                          : t("pos.inventory.needsApproval", "Needs approval")}
                       </span>
                     </div>
                     <p className="mt-1 text-slate-600">
@@ -308,7 +347,10 @@ function POSInventoryAvailabilityControl({
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
               <CheckCircle2 size={18} />
-              Manufacturer integration status
+              {t(
+                "pos.inventory.integrationStatus",
+                "Manufacturer integration status",
+              )}
             </h2>
             <div className="card-list-scrollbar mt-4 max-h-[20rem] space-y-2 overflow-y-auto pr-1">
               {manufacturerIntegrationStatus.map((entry) => (
@@ -328,11 +370,13 @@ function POSInventoryAvailabilityControl({
                   </div>
                   <p className="mt-1 text-slate-600">{entry.syncHealth}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Last sync:{" "}
+                    {t("pos.inventory.lastSync", "Last sync")}:{" "}
                     {new Date(entry.lastSync).toLocaleString("en-US")} |{" "}
                     {entry.responseMs > 0
-                      ? `Latency ${entry.responseMs}ms`
-                      : "API unavailable"}
+                      ? t("pos.inventory.latency", "Latency {{value}}ms", {
+                          value: entry.responseMs,
+                        })
+                      : t("pos.inventory.apiUnavailable", "API unavailable")}
                   </p>
                 </div>
               ))}
@@ -340,8 +384,10 @@ function POSInventoryAvailabilityControl({
             <div className="mt-4 rounded-xl border border-slate-200 bg-slate-100 p-3 text-xs text-slate-600">
               <p className="inline-flex items-center gap-1">
                 <Link2Off size={14} />
-                Offline manufacturer catalogs fallback to cached prices and
-                stock.
+                {t(
+                  "pos.inventory.offlineFallback",
+                  "Offline manufacturer catalogs fallback to cached prices and stock.",
+                )}
               </p>
             </div>
           </div>
