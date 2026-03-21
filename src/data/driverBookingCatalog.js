@@ -34,6 +34,13 @@ export const DRIVER_SERVICE_CATEGORIES = [
     iconKey: "damage_report",
     capability: "damage",
   },
+  {
+    value: "Emergency breakdown",
+    label: "Emergency breakdown",
+    hint: "Vehicle breakdown or urgent roadside assistance needed",
+    iconKey: "emergency_breakdown",
+    capability: "technical",
+  },
   // {
   //   value: "Tyre damage",
   //   label: "Tyre problem",
@@ -83,6 +90,7 @@ export const BOOKING_BASE_COST_BY_CATEGORY = {
   Service: 390,
   "Technisches Problem": 680,
   Schadensmeldung: 980,
+  "Emergency breakdown": 1200,
   "Tyre damage": 520,
   "Brake issue": 740,
   "Engine diagnostics": 680,
@@ -168,6 +176,15 @@ export const DRIVER_SERVICE_CATEGORY_DETAILS = {
       "Describe what happened, where the damage is located, and whether the vehicle is still drivable.",
     requiresDescription: true,
     requiresPhotos: true,
+  },
+  "Emergency breakdown": {
+    selectionLabel: "Emergency breakdown details",
+    selectionHint:
+      "Describe the breakdown and share where the vehicle stopped so urgent help can be arranged.",
+    detailFieldLabel: "What happened?",
+    detailPlaceholder:
+      "Describe the breakdown, warning message, whether the vehicle is drivable, and your current location.",
+    requiresDescription: true,
   },
 };
 

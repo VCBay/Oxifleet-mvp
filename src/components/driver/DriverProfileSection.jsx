@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Camera, ImagePlus, Trash2 } from "lucide-react";
+import { useTranslation } from "../../i18n/useTranslation";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -21,6 +22,7 @@ function DriverProfileSection({
   licenseReminder,
   attachedVehicle,
 }) {
+  const { t } = useTranslation();
   const requiredProfileFields = [
     profileForm.photoUrl,
     profileForm.name,
@@ -40,20 +42,20 @@ function DriverProfileSection({
     (completedFieldCount / requiredProfileFields.length) * 100
   );
   const profileFields = [
-    { key: "photoUrl", label: "Profile photo", value: profileForm.photoUrl },
-    { key: "name", label: "Driver name", value: profileForm.name },
-    { key: "email", label: "Email", value: profileForm.email },
-    { key: "phone", label: "Phone", value: profileForm.phone },
-    { key: "license", label: "License number", value: profileForm.license },
-    { key: "licenseClass", label: "License class", value: profileForm.licenseClass },
-    { key: "licenseExpiry", label: "License expiry", value: profileForm.licenseExpiry },
+    { key: "photoUrl", label: t("driver.profile.profilePhoto", "Profile photo"), value: profileForm.photoUrl },
+    { key: "name", label: t("driver.profile.driverName", "Driver name"), value: profileForm.name },
+    { key: "email", label: t("auth.email", "Email"), value: profileForm.email },
+    { key: "phone", label: t("driver.profile.phone", "Phone"), value: profileForm.phone },
+    { key: "license", label: t("driver.profile.licenseNumber", "License number"), value: profileForm.license },
+    { key: "licenseClass", label: t("driver.profile.licenseClass", "License class"), value: profileForm.licenseClass },
+    { key: "licenseExpiry", label: t("driver.profile.licenseExpiry", "License expiry"), value: profileForm.licenseExpiry },
     {
       key: "emergencyContact",
-      label: "Emergency contact",
+      label: t("driver.profile.emergencyContact", "Emergency contact"),
       value: profileForm.emergencyContact,
     },
-    { key: "contactAddress", label: "Contact address", value: profileForm.contactAddress },
-    { key: "bio", label: "About driver", value: profileForm.bio },
+    { key: "contactAddress", label: t("driver.profile.contactAddress", "Contact address"), value: profileForm.contactAddress },
+    { key: "bio", label: t("driver.profile.aboutDriver", "About driver"), value: profileForm.bio },
   ];
   const missingFields = profileFields.filter(
     (field) => String(field.value || "").trim().length === 0
@@ -66,10 +68,10 @@ function DriverProfileSection({
       : "bg-rose-500/20 text-rose-100 border-rose-300/70";
   const completionLabel =
     completionPercent >= 90
-      ? "Ready for operations"
+      ? t("driver.profile.readyForOperations", "Ready for operations")
       : completionPercent >= 60
-      ? "Almost complete"
-      : "Add more profile details";
+      ? t("driver.profile.almostComplete", "Almost complete")
+      : t("driver.profile.addMoreProfileDetails", "Add more profile details");
 
   const [photoFeedback, setPhotoFeedback] = useState("");
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
@@ -87,25 +89,25 @@ function DriverProfileSection({
     }
     const isImage = file.type.startsWith("image/");
     if (!isImage) {
-      setPhotoFeedback("Please select an image file.");
+      setPhotoFeedback(t("driver.profile.selectImageFile", "Please select an image file."));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setPhotoFeedback("Image should be less than 2MB.");
+      setPhotoFeedback(t("driver.profile.imageLessThan2Mb", "Image should be less than 2MB."));
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result || "");
       if (!result) {
-        setPhotoFeedback("Could not read image file.");
+        setPhotoFeedback(t("driver.profile.couldNotReadImage", "Could not read image file."));
         return;
       }
       updateField("photoUrl", result);
-      setPhotoFeedback("Profile photo selected. Save profile to keep it.");
+      setPhotoFeedback(t("driver.profile.photoSelectedSaveProfile", "Profile photo selected. Save profile to keep it."));
     };
     reader.onerror = () => {
-      setPhotoFeedback("Could not read image file.");
+      setPhotoFeedback(t("driver.profile.couldNotReadImage", "Could not read image file."));
     };
     reader.readAsDataURL(file);
     event.target.value = "";
@@ -113,7 +115,7 @@ function DriverProfileSection({
 
   const removePhoto = () => {
     updateField("photoUrl", "");
-    setPhotoFeedback("Profile photo removed.");
+    setPhotoFeedback(t("driver.profile.photoRemoved", "Profile photo removed."));
   };
 
   return (
@@ -138,7 +140,7 @@ function DriverProfileSection({
               <button
                 className="absolute -bottom-1 -right-1 inline-flex size-5 items-center justify-center rounded-full border border-white/70 bg-slate-900 text-white shadow-sm transition hover:bg-slate-800"
                 onClick={() => setPhotoModalOpen(true)}
-                title="Update profile photo"
+                title={t("driver.profile.updateProfilePhoto", "Update profile photo")}
                 type="button"
               >
                 <Camera className="size-3" />
@@ -146,19 +148,19 @@ function DriverProfileSection({
             </div>
             <div className="min-w-0">
               <p className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-300 sm:text-xs sm:tracking-[0.2em]">
-                Driver Profile
+                {t("driver.profile.driverProfile", "Driver Profile")}
               </p>
               <h2 className="truncate text-lg font-semibold text-white sm:text-xl">
-                {profileForm.name || "Add your profile"}
+                {profileForm.name || t("driver.profile.addYourProfile", "Add your profile")}
               </h2>
               <p className="text-[11px] text-slate-300 sm:text-xs">
-                Keep this profile updated for fleet, workshop and support operations.
+                {t("driver.profile.keepProfileUpdated", "Keep this profile updated for fleet, workshop and support operations.")}
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-emerald-300/70 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-100 sm:px-3 sm:text-xs">
-              Active driver account
+              {t("driver.profile.activeDriverAccount", "Active driver account")}
             </span>
             <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold sm:px-3 sm:text-xs ${completionTone}`}>
               {completionLabel}
@@ -168,7 +170,7 @@ function DriverProfileSection({
         <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-[1fr_auto]">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-200">
-              <p>Profile completeness</p>
+              <p>{t("driver.profile.profileCompleteness", "Profile completeness")}</p>
               <p className="font-semibold">{completionPercent}%</p>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-white/20">
@@ -184,12 +186,12 @@ function DriverProfileSection({
                     className="rounded-full border border-amber-200/60 bg-amber-200/10 px-2.5 py-1 text-[11px] font-semibold text-amber-100"
                     key={field.key}
                   >
-                    Add {field.label}
+                    {t("driver.profile.addField", "Add")} {field.label}
                   </span>
                 ))
               ) : (
                 <span className="rounded-full border border-emerald-200/70 bg-emerald-200/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-100">
-                  All profile fields are completed
+                  {t("driver.profile.allFieldsCompleted", "All profile fields are completed")}
                 </span>
               )}
             </div>
@@ -223,11 +225,11 @@ function DriverProfileSection({
         <div className="min-w-0 space-y-4 sm:space-y-6">
           <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-2">
             <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-              <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Driver profile management</h3>
+              <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{t("driver.profile.driverProfileManagement", "Driver profile management")}</h3>
               <div className="mt-4 space-y-3">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Driver name
+                    {t("driver.profile.driverName", "Driver name")}
                   </p>
                   <Input
                     onChange={(event) => updateField("name", event.target.value)}
@@ -246,12 +248,12 @@ function DriverProfileSection({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    About driver
+                    {t("driver.profile.aboutDriver", "About driver")}
                   </p>
                   <Textarea
                     className="text-xs sm:text-sm [overflow-wrap:anywhere] break-all"
                     onChange={(event) => updateField("bio", event.target.value)}
-                    placeholder="Short profile summary..."
+                    placeholder={t("driver.profile.shortProfileSummary", "Short profile summary...")}
                     rows={4}
                     value={profileForm.bio}
                   />
@@ -260,11 +262,11 @@ function DriverProfileSection({
             </div>
 
             <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-              <h3 className="text-base font-semibold text-slate-900 sm:text-lg">License details</h3>
+              <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{t("driver.profile.licenseDetails", "License details")}</h3>
               <div className="mt-4 space-y-3">
                 <div className={`rounded-2xl border px-3 py-3 text-xs font-medium ${licenseReminder.tone}`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span>License check reminder</span>
+                    <span>{t("driver.profile.licenseCheckReminder", "License check reminder")}</span>
                     <span className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-slate-900">
                       {licenseReminder.status}
                     </span>
@@ -273,7 +275,7 @@ function DriverProfileSection({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    License number
+                    {t("driver.profile.licenseNumber", "License number")}
                   </p>
                   <Input
                     onChange={(event) => updateField("license", event.target.value)}
@@ -282,7 +284,7 @@ function DriverProfileSection({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    License class
+                    {t("driver.profile.licenseClass", "License class")}
                   </p>
                   <Input
                     onChange={(event) => updateField("licenseClass", event.target.value)}
@@ -291,7 +293,7 @@ function DriverProfileSection({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Expiry date
+                    {t("driver.profile.expiryDate", "Expiry date")}
                   </p>
                   <Input
                     onChange={(event) => updateField("licenseExpiry", event.target.value)}
@@ -304,10 +306,10 @@ function DriverProfileSection({
           </div>
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Contact details</h3>
+            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{t("driver.profile.contactDetails", "Contact details")}</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("driver.profile.phone", "Phone")}</p>
                 <Input
                   onChange={(event) => updateField("phone", event.target.value)}
                   value={profileForm.phone}
@@ -315,7 +317,7 @@ function DriverProfileSection({
               </div>
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Emergency contact
+                    {t("driver.profile.emergencyContact", "Emergency contact")}
                 </p>
                 <Input
                   onChange={(event) => updateField("emergencyContact", event.target.value)}
@@ -324,7 +326,7 @@ function DriverProfileSection({
               </div>
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Contact address
+                    {t("driver.profile.contactAddress", "Contact address")}
                 </p>
                 <Input
                   onChange={(event) => updateField("contactAddress", event.target.value)}
@@ -366,9 +368,9 @@ function DriverProfileSection({
           </div> */}
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Profile preview</h3>
+            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{t("driver.profile.profilePreview", "Profile preview")}</h3>
             <p className="mt-1 text-xs text-slate-500">
-              This is how your profile will appear in operations.
+              {t("driver.profile.profilePreviewDesc", "This is how your profile will appear in operations.")}
             </p>
             <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
               <div className="flex items-start gap-3">
@@ -389,7 +391,7 @@ function DriverProfileSection({
                   <button
                     className="absolute -bottom-1 -right-1 inline-flex size-6 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-sm transition hover:bg-slate-800 sm:size-7"
                     onClick={() => setPhotoModalOpen(true)}
-                    title="Update profile photo"
+                    title={t("driver.profile.updateProfilePhoto", "Update profile photo")}
                     type="button"
                   >
                     <Camera className="size-3.5" />
@@ -397,64 +399,64 @@ function DriverProfileSection({
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-slate-900 sm:text-sm">
-                    {profileForm.name || "Unnamed Driver"}
+                    {profileForm.name || t("driver.profile.unnamedDriver", "Unnamed Driver")}
                   </p>
-                  <p className="truncate text-[11px] text-slate-600 sm:text-xs">{profileForm.email || "N/A"}</p>
+                  <p className="truncate text-[11px] text-slate-600 sm:text-xs">{profileForm.email || t("common.notAvailable", "N/A")}</p>
                   <button
                     className="mt-1 text-[11px] font-semibold text-indigo-700 transition hover:text-indigo-600"
                     onClick={() => setPhotoModalOpen(true)}
                     type="button"
                   >
-                    Change photo
+                    {t("driver.profile.changePhoto", "Change photo")}
                   </button>
                 </div>
               </div>
               <div className="mt-4 space-y-2 text-xs text-slate-700">
                 <p>
-                  License:{" "}
+                  {t("driver.profile.license", "License")}:{" "}
                   <span className="font-semibold text-slate-900">
-                    {profileForm.license || "N/A"}
+                    {profileForm.license || t("common.notAvailable", "N/A")}
                   </span>
                 </p>
                 <p>
-                  Class / Expiry:{" "}
+                  {t("driver.profile.classExpiry", "Class / Expiry")}:{" "}
                   <span className="font-semibold text-slate-900">
-                    {profileForm.licenseClass || "N/A"} /{" "}
-                    {profileForm.licenseExpiry || "N/A"}
+                    {profileForm.licenseClass || t("common.notAvailable", "N/A")} /{" "}
+                    {profileForm.licenseExpiry || t("common.notAvailable", "N/A")}
                   </span>
                 </p>
                 <p>
-                  Attached vehicle:{" "}
+                  {t("driver.profile.attachedVehicle", "Attached vehicle")}:{" "}
                   <span className="font-semibold text-slate-900">
                     {attachedVehicle
-                      ? `${attachedVehicle.id} - ${attachedVehicle.model} (${attachedVehicle.plate || "N/A"})`
-                      : "Not assigned"}
+                      ? `${attachedVehicle.id} - ${attachedVehicle.model} (${attachedVehicle.plate || t("common.notAvailable", "N/A")})`
+                      : t("driver.profile.notAssigned", "Not assigned")}
                   </span>
                 </p>
                 <p>
-                  Phone:{" "}
-                  <span className="font-semibold text-slate-900">{profileForm.phone || "N/A"}</span>
+                  {t("driver.profile.phone", "Phone")}:{" "}
+                  <span className="font-semibold text-slate-900">{profileForm.phone || t("common.notAvailable", "N/A")}</span>
                 </p>
                 <p>
-                  Emergency:{" "}
+                  {t("driver.profile.emergency", "Emergency")}:{" "}
                   <span className="font-semibold text-slate-900">
-                    {profileForm.emergencyContact || "N/A"}
+                    {profileForm.emergencyContact || t("common.notAvailable", "N/A")}
                   </span>
                 </p>
                 <p>
-                  Address:{" "}
+                  {t("driver.profile.address", "Address")}:{" "}
                   <span className="break-words font-semibold text-slate-900">
-                    {profileForm.contactAddress || "N/A"}
+                    {profileForm.contactAddress || t("common.notAvailable", "N/A")}
                   </span>
                 </p>
               </div>
               <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  About
+                  {t("driver.profile.about", "About")}
                 </p>
                 <p className="mt-1 text-xs text-slate-700">
                   <span className="[overflow-wrap:anywhere] break-all">
-                    {profileForm.bio || "No profile summary added yet."}
+                    {profileForm.bio || t("driver.profile.noProfileSummary", "No profile summary added yet.")}
                   </span>
                 </p>
               </div>
@@ -467,9 +469,9 @@ function DriverProfileSection({
         <DialogContent className="max-h-[92vh] overflow-y-auto border-slate-200 p-0 sm:max-w-xl">
           <div className="bg-[linear-gradient(135deg,#f8fafc_0%,#eef2ff_100%)] p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle className="text-sm text-slate-900 sm:text-base">Update Profile Photo</DialogTitle>
+              <DialogTitle className="text-sm text-slate-900 sm:text-base">{t("driver.profile.updateProfilePhoto", "Update Profile Photo")}</DialogTitle>
               <DialogDescription className="text-xs text-slate-600 sm:text-sm">
-                Upload a clear photo for quick identity confirmation at workshop and fleet desk.
+                {t("driver.profile.uploadClearPhoto", "Upload a clear photo for quick identity confirmation at workshop and fleet desk.")}
               </DialogDescription>
             </DialogHeader>
 
@@ -488,14 +490,14 @@ function DriverProfileSection({
                     )}
                   </div>
                   <span className="absolute -bottom-1 right-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-                    Driver
+                    {t("driver.profile.driver", "Driver")}
                   </span>
                 </div>
 
                 <div className="space-y-2">
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800">
                     <ImagePlus className="size-4" />
-                    Upload photo
+                    {t("driver.profile.uploadPhoto", "Upload photo")}
                     <input
                       accept="image/*"
                       className="hidden"
@@ -510,10 +512,10 @@ function DriverProfileSection({
                       type="button"
                     >
                       <Trash2 className="size-3.5" />
-                      Remove photo
+                      {t("driver.profile.removePhoto", "Remove photo")}
                     </button>
                   ) : (
-                    <p className="text-xs text-slate-500">PNG/JPG, max 2MB.</p>
+                    <p className="text-xs text-slate-500">{t("driver.profile.pngJpgMax", "PNG/JPG, max 2MB.")}</p>
                   )}
                 </div>
               </div>
@@ -533,10 +535,10 @@ function DriverProfileSection({
                   }}
                   type="button"
                 >
-                  Save & close
+                  {t("driver.profile.saveClose", "Save & close")}
                 </Button>
                 <Button className="w-full sm:w-auto" onClick={() => setPhotoModalOpen(false)} type="button" variant="outline">
-                  Close
+                  {t("driver.request.close", "Close")}
                 </Button>
               </div>
             </div>

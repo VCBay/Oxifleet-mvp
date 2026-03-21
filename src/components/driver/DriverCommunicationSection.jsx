@@ -14,6 +14,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { useIsMobile } from "../../hooks/use-mobile";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const quickPhrases = [
   "Need approval for service request",
@@ -40,6 +41,7 @@ function DriverCommunicationSection({
   communicationNotice,
   formatDateTime,
 }) {
+  const { t } = useTranslation();
   const [searchText, setSearchText] = useState("");
   const [isMobileThreadOpen, setIsMobileThreadOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -124,7 +126,7 @@ function DriverCommunicationSection({
     <section className="min-w-0 space-y-4 sm:space-y-6">
       <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
         <header className="border-b border-slate-200 bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-4 py-3 sm:px-5 sm:py-4">
-          <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">Communication</h2>
+          <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">{t("driver.topbar.communication", "Communication")}</h2>
           {/* <p className="text-xs text-slate-500">
             Fleet-style chat view while keeping driver communication flow unchanged.
           </p> */}
@@ -142,12 +144,12 @@ function DriverCommunicationSection({
                 <Input
                   className="h-8 rounded-full border-slate-200 bg-slate-50 pl-9 pr-9 text-xs sm:h-9 sm:text-sm"
                   onChange={(event) => setSearchText(event.target.value)}
-                  placeholder="Search contact"
+                  placeholder={t("driver.communication.searchContact", "Search contact")}
                   value={searchText}
                 />
                 {searchText ? (
                   <button
-                    aria-label="Clear search"
+                    aria-label={t("driver.request.clearSearch", "Clear search")}
                     className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                     onClick={() => setSearchText("")}
                     type="button"
@@ -200,7 +202,7 @@ function DriverCommunicationSection({
               <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-2">
                   <button
-                    aria-label="Back to contacts"
+                    aria-label={t("driver.communication.backToContacts", "Back to contacts")}
                     className="grid size-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-600"
                     onClick={() => setIsMobileThreadOpen(false)}
                     type="button"
@@ -224,7 +226,7 @@ function DriverCommunicationSection({
                     variant="outline"
                   >
                     <PhoneCall className="mr-1.5" size={12} />
-                    Call
+                    {t("driver.communication.call", "Call")}
                   </Button>
                 ) : null}
               </div>
@@ -232,14 +234,14 @@ function DriverCommunicationSection({
             {activeCommunicationContact === "support" ? (
               <div className="grid flex-1 gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-4 xl:grid-cols-[1.1fr_1fr]">
                 <article className="rounded-3xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-                  <h3 className="text-sm font-semibold text-slate-900 sm:text-base">Support history</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 sm:text-base">{t("driver.communication.supportHistory", "Support history")}</h3>
                   <p className="mt-1 text-xs text-slate-500">
-                    View support updates and send quick support message.
+                    {t("driver.communication.supportHistoryDesc", "View support updates and send quick support message.")}
                   </p>
 
                   <div className="card-list-scrollbar mt-4 max-h-[280px] space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 pr-1 sm:max-h-[360px]">
                     {supportMessages.length === 0 ? (
-                      <p className="text-xs text-slate-500 sm:text-sm">No support updates yet.</p>
+                      <p className="text-xs text-slate-500 sm:text-sm">{t("driver.communication.noSupportUpdates", "No support updates yet.")}</p>
                     ) : (
                       supportMessages.map((item) => (
                         <div
@@ -259,20 +261,20 @@ function DriverCommunicationSection({
                     <Input
                       className="text-xs sm:text-sm"
                       onChange={(event) => setCommunicationDraft(event.target.value)}
-                      placeholder="Quick support message"
+                      placeholder={t("driver.communication.quickSupportMessage", "Quick support message")}
                       value={communicationDraft}
                     />
                     <Button className="w-full sm:w-auto text-xs sm:text-sm text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" onClick={handleSendCommunicationMessage} type="button">
                       <Send className="mr-2" size={14} />
-                      Send
+                      {t("pos.communication.send", "Send")}
                     </Button>
                   </div>
                 </article>
 
                 <article className="rounded-3xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-                  <h3 className="text-sm font-semibold text-slate-900 sm:text-base">Create support request</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 sm:text-base">{t("driver.communication.createSupportRequest", "Create support request")}</h3>
                   <p className="mt-1 text-xs text-slate-500">
-                    Pick topic and write one short issue note.
+                    {t("driver.communication.createSupportRequestDesc", "Pick topic and write one short issue note.")}
                   </p>
 
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -306,13 +308,13 @@ function DriverCommunicationSection({
                           message: event.target.value,
                         }))
                       }
-                      placeholder="Describe your issue in simple words..."
+                      placeholder={t("driver.communication.describeIssueSimple", "Describe your issue in simple words...")}
                       rows={5}
                       value={supportRequest.message}
                     />
                     <Button className="w-full text-xs text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" onClick={handleSupportRequestSubmit} type="button">
                       <Headset className="mr-2" size={14} />
-                      Send support request
+                      {t("driver.communication.sendSupportRequest", "Send support request")}
                     </Button>
                   </div>
                 </article>
@@ -353,7 +355,7 @@ function DriverCommunicationSection({
                 <div className="card-list-scrollbar max-h-[460px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3 pr-1 sm:max-h-[500px] sm:p-4">
                   {activeCommunicationMessages.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-slate-300 bg-white/80 p-3 text-xs text-slate-500">
-                      No messages yet.
+                      {t("pos.communication.noMessages", "No messages yet.")}
                     </p>
                   ) : (
                     activeCommunicationMessages.map((message) => (
@@ -406,12 +408,12 @@ function DriverCommunicationSection({
                     <Input
                       className="text-xs sm:text-sm"
                       onChange={(event) => setCommunicationDraft(event.target.value)}
-                      placeholder="Type simple message here..."
+                      placeholder={t("driver.communication.typeSimpleMessage", "Type simple message here...")}
                       value={communicationDraft}
                     />
                     <Button className="w-full sm:w-auto text-xs sm:text-sm text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" onClick={handleSendCommunicationMessage} type="button">
                       <Send className="mr-2" size={14} />
-                      Send
+                      {t("pos.communication.send", "Send")}
                     </Button>
                   </div>
                 </div>

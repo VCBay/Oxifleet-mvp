@@ -322,30 +322,30 @@ function Dashboard() {
 
   const dashboardSummaryCards = [
     {
-      title: "Total vehicles",
+      title: t("fleet.dashboard.totalVehicles", "Total vehicles"),
       value: `${totalVehicles}`,
-      helper: "Up from last month",
+      helper: t("fleet.dashboard.upFromLastMonth", "Up from last month"),
       status: "good",
       icon: Truck,
     },
     {
-      title: "Total drivers",
+      title: t("fleet.dashboard.totalDrivers", "Total drivers"),
       value: `${totalDrivers}`,
-      helper: "Stable quarter-to-date",
+      helper: t("fleet.dashboard.stableQuarterToDate", "Stable quarter-to-date"),
       status: "good",
       icon: Users,
     },
     {
-      title: "Vehicle services",
+      title: t("fleet.dashboard.vehicleServices", "Vehicle services"),
       value: `${servicedVehicles.length}`,
-      helper: "Up 3 from last month",
+      helper: t("fleet.dashboard.upThreeFromLastMonth", "Up 3 from last month"),
       status: "good",
       icon: Wrench,
     },
     {
-      title: "Pending services",
+      title: t("fleet.dashboard.pendingServices", "Pending services"),
       value: `${pendingVehicles.length}`,
-      helper: "Awaiting client input",
+      helper: t("fleet.dashboard.awaitingClientInput", "Awaiting client input"),
       status: pendingVehicles.length > 2 ? "warn" : "good",
       icon: CalendarClock,
     },
@@ -489,14 +489,14 @@ function Dashboard() {
       .slice(0, 5)
       .map((order) => ({
         id: `fleet-pending-${order.id}`,
-        type: "Approval required",
-        title: `${order.id} needs approval`,
+        type: t("fleet.notifications.approvalRequired", "Approval required"),
+        title: t("fleet.notifications.requestNeedsApproval", "{{id}} needs approval", { id: order.id }),
         detail: `${order.vehicleId} • ${order.requestTitle}`,
         iconKey: order.emergency ? "emergency" : "warning",
         levelClass: order.emergency
           ? "bg-rose-100 text-rose-700"
           : "bg-amber-100 text-amber-700",
-        actionLabel: "Review request",
+        actionLabel: t("fleet.notifications.reviewRequest", "Review request"),
         actionMenu: "service_order_control",
         timestamp: order.updatedAt || order.requestedAt,
       }));
@@ -511,14 +511,14 @@ function Dashboard() {
       .slice(0, 4)
       .map((order) => ({
         id: `fleet-rejected-${order.id}`,
-        type: "Rejection alert",
-        title: `${order.id} rejected`,
+        type: t("fleet.notifications.rejectionAlert", "Rejection alert"),
+        title: t("fleet.notifications.requestRejected", "{{id}} rejected", { id: order.id }),
         detail:
           order.approval?.note ||
           `${order.vehicleId} • Review and resubmit if needed.`,
         iconKey: "approval_rejected",
         levelClass: "bg-rose-100 text-rose-700",
-        actionLabel: "Open order",
+        actionLabel: t("fleet.notifications.openOrder", "Open order"),
         actionMenu: "service_order_control",
         timestamp: order.updatedAt || order.requestedAt,
       }));
@@ -541,14 +541,14 @@ function Dashboard() {
       .slice(0, 4)
       .map((order) => ({
         id: `fleet-settlement-${order.id}`,
-        type: "Invoice update",
-        title: `${order.id} invoice processing`,
+        type: t("fleet.notifications.invoiceUpdate", "Invoice update"),
+        title: t("fleet.notifications.invoiceProcessing", "{{id}} invoice processing", { id: order.id }),
         detail:
           order.settlement?.note ||
           `${order.vehicleId} • POS sent invoice for fleet confirmation.`,
         iconKey: "approval_ok",
         levelClass: "bg-emerald-100 text-emerald-700",
-        actionLabel: "Confirm completion",
+        actionLabel: t("fleet.notifications.confirmCompletion", "Confirm completion"),
         actionMenu: "service_order_control",
         timestamp:
           order.settlement?.completionConfirmedAt ||
@@ -566,12 +566,12 @@ function Dashboard() {
       .slice(0, 3)
       .map((message) => ({
         id: `fleet-driver-msg-${message.id}`,
-        type: "Driver message",
-        title: `${message.driverName} sent a message`,
+        type: t("fleet.notifications.driverMessage", "Driver message"),
+        title: t("fleet.notifications.driverSentMessage", "{{name}} sent a message", { name: message.driverName }),
         detail: message.message,
         iconKey: "message",
         levelClass: "bg-sky-100 text-sky-700",
-        actionLabel: "Reply driver",
+        actionLabel: t("fleet.notifications.replyDriver", "Reply driver"),
         actionMenu: "communication",
         timestamp: message.sentAt,
       }));
@@ -586,12 +586,12 @@ function Dashboard() {
       .slice(0, 3)
       .map((message) => ({
         id: `fleet-workshop-msg-${message.id}`,
-        type: "Workshop update",
-        title: `${message.workshop} responded`,
+        type: t("fleet.notifications.workshopUpdate", "Workshop update"),
+        title: t("fleet.notifications.workshopResponded", "{{name}} responded", { name: message.workshop }),
         detail: message.message,
         iconKey: "message",
         levelClass: "bg-indigo-100 text-indigo-700",
-        actionLabel: "Open thread",
+        actionLabel: t("fleet.notifications.openThread", "Open thread"),
         actionMenu: "communication",
         timestamp: message.sentAt,
       }));
@@ -609,7 +609,7 @@ function Dashboard() {
       .slice(0, 3)
       .map((ticket) => ({
         id: `fleet-ticket-${ticket.id}`,
-        type: "Support ticket",
+        type: t("fleet.notifications.supportTicket", "Support ticket"),
         title: `${ticket.id} • ${ticket.status}`,
         detail: ticket.subject,
         iconKey: ticket.status === "Escalated" ? "warning" : "message",
@@ -617,7 +617,7 @@ function Dashboard() {
           ticket.status === "Escalated"
             ? "bg-amber-100 text-amber-700"
             : "bg-slate-200 text-slate-700",
-        actionLabel: "Open support",
+        actionLabel: t("fleet.notifications.openSupport", "Open support"),
         actionMenu: "communication",
         timestamp: ticket.updatedAt || ticket.createdAt,
       }));
@@ -631,7 +631,7 @@ function Dashboard() {
       .slice(0, 3)
       .map((invoice) => ({
         id: `fleet-billing-${invoice.id}`,
-        type: "Billing alert",
+        type: t("fleet.notifications.billingAlert", "Billing alert"),
         title: `${invoice.id} • ${invoice.status}`,
         detail: `${invoice.vehicleId} • $${(Number(invoice.totalAmount) || 0).toLocaleString()}`,
         iconKey: "billing",
@@ -639,7 +639,7 @@ function Dashboard() {
           normalize(invoice.status) === "unpaid"
             ? "bg-rose-100 text-rose-700"
             : "bg-amber-100 text-amber-700",
-        actionLabel: "Open billing",
+        actionLabel: t("fleet.notifications.openBilling", "Open billing"),
         actionMenu: "billing_finance",
         timestamp: invoice.date,
       }));
@@ -661,6 +661,7 @@ function Dashboard() {
     communicationState.tickets,
     communicationState.workshopMessages,
     serviceOrderState.orders,
+    t,
   ]);
 
   const visibleFleetNotifications = useMemo(
@@ -868,7 +869,7 @@ function Dashboard() {
       <div className="flex h-full w-full min-w-0">
         {isMobileSidebarOpen ? (
           <button
-            aria-label="Close menu backdrop"
+            aria-label={t("actions.closeMenuBackdrop", "Close menu backdrop")}
             className="fixed inset-0 z-40 bg-slate-900/45 lg:hidden"
             onClick={() => setIsMobileSidebarOpen(false)}
             type="button"
@@ -890,7 +891,7 @@ function Dashboard() {
             }`}
           >
             <button
-              aria-label="Close menu"
+              aria-label={t("actions.closeMenu", "Close menu")}
               className="absolute right-3 top-3 z-[60] grid size-8 place-items-center rounded-full bg-white/10 text-white lg:hidden"
               onClick={() => setIsMobileSidebarOpen(false)}
               type="button"
@@ -900,8 +901,8 @@ function Dashboard() {
             <button
               aria-label={
                 isDesktopSidebarCollapsed
-                  ? "Expand sidebar"
-                  : "Collapse sidebar"
+                  ? t("actions.expandSidebar", "Expand sidebar")
+                  : t("actions.collapseSidebar", "Collapse sidebar")
               }
               className="absolute -right-3 top-3 z-[65] hidden size-6 place-items-center rounded-full border border-[#cec6df] bg-[#ddd6ea] text-[#3b276d] shadow-sm transition hover:bg-[#d1c7e4] lg:grid"
               onClick={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
@@ -1353,7 +1354,9 @@ function Dashboard() {
                 <DialogTitle>{selectedVehicleModel}</DialogTitle>
                 <DialogDescription>
                   {selectedVehicle?.id
-                    ? `Vehicle ID: ${selectedVehicle.id}`
+                    ? t("fleet.dialogs.vehicleIdLabel", "Vehicle ID: {{id}}", {
+                        id: selectedVehicle.id,
+                      })
                     : ""}
                 </DialogDescription>
               </DialogHeader>
@@ -1363,7 +1366,7 @@ function Dashboard() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Overview
+                        {t("fleet.dialogs.overview", "Overview")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {selectedVehicleModel}
@@ -1380,7 +1383,7 @@ function Dashboard() {
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Vehicle ID
+                        {t("fleet.dialogs.vehicleId", "Vehicle ID")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.id || "—"}
@@ -1388,7 +1391,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Service date
+                        {t("fleet.dialogs.serviceDate", "Service date")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.serviceDate || "—"}
@@ -1396,7 +1399,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Plate
+                        {t("fleet.dialogs.plate", "Plate")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.plate || "—"}
@@ -1404,7 +1407,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Type
+                        {t("fleet.dialogs.type", "Type")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.type || "—"}
@@ -1412,7 +1415,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Status
+                        {t("fleet.dialogs.status", "Status")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.status || "—"}
@@ -1420,7 +1423,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Added
+                        {t("fleet.dialogs.added", "Added")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.createdAt
@@ -1433,12 +1436,12 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Assignment
+                    {t("fleet.dialogs.assignment", "Assignment")}
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Driver
+                        {t("fleet.dialogs.driver", "Driver")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.driver || "—"}
@@ -1449,7 +1452,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Depot
+                        {t("fleet.dialogs.depot", "Depot")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.depot || "—"}
@@ -1457,7 +1460,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Route
+                        {t("fleet.dialogs.route", "Route")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.route || "—"}
@@ -1465,7 +1468,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Last known location
+                        {t("fleet.dialogs.lastKnownLocation", "Last known location")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.lastKnownLocation || "—"}
@@ -1476,12 +1479,12 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Specs
+                    {t("fleet.dialogs.specs", "Specs")}
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        VIN
+                        {t("fleet.dialogs.vin", "VIN")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.vin || "—"}
@@ -1489,7 +1492,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Year / color
+                        {t("fleet.dialogs.yearColor", "Year / color")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails
@@ -1499,7 +1502,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Odometer
+                        {t("fleet.dialogs.odometer", "Odometer")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.odometer || "—"}
@@ -1507,7 +1510,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Engine hours
+                        {t("fleet.dialogs.engineHours", "Engine hours")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.engineHours || "—"}
@@ -1515,7 +1518,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Fuel level
+                        {t("fleet.dialogs.fuelLevel", "Fuel level")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.fuelLevel || "—"}
@@ -1526,12 +1529,12 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Service & costs
+                    {t("fleet.dialogs.serviceCosts", "Service & costs")}
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Service center
+                        {t("fleet.dialogs.serviceCenter", "Service center")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.serviceCenter || "—"}
@@ -1539,7 +1542,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Invoice
+                        {t("fleet.dialogs.invoice", "Invoice")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.invoiceId || "—"}
@@ -1547,7 +1550,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Estimated cost
+                        {t("fleet.dialogs.estimatedCost", "Estimated cost")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.estimatedCost || "—"}
@@ -1555,7 +1558,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Next service due
+                        {t("fleet.dialogs.nextServiceDue", "Next service due")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.nextServiceDue || "—"}
@@ -1565,7 +1568,7 @@ function Dashboard() {
 
                   <div className="mt-4">
                     <p className="text-xs font-semibold text-slate-500">
-                      Work items
+                      {t("fleet.dialogs.workItems", "Work items")}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {(vehicleDetails?.issues || []).map((issue) => (
@@ -1582,12 +1585,12 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Compliance
+                    {t("fleet.dialogs.compliance", "Compliance")}
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Inspection due
+                        {t("fleet.dialogs.inspectionDue", "Inspection due")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.inspectionDue || "—"}
@@ -1595,7 +1598,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Registration expiry
+                        {t("fleet.dialogs.registrationExpiry", "Registration expiry")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.registrationExpiry || "—"}
@@ -1603,7 +1606,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Insurance expiry
+                        {t("fleet.dialogs.insuranceExpiry", "Insurance expiry")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.insuranceExpiry || "—"}
@@ -1614,7 +1617,7 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Notes
+                    {t("fleet.dialogs.notes", "Notes")}
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-slate-700">
                     {vehicleDetails?.notes || "—"}
@@ -1625,7 +1628,7 @@ function Dashboard() {
               <DialogFooter>
                 <DialogClose asChild>
                   <Button type="button" variant="outline">
-                    Close
+                    {t("driver.request.close", "Close")}
                   </Button>
                 </DialogClose>
               </DialogFooter>
@@ -1635,15 +1638,15 @@ function Dashboard() {
           <Dialog open={vehicleDialogOpen} onOpenChange={setVehicleDialogOpen}>
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add vehicle</DialogTitle>
+                <DialogTitle>{t("fleet.dialogs.addVehicle", "Add vehicle")}</DialogTitle>
                 <DialogDescription>
-                  Capture details to keep your fleet inventory accurate.
+                  {t("fleet.dialogs.addVehicleDesc", "Capture details to keep your fleet inventory accurate.")}
                 </DialogDescription>
               </DialogHeader>
               <form className="grid gap-4" onSubmit={handleAddVehicle}>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="vehicle-id">Vehicle ID</Label>
+                    <Label htmlFor="vehicle-id">{t("fleet.dialogs.vehicleId", "Vehicle ID")}</Label>
                     <Input
                       id="vehicle-id"
                       value={vehicleForm.id}
@@ -1652,7 +1655,7 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="vehicle-plate">Plate number</Label>
+                    <Label htmlFor="vehicle-plate">{t("fleet.dialogs.plateNumber", "Plate number")}</Label>
                     <Input
                       id="vehicle-plate"
                       value={vehicleForm.plate}
@@ -1662,7 +1665,7 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="vehicle-model">Vehicle model</Label>
+                    <Label htmlFor="vehicle-model">{t("fleet.dialogs.vehicleModel", "Vehicle model")}</Label>
                     <Input
                       id="vehicle-model"
                       value={vehicleForm.model}
@@ -1672,59 +1675,59 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Vehicle type</Label>
+                    <Label>{t("fleet.dialogs.vehicleType", "Vehicle type")}</Label>
                     <Select
                       value={vehicleForm.type}
                       onValueChange={handleVehicleSelectChange("type")}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue placeholder={t("fleet.dialogs.selectType", "Select type")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Truck">Truck</SelectItem>
-                        <SelectItem value="Van">Van</SelectItem>
-                        <SelectItem value="Trailer">Trailer</SelectItem>
-                        <SelectItem value="Utility">Utility</SelectItem>
+                        <SelectItem value="Truck">{t("fleet.dialogs.vehicleTypeTruck", "Truck")}</SelectItem>
+                        <SelectItem value="Van">{t("fleet.dialogs.vehicleTypeVan", "Van")}</SelectItem>
+                        <SelectItem value="Trailer">{t("fleet.dialogs.vehicleTypeTrailer", "Trailer")}</SelectItem>
+                        <SelectItem value="Utility">{t("fleet.dialogs.vehicleTypeUtility", "Utility")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Status</Label>
+                    <Label>{t("fleet.dialogs.status", "Status")}</Label>
                     <Select
                       value={vehicleForm.status}
                       onValueChange={handleVehicleSelectChange("status")}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue placeholder={t("fleet.dialogs.selectStatus", "Select status")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="In service">In service</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
+                        <SelectItem value="Active">{t("fleet.dialogs.statusActive", "Active")}</SelectItem>
+                        <SelectItem value="In service">{t("fleet.dialogs.statusInService", "In service")}</SelectItem>
+                        <SelectItem value="Inactive">{t("fleet.dialogs.statusInactive", "Inactive")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="vehicle-notes">Notes</Label>
+                  <Label htmlFor="vehicle-notes">{t("fleet.dialogs.notes", "Notes")}</Label>
                   <Textarea
                     id="vehicle-notes"
                     value={vehicleForm.notes}
                     onChange={handleVehicleChange("notes")}
-                    placeholder="Add maintenance history or assignments."
+                    placeholder={t("fleet.dialogs.vehicleNotesPlaceholder", "Add maintenance history or assignments.")}
                     rows={3}
                   />
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline">
-                    <FileUp /> Import from Excel
+                    <FileUp /> {t("fleet.dialogs.importFromExcel", "Import from Excel")}
                   </Button>
                   <Button
                     type="submit"
                     disabled={!isVehicleReady}
                     className="w-full justify-center text-sm sm:w-auto text-white bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                   >
-                    Add vehicle
+                    {t("fleet.dialogs.addVehicle", "Add vehicle")}
                   </Button>
                 </DialogFooter>
               </form>
@@ -1733,15 +1736,15 @@ function Dashboard() {
           <Dialog open={driverDialogOpen} onOpenChange={setDriverDialogOpen}>
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add driver</DialogTitle>
+                <DialogTitle>{t("fleet.dialogs.addDriver", "Add driver")}</DialogTitle>
                 <DialogDescription>
-                  Add driver details to keep staffing up to date.
+                  {t("fleet.dialogs.addDriverDesc", "Add driver details to keep staffing up to date.")}
                 </DialogDescription>
               </DialogHeader>
               <form className="grid gap-4" onSubmit={handleAddDriver}>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-id">Driver ID</Label>
+                    <Label htmlFor="driver-id">{t("fleet.dialogs.driverId", "Driver ID")}</Label>
                     <Input
                       id="driver-id"
                       value={driverForm.id}
@@ -1750,7 +1753,7 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-name">Full name</Label>
+                    <Label htmlFor="driver-name">{t("fleet.dialogs.fullName", "Full name")}</Label>
                     <Input
                       id="driver-name"
                       value={driverForm.name}
@@ -1760,7 +1763,7 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-email">Email address</Label>
+                    <Label htmlFor="driver-email">{t("fleet.dialogs.emailAddress", "Email address")}</Label>
                     <Input
                       id="driver-email"
                       type="email"
@@ -1771,7 +1774,7 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-phone">Phone number</Label>
+                    <Label htmlFor="driver-phone">{t("fleet.dialogs.phoneNumber", "Phone number")}</Label>
                     <Input
                       id="driver-phone"
                       value={driverForm.phone}
@@ -1780,7 +1783,7 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-license">License</Label>
+                    <Label htmlFor="driver-license">{t("fleet.dialogs.license", "License")}</Label>
                     <Input
                       id="driver-license"
                       value={driverForm.license}
@@ -1789,42 +1792,42 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Status</Label>
+                    <Label>{t("fleet.dialogs.status", "Status")}</Label>
                     <Select
                       value={driverForm.status}
                       onValueChange={handleDriverSelectChange("status")}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue placeholder={t("fleet.dialogs.selectStatus", "Select status")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="On leave">On leave</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
+                        <SelectItem value="Active">{t("fleet.dialogs.statusActive", "Active")}</SelectItem>
+                        <SelectItem value="On leave">{t("fleet.dialogs.statusOnLeave", "On leave")}</SelectItem>
+                        <SelectItem value="Inactive">{t("fleet.dialogs.statusInactive", "Inactive")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="driver-notes">Notes</Label>
+                  <Label htmlFor="driver-notes">{t("fleet.dialogs.notes", "Notes")}</Label>
                   <Textarea
                     id="driver-notes"
                     value={driverForm.notes}
                     onChange={handleDriverChange("notes")}
-                    placeholder="Add certifications or route assignments."
+                    placeholder={t("fleet.dialogs.driverNotesPlaceholder", "Add certifications or route assignments.")}
                     rows={3}
                   />
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline">
-                    Import from Excel
+                    {t("fleet.dialogs.importFromExcel", "Import from Excel")}
                   </Button>
                   <Button
                     type="submit"
                     disabled={!isDriverReady}
                     className="w-full justify-center text-sm sm:w-auto text-white bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                   >
-                    Add driver
+                    {t("fleet.dialogs.addDriver", "Add driver")}
                   </Button>
                 </DialogFooter>
               </form>
@@ -1856,17 +1859,17 @@ function Dashboard() {
                   Fleet dashboard
                 </p> */}
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white">
-                  Welcome{user?.name ? `, ${user.name}` : " John Doe"}
+                  {t("fleet.dashboard.welcome", "Welcome")}{user?.name ? `, ${user.name}` : ` ${t("fleet.dashboard.defaultUser", "John Doe")}`}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-slate-200 sm:text-xs">
                   <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 sm:px-3">
-                    Updated {dashboardUpdatedAt}
+                    {t("fleet.dashboard.updated", "Updated")} {dashboardUpdatedAt}
                   </span>
                   <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 sm:px-3">
-                    {totalVehicles} active vehicles
+                    {t("fleet.dashboard.activeVehiclesCount", "{{count}} active vehicles", { count: totalVehicles })}
                   </span>
                   <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 sm:px-3">
-                    {totalDrivers} drivers onboard
+                    {t("fleet.dashboard.driversOnboardCount", "{{count}} drivers onboard", { count: totalDrivers })}
                   </span>
                 </div>
               </div>
@@ -1952,10 +1955,10 @@ function Dashboard() {
                           )}`}
                         >
                           {card.status === "good"
-                            ? "On track"
+                            ? t("fleet.dashboard.onTrack", "On track")
                             : card.status === "warn"
-                              ? "Needs attention"
-                              : "Action required"}
+                              ? t("fleet.dashboard.needsAttention", "Needs attention")
+                              : t("fleet.dashboard.actionRequired", "Action required")}
                         </span>
                       </div>
                     </article>
@@ -1973,7 +1976,7 @@ function Dashboard() {
                       className="text-sm font-semibold sm:text-lg"
                       style={{ color: figmaChartTheme.title }}
                     >
-                      Service spend
+                      {t("fleet.dashboard.serviceSpend", "Service spend")}
                     </h2>
                     <span
                       className="rounded-full px-3 py-1 text-xs font-semibold"
@@ -1989,7 +1992,7 @@ function Dashboard() {
                     className="mt-1 text-[11px] sm:text-sm"
                     style={{ color: figmaChartTheme.subtitle }}
                   >
-                    Rolling four-week spend for maintenance and parts.
+                    {t("fleet.dashboard.serviceSpendDesc", "Rolling four-week spend for maintenance and parts.")}
                   </p>
                   <div className="mt-3 h-44 sm:mt-4 sm:h-56">
                     <ResponsiveContainer width="100%" height="100%">
@@ -2068,7 +2071,7 @@ function Dashboard() {
                       className="text-sm font-semibold sm:text-lg"
                       style={{ color: figmaChartTheme.title }}
                     >
-                      Shipments Statistics
+                      {t("fleet.dashboard.shipmentsStatistics", "Shipments Statistics")}
                     </h2>
                     <button
                       className="inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-sm font-medium"
@@ -2079,7 +2082,7 @@ function Dashboard() {
                       }}
                       type="button"
                     >
-                      Week
+                      {t("fleet.dashboard.week", "Week")}
                       <ChevronDown size={14} strokeWidth={1.75} />
                     </button>
                   </div>
@@ -2087,7 +2090,7 @@ function Dashboard() {
                     className="mt-1 text-xs sm:text-xs"
                     style={{ color: "#9E9FA2" }}
                   >
-                    Total number of deliveries 50K
+                    {t("fleet.dashboard.totalDeliveries", "Total number of deliveries 50K")}
                   </p>
                   <div className="mt-3 h-48 sm:mt-4 sm:h-56">
                     <ResponsiveContainer width="100%" height="100%">
@@ -2154,10 +2157,10 @@ function Dashboard() {
                 <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                      Serviced vehicles
+                      {t("fleet.dashboard.servicedVehicles", "Serviced vehicles")}
                     </h2>
                     <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                      Completed
+                      {t("fleet.dashboard.completed", "Completed")}
                     </span>
                   </div>
                   <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
@@ -2165,7 +2168,7 @@ function Dashboard() {
                       <button
                         key={vehicle.id}
                         className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/60 bg-slate-50 px-3 py-2.5 text-left text-xs transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
-                        onClick={handleVehicleCardClick(vehicle, "Serviced")}
+                        onClick={handleVehicleCardClick(vehicle, t("fleet.dashboard.serviced", "Serviced"))}
                         type="button"
                       >
                         <div>
@@ -2187,7 +2190,7 @@ function Dashboard() {
                 <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                      Recent invoices
+                      {t("fleet.dashboard.recentInvoices", "Recent invoices")}
                     </h2>
                     {/* <Link
                       className="text-xs font-semibold text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline"
@@ -2227,10 +2230,10 @@ function Dashboard() {
                 <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                      Pending service
+                      {t("fleet.dashboard.pendingService", "Pending service")}
                     </h2>
                     <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
-                      Upcoming
+                      {t("fleet.dashboard.upcoming", "Upcoming")}
                     </span>
                   </div>
                   <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
@@ -2240,7 +2243,7 @@ function Dashboard() {
                         className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-100/80 bg-amber-50 px-3 py-2.5 text-left text-xs transition hover:bg-amber-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
                         onClick={handleVehicleCardClick(
                           vehicle,
-                          "Pending service",
+                          t("fleet.dashboard.pendingService", "Pending service"),
                         )}
                         type="button"
                       >
@@ -2264,54 +2267,54 @@ function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-[13px] font-semibold sm:text-sm">
-                        Team focus
+                        {t("fleet.dashboard.teamFocus", "Team focus")}
                       </p>
                       <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
-                        Active initiatives this week
+                        {t("fleet.dashboard.activeInitiatives", "Active initiatives this week")}
                       </p>
                     </div>
                     <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-700 font-semibold">
-                      04 tasks
+                      {t("fleet.dashboard.tasksCount", "04 tasks")}
                     </span>
                   </div>
                   <div className="mt-5 space-y-3 text-xs sm:mt-6 sm:space-y-4 sm:text-sm">
                     <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-emerald-100 p-3 rounded-lg">
                       <div>
                         <p className="text-[12px] font-semibold sm:text-sm">
-                          Service desk refresh
+                          {t("fleet.dashboard.serviceDeskRefresh", "Service desk refresh")}
                         </p>
                         <p className="text-[10px] text-slate-500 sm:text-xs">
-                          Due Feb 8
+                          {t("fleet.dashboard.dueFeb8", "Due Feb 8")}
                         </p>
                       </div>
                       <span className="text-xs font-semibold text-emerald-700 bg-green-300 px-2 py-0.5 rounded-full">
-                        On track
+                        {t("fleet.dashboard.onTrack", "On track")}
                       </span>
                     </div>
                     <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-amber-100 p-3 rounded-lg">
                       <div>
                         <p className="text-[12px] font-semibold sm:text-sm">
-                          Driver onboarding
+                          {t("fleet.dashboard.driverOnboarding", "Driver onboarding")}
                         </p>
                         <p className="text-[10px] text-slate-500 sm:text-xs">
-                          Due Feb 10
+                          {t("fleet.dashboard.dueFeb10", "Due Feb 10")}
                         </p>
                       </div>
                       <span className="text-xs font-semibold text-amber-700 bg-amber-300 px-2 py-0.5 rounded-full">
-                        Review
+                        {t("fleet.dashboard.review", "Review")}
                       </span>
                     </div>
                     <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-rose-100 p-3 rounded-lg">
                       <div>
                         <p className="text-[12px] font-semibold sm:text-sm">
-                          Parts inventory
+                          {t("fleet.dashboard.partsInventory", "Parts inventory")}
                         </p>
                         <p className="text-[10px] text-slate-500 sm:text-xs">
-                          Due Feb 12
+                          {t("fleet.dashboard.dueFeb12", "Due Feb 12")}
                         </p>
                       </div>
                       <span className="text-xs font-semibold text-rose-700 bg-rose-300 px-2 py-0.5 rounded-full">
-                        At risk
+                        {t("fleet.dashboard.atRisk", "At risk")}
                       </span>
                     </div>
                   </div>

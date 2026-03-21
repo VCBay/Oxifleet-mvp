@@ -129,11 +129,43 @@ function POSProfileSettingsControl({ session = null }) {
     channel: "Portal",
     urgency: "Normal",
   });
+  const roleOptions = useMemo(
+    () =>
+      ROLE_OPTIONS.map((option) => ({
+        ...option,
+        label: t(`pos.profile.roles.${option.value}`, option.label),
+      })),
+    [t],
+  );
+  const shiftOptions = useMemo(
+    () =>
+      SHIFT_OPTIONS.map((option) => ({
+        ...option,
+        label: t(`pos.profile.shifts.${option.value}`, option.label),
+      })),
+    [t],
+  );
+  const statusOptions = useMemo(
+    () =>
+      STATUS_OPTIONS.map((option) => ({
+        ...option,
+        label: t(`pos.profile.statusOptions.${option.value}`, option.label),
+      })),
+    [t],
+  );
+  const translatedWorkingHours = useMemo(
+    () =>
+      workingHours.map((item) => ({
+        ...item,
+        label: t(`pos.profile.days.${item.day}`, item.day),
+      })),
+    [t, workingHours],
+  );
 
   const formatDateTime = (value) => {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) {
-      return "N/A";
+      return t("common.notAvailable", "N/A");
     }
     return parsed.toLocaleString("en-US", {
       month: "short",
@@ -192,7 +224,7 @@ function POSProfileSettingsControl({ session = null }) {
 
   const addStaffMember = () => {
     if (!staffDraft.name.trim()) {
-      setFeedback("Staff name is required.");
+      setFeedback(t("pos.profile.feedback.staffNameRequired", "Staff name is required."));
       return;
     }
     const nextMember = {
@@ -209,12 +241,12 @@ function POSProfileSettingsControl({ session = null }) {
       shift: "General",
       status: "Active",
     });
-    setFeedback("Staff member added.");
+    setFeedback(t("pos.profile.feedback.staffAdded", "Staff member added."));
   };
 
   const removeStaffMember = (staffId) => () => {
     setStaffMembers((prev) => prev.filter((member) => member.id !== staffId));
-    setFeedback("Staff member removed.");
+    setFeedback(t("pos.profile.feedback.staffRemoved", "Staff member removed."));
   };
 
   const updateWorkingDay = (day) => (patch) => {
@@ -224,13 +256,13 @@ function POSProfileSettingsControl({ session = null }) {
   };
 
   const saveAllSettings = () => {
-    setFeedback("Profile and settings saved.");
+    setFeedback(t("pos.profile.feedback.saved", "Profile and settings saved."));
   };
 
   const sendFleetMessage = () => {
     const message = fleetMessageDraft.trim();
     if (!message) {
-      setFeedback("Write message before sending to fleet.");
+      setFeedback(t("pos.profile.feedback.writeMessage", "Write message before sending to fleet."));
       return;
     }
     sendWorkshopMessage({
@@ -243,7 +275,7 @@ function POSProfileSettingsControl({ session = null }) {
       toRole: "fleet",
     });
     setFleetMessageDraft("");
-    setFeedback("Message sent to fleet control.");
+    setFeedback(t("pos.profile.feedback.messageSent", "Message sent to fleet control."));
   };
 
   return (
@@ -383,12 +415,12 @@ function POSProfileSettingsControl({ session = null }) {
                 onValueChange={(value) =>
                   setStaffDraft((prev) => ({ ...prev, role: value }))
                 }
-                options={ROLE_OPTIONS}
+                options={roleOptions}
                 value={staffDraft.role || ""}
                 placeholder={t("pos.profile.role", "Role")}
-                searchPlaceholder="Search roles"
-                emptyLabel="No roles"
-                noMatchLabel="No matching roles"
+                searchPlaceholder={t("pos.profile.searchRoles", "Search roles")}
+                emptyLabel={t("pos.profile.noRoles", "No roles")}
+                noMatchLabel={t("pos.profile.noMatchingRoles", "No matching roles")}
                 triggerClassName="w-full"
               />
 
@@ -396,12 +428,12 @@ function POSProfileSettingsControl({ session = null }) {
                 onValueChange={(value) =>
                   setStaffDraft((prev) => ({ ...prev, shift: value }))
                 }
-                options={SHIFT_OPTIONS}
+                options={shiftOptions}
                 value={staffDraft.shift || ""}
                 placeholder={t("pos.profile.shift", "Shift")}
-                searchPlaceholder="Search shifts"
-                emptyLabel="No shifts"
-                noMatchLabel="No matching shifts"
+                searchPlaceholder={t("pos.profile.searchShifts", "Search shifts")}
+                emptyLabel={t("pos.profile.noShifts", "No shifts")}
+                noMatchLabel={t("pos.profile.noMatchingShifts", "No matching shifts")}
                 triggerClassName="w-full"
               />
 
@@ -409,12 +441,12 @@ function POSProfileSettingsControl({ session = null }) {
                 onValueChange={(value) =>
                   setStaffDraft((prev) => ({ ...prev, status: value }))
                 }
-                options={STATUS_OPTIONS}
+                options={statusOptions}
                 value={staffDraft.status || ""}
                 placeholder={t("pos.profile.status", "Status")}
-                searchPlaceholder="Search status"
-                emptyLabel="No status options"
-                noMatchLabel="No matching status"
+                searchPlaceholder={t("pos.profile.searchStatus", "Search status")}
+                emptyLabel={t("pos.profile.noStatusOptions", "No status options")}
+                noMatchLabel={t("pos.profile.noMatchingStatus", "No matching status")}
                 triggerClassName="w-full"
               />
             </div>
@@ -440,7 +472,9 @@ function POSProfileSettingsControl({ session = null }) {
                   </button>
                 </div>
                 <p className="text-slate-600">
-                  {member.role} | {member.shift} | {member.status}
+                  {t(`pos.profile.roles.${member.role}`, member.role)} |{" "}
+                  {t(`pos.profile.shifts.${member.shift}`, member.shift)} |{" "}
+                  {t(`pos.profile.statusOptions.${member.status}`, member.status)}
                 </p>
               </div>
             ))}
@@ -454,13 +488,13 @@ function POSProfileSettingsControl({ session = null }) {
             {t("pos.profile.workingHours", "Working hours")}
           </h2>
           <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-2 overflow-y-auto pr-1">
-            {workingHours.map((item) => (
+            {translatedWorkingHours.map((item) => (
               <div
                 key={item.day}
                 className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
               >
                 <p className="self-center text-sm font-semibold text-slate-900 sm:col-span-2 lg:col-span-1">
-                  {item.day}
+                  {item.label}
                 </p>
                 <Input
                   className="min-w-0"

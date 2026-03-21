@@ -788,6 +788,10 @@ function DriverDashboard() {
     () => String(requestForm.problemType || "").trim() === DAMAGE_REPORT_CATEGORY,
     [requestForm.problemType],
   );
+  const isEmergencyBreakdownFlow = useMemo(
+    () => String(requestForm.problemType || "").trim() === "Emergency breakdown",
+    [requestForm.problemType],
+  );
 
   useEffect(() => {
     const expectedPath = `/driver-dashboard/${driverMenuRouteMap[activeMenu]}`;
@@ -1026,7 +1030,7 @@ function DriverDashboard() {
         requestForm.posTyreAvailability === true) ||
       (requestForm.tyreSupplySource === "pos" &&
         requestForm.posTyreAvailability === true);
-    const hasBookingSelection = isDamageReportFlow
+    const hasBookingSelection = isDamageReportFlow || isEmergencyBreakdownFlow
       ? true
       : Boolean(requestForm.preferredPosId) &&
         Boolean(requestForm.preferredDate) &&
@@ -1043,6 +1047,7 @@ function DriverDashboard() {
     );
   }, [
     isDamageReportFlow,
+    isEmergencyBreakdownFlow,
     odometerError,
     requestForm.description,
     requestForm.preferredDate,
@@ -1557,7 +1562,7 @@ function DriverDashboard() {
       });
       return;
     }
-    if (!isDamageReportFlow && !requestForm.preferredPosId) {
+    if (!isDamageReportFlow && !isEmergencyBreakdownFlow && !requestForm.preferredPosId) {
       const message = "Select a nearby Point S station first.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
@@ -1576,13 +1581,13 @@ function DriverDashboard() {
       toast.error("Request not sent", { description: message, duration: 3600 });
       return;
     }
-    if (!isDamageReportFlow && !requestForm.preferredDate) {
+    if (!isDamageReportFlow && !isEmergencyBreakdownFlow && !requestForm.preferredDate) {
       const message = "Select a booking date first.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
       return;
     }
-    if (!isDamageReportFlow && !selectedSlot) {
+    if (!isDamageReportFlow && !isEmergencyBreakdownFlow && !selectedSlot) {
       const message = "Select a free slot to continue.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
@@ -1592,6 +1597,7 @@ function DriverDashboard() {
     try {
       const approvalRequired =
         isDamageReportFlow ||
+        isEmergencyBreakdownFlow ||
         requestForm.emergency ||
         policyValidation.status !== "Allowed";
       let attachments = [];
@@ -1608,13 +1614,16 @@ function DriverDashboard() {
         submitRequestTimeoutRef.current = window.setTimeout(resolve, 900);
       });
       const createdOrder = createDriverServiceRequest({
-        emergency: requestForm.emergency || isDamageReportFlow,
+        emergency:
+          requestForm.emergency || isDamageReportFlow || isEmergencyBreakdownFlow,
         approval: approvalRequired,
         attachments,
-        routeToFleetOnly: isDamageReportFlow,
+        routeToFleetOnly: isDamageReportFlow || isEmergencyBreakdownFlow,
       });
       const successMessage = isDamageReportFlow
         ? "Damage report sent directly to fleet manager with your photos."
+        : isEmergencyBreakdownFlow
+          ? "Emergency breakdown request sent for immediate triage."
         : approvalRequired
           ? "Request sent. Fleet manager approval is required."
           : "Request sent. Booking flow has started.";

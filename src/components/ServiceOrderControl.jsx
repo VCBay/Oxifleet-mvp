@@ -18,17 +18,9 @@ import {
   setOrderLifecycleStage,
   subscribeServiceOrders,
 } from "../data/serviceOrderStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
-
-const statusTabs = [
-  { key: "all", label: "All" },
-  { key: "pending", label: "Pending" },
-  { key: "approved", label: "Approved" },
-  { key: "rejected", label: "Rejected" },
-  { key: "in_progress", label: "In progress" },
-  { key: "completed", label: "Completed" },
-];
 
 const matchesStatusFilter = (status, filterKey) => {
   const normalized = normalizeStatus(status);
@@ -77,6 +69,7 @@ const statusClassName = (status) => {
 };
 
 function ServiceOrderControl() {
+  const { t } = useTranslation();
   const serviceOrderState = useSyncExternalStore(
     subscribeServiceOrders,
     getServiceOrderState,
@@ -91,6 +84,14 @@ function ServiceOrderControl() {
   const [lifecycleStage, setLifecycleStage] = useState("In progress");
   const [lifecycleNote, setLifecycleNote] = useState("");
   const [previewAttachment, setPreviewAttachment] = useState(null);
+  const statusTabs = [
+    { key: "all", label: t("fleet.serviceOrder.all", "All") },
+    { key: "pending", label: t("fleet.serviceOrder.pending", "Pending") },
+    { key: "approved", label: t("fleet.serviceOrder.approved", "Approved") },
+    { key: "rejected", label: t("fleet.serviceOrder.rejected", "Rejected") },
+    { key: "in_progress", label: t("fleet.serviceOrder.inProgress", "In progress") },
+    { key: "completed", label: t("fleet.serviceOrder.completed", "Completed") },
+  ];
 
   const orders = useMemo(
     () =>
@@ -209,7 +210,7 @@ function ServiceOrderControl() {
   const handleAcknowledgeSettlement = (orderId) => () => {
     acknowledgeSettlementByFleet(orderId, {
       actor: decisionApprover,
-      note: "Invoice received from POS. Fleet confirmed completion.",
+      note: t("fleet.serviceOrder.invoiceReceivedNote", "Invoice received from POS. Fleet confirmed completion."),
     });
   };
 
@@ -220,11 +221,10 @@ function ServiceOrderControl() {
         // className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
       >
         <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
-          Service & Order Control
+          {t("fleet.menu.service_order_control", "Service & Order Control")}
         </h2>
         <p className="mt-1 text-sm text-white/50">
-          Manage all service requests, workflow approvals, manual overrides,
-          order details, lifecycle tracking, and emergency monitoring.
+          {t("fleet.serviceOrder.headerDesc", "Manage all service requests, workflow approvals, manual overrides, order details, lifecycle tracking, and emergency monitoring.")}
         </p>
       </div>
 
@@ -232,29 +232,29 @@ function ServiceOrderControl() {
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              Emergency service monitoring
+              {t("fleet.serviceOrder.emergencyServiceMonitoring", "Emergency service monitoring")}
             </h3>
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Emergency requests</p>
+                <p className="text-xs text-slate-500">{t("fleet.serviceOrder.emergencyRequests", "Emergency requests")}</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {emergencyOrders.length}
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Active emergency</p>
+                <p className="text-xs text-slate-500">{t("fleet.serviceOrder.activeEmergency", "Active emergency")}</p>
                 <p className="mt-2 text-2xl font-semibold text-amber-600">
                   {activeEmergencyOrders.length}
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Total requests</p>
+                <p className="text-xs text-slate-500">{t("fleet.serviceOrder.totalRequests", "Total requests")}</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {orders.length}
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Pending approvals</p>
+                <p className="text-xs text-slate-500">{t("fleet.serviceOrder.pendingApprovals", "Pending approvals")}</p>
                 <p className="mt-2 text-2xl font-semibold text-sky-700">
                   {pendingApprovalOrders.length}
                 </p>
@@ -264,7 +264,7 @@ function ServiceOrderControl() {
             <div className="mt-4 space-y-2">
               {activeEmergencyOrders.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                  No active emergency orders.
+                  {t("fleet.serviceOrder.noActiveEmergencyOrders", "No active emergency orders.")}
                 </p>
               ) : (
                 activeEmergencyOrders.slice(0, 3).map((order) => (
@@ -286,19 +286,19 @@ function ServiceOrderControl() {
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              All service requests list
+              {t("fleet.serviceOrder.allServiceRequestsList", "All service requests list")}
             </h3>
             <div className="mt-4 space-y-3">
               <div className="relative">
                 <Input
                   className="pr-10"
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search by order, vehicle, type, requester"
+                  placeholder={t("fleet.serviceOrder.searchPlaceholder", "Search by order, vehicle, type, requester")}
                   value={searchQuery}
                 />
                 {searchQuery ? (
                   <button
-                    aria-label="Clear search"
+                    aria-label={t("driver.request.clearSearch", "Clear search")}
                     className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                     onClick={() => setSearchQuery("")}
                     type="button"
@@ -331,7 +331,7 @@ function ServiceOrderControl() {
             <div className="card-list-scrollbar mt-4 max-h-[460px] space-y-3 overflow-y-auto pr-1">
               {filteredOrders.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                  No service requests found.
+                  {t("fleet.serviceOrder.noServiceRequestsFound", "No service requests found.")}
                 </div>
               ) : (
                 filteredOrders.map((order) => {
@@ -367,7 +367,7 @@ function ServiceOrderControl() {
                       </p>
                       {order.emergency ? (
                         <p className="mt-1 text-xs font-semibold text-rose-300">
-                          Emergency
+                          {t("driver.request.emergency", "Emergency")}
                         </p>
                       ) : null}
                     </button>
@@ -379,16 +379,15 @@ function ServiceOrderControl() {
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              Invoice submissions awaiting fleet confirmation
+              {t("fleet.serviceOrder.invoiceSubmissionsAwaitingConfirmation", "Invoice submissions awaiting fleet confirmation")}
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              POS has sent invoices. Confirm from fleet side to finalize service
-              completion.
+              {t("fleet.serviceOrder.invoiceSubmissionsDesc", "POS has sent invoices. Confirm from fleet side to finalize service completion.")}
             </p>
             <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
               {settlementReadyOrders.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                  No invoice submissions waiting for fleet confirmation.
+                  {t("fleet.serviceOrder.noInvoiceSubmissions", "No invoice submissions waiting for fleet confirmation.")}
                 </p>
               ) : (
                 settlementReadyOrders.map((order) => (
@@ -407,17 +406,17 @@ function ServiceOrderControl() {
                         variant="outline"
                         className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                       >
-                        Confirm completion
+                        {t("fleet.notifications.confirmCompletion", "Confirm completion")}
                       </Button>
                     </div>
                     <p className="mt-1 text-xs text-emerald-700">
-                      Invoice sent by{" "}
-                      {order?.settlement?.completionConfirmedBy || "POS"} on{" "}
+                      {t("fleet.serviceOrder.invoiceSentBy", "Invoice sent by")}{" "}
+                      {order?.settlement?.completionConfirmedBy || "POS"} {t("fleet.serviceOrder.on", "on")}{" "}
                       {order?.settlement?.completionConfirmedAt
                         ? new Date(
                             order.settlement.completionConfirmedAt,
                           ).toLocaleString()
-                        : "N/A"}
+                        : t("common.notAvailable", "N/A")}
                     </p>
                   </div>
                 ))
@@ -429,43 +428,43 @@ function ServiceOrderControl() {
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              View order details
+              {t("fleet.serviceOrder.viewOrderDetails", "View order details")}
             </h3>
             {selectedOrder ? (
               <div className="mt-4 grid gap-4 text-sm">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs text-slate-500">Order ID</p>
+                    <p className="text-xs text-slate-500">{t("fleet.serviceOrder.orderId", "Order ID")}</p>
                     <p className="font-semibold text-slate-900">
                       {selectedOrder.id}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Requested at</p>
+                    <p className="text-xs text-slate-500">{t("fleet.serviceOrder.requestedAt", "Requested at")}</p>
                     <p className="font-semibold text-slate-900">
                       {new Date(selectedOrder.requestedAt).toLocaleString()}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Vehicle</p>
+                    <p className="text-xs text-slate-500">{t("fleet.serviceOrder.vehicle", "Vehicle")}</p>
                     <p className="font-semibold text-slate-900">
                       {selectedOrder.vehicleId} - {selectedOrder.vehicleModel}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Service type</p>
+                    <p className="text-xs text-slate-500">{t("fleet.serviceOrder.serviceType", "Service type")}</p>
                     <p className="font-semibold text-slate-900">
                       {selectedOrder.serviceType}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Priority</p>
+                    <p className="text-xs text-slate-500">{t("fleet.serviceOrder.priority", "Priority")}</p>
                     <p className="font-semibold text-slate-900">
                       {selectedOrder.priority}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Status</p>
+                    <p className="text-xs text-slate-500">{t("fleet.serviceOrder.status", "Status")}</p>
                     <span
                       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassName(
                         selectedOrder.status,
@@ -477,7 +476,7 @@ function ServiceOrderControl() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs text-slate-500">Description</p>
+                  <p className="text-xs text-slate-500">{t("driver.request.description", "Description")}</p>
                   <p className="mt-1 text-slate-700">
                     {selectedOrder.orderDetails.description}
                   </p>
@@ -497,7 +496,7 @@ function ServiceOrderControl() {
                     <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          Attached photos
+                          {t("fleet.serviceOrder.attachedPhotos", "Attached photos")}
                         </p>
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
                           {selectedOrder.orderDetails.attachments.length}
@@ -524,7 +523,7 @@ function ServiceOrderControl() {
                               type="button"
                               variant="outline"
                             >
-                              View
+                              {t("pos.order.view", "View")}
                             </Button>
                           </div>
                         ))}
@@ -535,23 +534,22 @@ function ServiceOrderControl() {
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-500">
-                Select an order to view details.
+                {t("fleet.serviceOrder.selectOrderToView", "Select an order to view details.")}
               </p>
             )}
           </div>
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              Approval/rejection workflow
+              {t("fleet.serviceOrder.approvalRejectionWorkflow", "Approval/rejection workflow")}
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Manual approval override is available even after
-              rejection/pending.
+              {t("fleet.serviceOrder.approvalRejectionDesc", "Manual approval override is available even after rejection/pending.")}
             </p>
 
             <div className="mt-4 grid gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="approver-name">Approver</Label>
+                <Label htmlFor="approver-name">{t("fleet.serviceOrder.approver", "Approver")}</Label>
                 <Input
                   id="approver-name"
                   onChange={(event) => setDecisionApprover(event.target.value)}
@@ -559,7 +557,7 @@ function ServiceOrderControl() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="decision-note">Decision note</Label>
+                <Label htmlFor="decision-note">{t("fleet.serviceOrder.decisionNote", "Decision note")}</Label>
                 <Textarea
                   id="decision-note"
                   onChange={(event) => setDecisionNote(event.target.value)}
@@ -573,7 +571,7 @@ function ServiceOrderControl() {
                   onClick={handleDecision("Approved")}
                   type="button"
                 >
-                  Approve
+                  {t("fleet.serviceOrder.approve", "Approve")}
                 </Button>
                 <Button
                   disabled={decisionDisabled}
@@ -581,7 +579,7 @@ function ServiceOrderControl() {
                   type="button"
                   variant="destructive"
                 >
-                  Reject
+                  {t("fleet.serviceOrder.reject", "Reject")}
                 </Button>
                 <Button
                   disabled={!selectedOrder || !decisionApprover.trim()}
@@ -589,7 +587,7 @@ function ServiceOrderControl() {
                   type="button"
                   variant="outline"
                 >
-                  Manual approval override
+                  {t("fleet.serviceOrder.manualApprovalOverride", "Manual approval override")}
                 </Button>
               </div>
             </div>
@@ -597,7 +595,7 @@ function ServiceOrderControl() {
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              Track order lifecycle
+              {t("fleet.serviceOrder.trackOrderLifecycle", "Track order lifecycle")}
             </h3>
             {selectedOrder ? (
               <div className="mt-4 grid gap-4">
@@ -626,23 +624,19 @@ function ServiceOrderControl() {
                     value={lifecycleStage}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Next stage" />
+                      <SelectValue placeholder={t("fleet.serviceOrder.nextStage", "Next stage")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="In progress">In progress</SelectItem>
-                      <SelectItem value="Parts ordered">
-                        Parts ordered
-                      </SelectItem>
-                      <SelectItem value="Quality check">
-                        Quality check
-                      </SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Closed">Closed</SelectItem>
+                      <SelectItem value="In progress">{t("fleet.serviceOrder.inProgress", "In progress")}</SelectItem>
+                      <SelectItem value="Parts ordered">{t("fleet.serviceOrder.partsOrdered", "Parts ordered")}</SelectItem>
+                      <SelectItem value="Quality check">{t("fleet.serviceOrder.qualityCheck", "Quality check")}</SelectItem>
+                      <SelectItem value="Completed">{t("fleet.serviceOrder.completed", "Completed")}</SelectItem>
+                      <SelectItem value="Closed">{t("fleet.serviceOrder.closed", "Closed")}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Textarea
                     onChange={(event) => setLifecycleNote(event.target.value)}
-                    placeholder="Lifecycle update note"
+                    placeholder={t("fleet.serviceOrder.lifecycleUpdateNote", "Lifecycle update note")}
                     rows={2}
                     value={lifecycleNote}
                   />
@@ -651,13 +645,13 @@ function ServiceOrderControl() {
                     type="button"
                     variant="outline"
                   >
-                    Update lifecycle stage
+                    {t("fleet.serviceOrder.updateLifecycleStage", "Update lifecycle stage")}
                   </Button>
                 </div>
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-500">
-                Select an order to track lifecycle.
+                {t("fleet.serviceOrder.selectOrderToTrack", "Select an order to track lifecycle.")}
               </p>
             )}
           </div>
@@ -669,7 +663,7 @@ function ServiceOrderControl() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-900">
-                  {previewAttachment.name || "Attachment"}
+                  {previewAttachment.name || t("fleet.serviceOrder.attachment", "Attachment")}
                 </p>
                 <p className="text-xs text-slate-500">
                   {Math.max(1, Math.round((previewAttachment.size || 0) / 1024))} KB
@@ -680,12 +674,12 @@ function ServiceOrderControl() {
                 type="button"
                 variant="outline"
               >
-                Close
+                {t("driver.request.close", "Close")}
               </Button>
             </div>
             <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
               <img
-                alt={previewAttachment.name || "Attachment preview"}
+                alt={previewAttachment.name || t("fleet.serviceOrder.attachmentPreview", "Attachment preview")}
                 className="max-h-[65vh] w-full object-contain"
                 src={previewAttachment.dataUrl}
               />

@@ -29,6 +29,7 @@ import {
   getCategorySubOptions,
 } from "../../data/driverBookingCatalog";
 import { evaluateTyreStock } from "../../data/tyreInventoryStore";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const problemPictogramMap = {
   tyre: {
@@ -50,6 +51,11 @@ const problemPictogramMap = {
     icon: CarFront,
     badge: "Schadensmeldung",
     accentClass: "border-rose-200 bg-rose-50 text-rose-700",
+  },
+  emergency_breakdown: {
+    icon: TriangleAlert,
+    badge: "Emergency",
+    accentClass: "border-red-200 bg-red-50 text-red-700",
   },
   default: {
     icon: CircleAlert,
@@ -125,18 +131,18 @@ function ServiceCategoryCard({ option, isSelected, onSelect, cardKey }) {
       onClick={onSelect}
       type="button"
     >
-      <div className="flex min-h-[72px] flex-col items-center justify-center gap-1.5 sm:min-h-[96px] sm:gap-2.5">
+      <div className="flex min-h-[64px] flex-col items-center justify-center gap-1 sm:min-h-[82px] sm:gap-2">
         <span
-          className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg border shadow-sm sm:size-11 sm:rounded-xl ${
+          className={`inline-flex size-7 shrink-0 items-center justify-center rounded-lg border shadow-sm sm:size-9 sm:rounded-xl ${
             isSelected
               ? "border-white/35 bg-white/15 text-white"
               : pictogram.accentClass
           }`}
         >
-          <Icon size={14} strokeWidth={2.2} className="sm:size-[18px]" />
+          <Icon size={12} strokeWidth={2.2} className="sm:size-[16px]" />
         </span>
         <p
-          className="w-full truncate text-center text-[9px] font-semibold leading-tight sm:text-sm"
+          className="w-full truncate text-center text-[8px] font-semibold leading-tight sm:text-[11px]"
           title={option.label}
         >
           {option.label}
@@ -171,6 +177,7 @@ function DriverServiceRequestSection({
   requestStatusClass,
   formatDateTime,
 }) {
+  const { t } = useTranslation();
   const [showAllServices, setShowAllServices] = useState(false);
   const [serviceOrder, setServiceOrder] = useState(() =>
     simpleIssueOptions.map((option) => option.value),
@@ -268,6 +275,10 @@ function DriverServiceRequestSection({
   );
   const isDamageReportFlow = useMemo(
     () => String(requestForm.problemType || "").trim() === "Schadensmeldung",
+    [requestForm.problemType],
+  );
+  const isEmergencyBreakdownFlow = useMemo(
+    () => String(requestForm.problemType || "").trim() === "Emergency breakdown",
     [requestForm.problemType],
   );
   const isTyreStockBlocked =
@@ -904,10 +915,10 @@ function DriverServiceRequestSection({
               <Loader2 className="size-5 animate-spin" />
             </span>
             <p className="mt-3 text-sm font-semibold text-slate-900">
-              Sending service request...
+              {t("driver.request.sendingTitle", "Sending service request...")}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Please wait while we submit your details.
+              {t("driver.request.sendingDesc", "Please wait while we submit your details.")}
             </p>
           </div>
         </div>
@@ -916,10 +927,13 @@ function DriverServiceRequestSection({
         <div className="min-w-0 space-y-4 sm:space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-              Service category
+              {t("driver.request.serviceCategory", "Service category")}
             </h2>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-              First-level service options with quick visual selection.
+              {t(
+                "driver.request.serviceCategoryHint",
+                "First-level service options with quick visual selection.",
+              )}
             </p>
             <div className="mt-4 flex justify-end">
               {hasMoreServices ? (
@@ -928,12 +942,12 @@ function DriverServiceRequestSection({
                   type="button"
                   variant="outline"
                 >
-                  See all services
+                  {t("driver.request.seeAllServices", "See all services")}
                 </Button>
               ) : null}
             </div>
             <div className="mt-3">
-              <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
                 {inlineServiceOptions.map((option) => (
                   <ServiceCategoryCard
                     cardKey={option.value}
@@ -957,7 +971,10 @@ function DriverServiceRequestSection({
               </h2>
               <p className="mt-1 text-xs text-slate-500 sm:text-sm">
                 {categoryDetails?.selectionHint ||
-                  "Choose the correct service detail before booking."}
+                  t(
+                    "driver.request.serviceDetailsHint",
+                    "Choose the correct service detail before booking.",
+                  )}
               </p>
               {categorySubOptions.length > 0 ? (
                 <div className="mt-4 grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -982,7 +999,7 @@ function DriverServiceRequestSection({
                               isSelected ? "text-slate-200" : "text-amber-700"
                             }`}
                           >
-                            Explanation required
+                            {t("driver.request.explanationRequired", "Explanation required")}
                           </p>
                         ) : null}
                       </button>
@@ -993,28 +1010,32 @@ function DriverServiceRequestSection({
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                   {requestForm.problemType === "Technisches Problem" ? (
                     <p>
-                      Please describe the issue in the field below or upload a
-                      picture of the error message.
+                      {t(
+                        "driver.request.technicalProblemHelp",
+                        "Please describe the issue in the field below or upload a picture of the error message.",
+                      )}
                     </p>
                   ) : requestForm.problemType === "Schadensmeldung" ? (
                     <p>
-                      Please fill out the damage details below and upload clear
-                      pictures of the damage.
+                      {t(
+                        "driver.request.damageReportHelp",
+                        "Please fill out the damage details below and upload clear pictures of the damage.",
+                      )}
                     </p>
                   ) : (
-                    <p>Select the details below to continue.</p>
+                    <p>{t("driver.request.selectDetails", "Select the details below to continue.")}</p>
                   )}
                 </div>
               )}
               {requiresSubtype && !requestForm.problemSubtype ? (
                 <p className="mt-3 text-xs text-amber-700">
-                  Select one service option to continue.
+                  {t("driver.request.selectServiceOption", "Select one service option to continue.")}
                 </p>
               ) : null}
             </div>
           ) : null}
 
-          {!isDamageReportFlow ? (
+          {!isDamageReportFlow && !isEmergencyBreakdownFlow ? (
             <>
               <div
                 className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
@@ -1023,7 +1044,7 @@ function DriverServiceRequestSection({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-                      Nearest Point of Sale
+                      {t("driver.request.nearestPos", "Nearest Point of Sale")}
                     </h2>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -1043,7 +1064,7 @@ function DriverServiceRequestSection({
                           <span className="inline-flex size-5 items-center justify-center rounded-full bg-sky-100 text-sky-700">
                             <MapPin size={12} />
                           </span>
-                          <span>See all</span>
+                          <span>{t("driver.request.seeAll", "See all")}</span>
                           <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white">
                             {totalStationsCount}
                           </span>
@@ -1057,7 +1078,7 @@ function DriverServiceRequestSection({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-800 sm:text-sm">
                         <Sparkles size={14} />
-                        Best Point S recommendation
+                        {t("driver.request.bestPosRecommendation", "Best Point S recommendation")}
                       </p>
                       <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white sm:text-[11px]">
                         {bestRecommendedStation.confidence}% match
@@ -1069,7 +1090,10 @@ function DriverServiceRequestSection({
                     <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
                       {bestRecommendedStation.reasons.length > 0
                         ? bestRecommendedStation.reasons.join(" • ")
-                        : "Balanced score from distance, ETA, and service fit"}
+                        : t(
+                            "driver.request.balancedScore",
+                            "Balanced score from distance, ETA, and service fit",
+                          )}
                     </p>
                     {/* <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-600 sm:text-xs">
                       <span>
@@ -1096,8 +1120,10 @@ function DriverServiceRequestSection({
                 <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 min-[520px]:grid-cols-2 lg:grid-cols-3">
                   {inlineStations.length === 0 ? (
                     <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                      No nearby Point S stations found for selected service
-                      category.
+                      {t(
+                        "driver.request.noNearbyPos",
+                        "No nearby Point S stations found for selected service category.",
+                      )}
                     </p>
                   ) : (
                     inlineStations.map((pos) =>
@@ -1115,13 +1141,14 @@ function DriverServiceRequestSection({
                 ref={dateSlotSectionRef}
               >
                 <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-                  Select date and slot
+                  {t("driver.request.selectDateSlot", "Select date and slot")}
                 </h2>
                 {isTyreStockBlocked ? (
                   <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:text-sm">
-                    Tyres are currently unavailable at selected POS for this
-                    service. We will notify you when tyres are available, then
-                    you can book date and slot.
+                    {t(
+                      "driver.request.tyresUnavailable",
+                      "Tyres are currently unavailable at selected POS for this service. We will notify you when tyres are available, then you can book date and slot.",
+                    )}
                   </div>
                 ) : null}
                 <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
@@ -1157,7 +1184,7 @@ function DriverServiceRequestSection({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-800 sm:text-sm">
                         <Sparkles size={14} />
-                        Best slot recommendation
+                        {t("driver.request.bestSlotRecommendation", "Best slot recommendation")}
                       </p>
                       {/* <span className="rounded-full bg-cyan-600 px-2 py-0.5 text-[10px] font-semibold text-white sm:text-[11px]">
                         {bestSlotRecommendation.confidence}% match
@@ -1170,7 +1197,10 @@ function DriverServiceRequestSection({
                       <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
                         {bestSlotRecommendation.reasons.length > 0
                           ? bestSlotRecommendation.reasons.join(" • ")
-                          : "Chosen using current queue and historical delay trends"}
+                          : t(
+                              "driver.request.slotChosenHint",
+                              "Chosen using current queue and historical delay trends",
+                            )}
                       </p>
                       {/* <Button
                         className="h-7 px-2.5 text-[11px] sm:text-xs"
@@ -1194,12 +1224,17 @@ function DriverServiceRequestSection({
                 <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 xl:grid-cols-4">
                   {isTyreStockBlocked ? (
                     <p className="col-span-full rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                      Slot selection is blocked until requested tyre stock is
-                      available at this POS.
+                      {t(
+                        "driver.request.slotBlocked",
+                        "Slot selection is blocked until requested tyre stock is available at this POS.",
+                      )}
                     </p>
                   ) : slotAvailability.length === 0 ? (
                     <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                      Select a Point S station to see slot availability.
+                      {t(
+                        "driver.request.selectPosToSeeSlots",
+                        "Select a Point S station to see slot availability.",
+                      )}
                     </p>
                   ) : (
                     slotAvailability.map((slot) => {
@@ -1232,7 +1267,7 @@ function DriverServiceRequestSection({
                         >
                           {isRecommended && !isBusy ? (
                             <span className="pointer-events-none absolute -top-1.5 left-1/2 z-20 inline-flex -translate-x-1/2 rounded-full border border-fuchsia-200 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 px-2 py-[2px] text-[8px] font-bold uppercase tracking-[0.05em] text-white shadow-lg">
-                              Recommended
+                              {t("driver.request.recommended", "Recommended")}
                             </span>
                           ) : null}
                           <p className="text-xs font-semibold sm:text-sm">
@@ -1240,8 +1275,10 @@ function DriverServiceRequestSection({
                           </p>
                           <p className="mt-1 text-[10px] sm:text-[11px]">
                             {isBusy
-                              ? `Busy (${slot.queue} in queue)`
-                              : "Free to book"}
+                              ? t("driver.request.busyQueue", "Busy ({{count}} in queue)", {
+                                  count: slot.queue,
+                                })
+                              : t("driver.request.freeToBook", "Free to book")}
                           </p>
                         </button>
                       );
@@ -1250,7 +1287,7 @@ function DriverServiceRequestSection({
                 </div>
                 {selectedSlot ? (
                   <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700 sm:text-xs">
-                    Selected slot:{" "}
+                    {t("driver.request.selectedSlot", "Selected slot")}:{" "}
                     <span className="font-semibold">{selectedSlot.label}</span>{" "}
                     on{" "}
                     <span className="font-semibold">
@@ -1267,23 +1304,29 @@ function DriverServiceRequestSection({
             ref={optionalDetailsSectionRef}
           >
             <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-              Required details
+              {t("driver.request.requiredDetails", "Required details")}
             </h2>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">
               {requiresPhotos
-                ? "Damage report requires a clear description and at least one photo."
+                ? t(
+                    "driver.request.damageRequiresPhoto",
+                    "Damage report requires a clear description and at least one photo.",
+                  )
                 : requiresDescription
-                  ? "Add the required issue details before sending the request."
-                  : "Add short note or photos if available."}
+                  ? t(
+                      "driver.request.addRequiredDetails",
+                      "Add the required issue details before sending the request.",
+                    )
+                  : t("driver.request.addShortNote", "Add short note or photos if available.")}
             </p>
             <div className="mt-4 space-y-3">
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
                   <span className="font-medium text-slate-700">
-                    Current odometer reading
+                    {t("driver.request.currentOdometer", "Current odometer reading")}
                   </span>
                   <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
-                    Required
+                    {t("driver.request.required", "Required")}
                   </span>
                 </div>
                 <Input
@@ -1294,7 +1337,7 @@ function DriverServiceRequestSection({
                       odometerReading: event.target.value,
                     }))
                   }
-                  placeholder="Enter current odometer"
+                  placeholder={t("driver.request.enterOdometer", "Enter current odometer")}
                   value={requestForm.odometerReading}
                 />
                 <div className="max-w-[10rem]">
@@ -1308,7 +1351,7 @@ function DriverServiceRequestSection({
                     value={requestForm.odometerUnit || "km"}
                   >
                     <SelectTrigger className="bg-slate-50">
-                      <SelectValue placeholder="Unit" />
+                      <SelectValue placeholder={t("driver.request.unit", "Unit")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="km">km</SelectItem>
@@ -1317,14 +1360,14 @@ function DriverServiceRequestSection({
                   </Select>
                 </div>
                 <p className="text-[11px] text-slate-500 sm:text-xs">
-                  Last recorded:{" "}
+                  {t("driver.request.lastRecorded", "Last recorded")}:{" "}
                   <span className="font-semibold text-slate-700">
                     {lastRecordedOdometer?.reading !== null &&
                     lastRecordedOdometer?.reading !== undefined
                       ? `${lastRecordedOdometer.reading.toLocaleString()} ${lastRecordedOdometer.unit}`
-                      : "No previous reading"}
+                      : t("driver.request.noPreviousReading", "No previous reading")}
                   </span>
-                  {lastRecordedOdometer?.isFallback ? " (sample)" : ""}
+                  {lastRecordedOdometer?.isFallback ? ` ${t("driver.request.sample", "(sample)")}` : ""}
                 </p>
                 {odometerError ? (
                   <p className="text-[11px] text-rose-700 sm:text-xs">
@@ -1341,18 +1384,19 @@ function DriverServiceRequestSection({
                 }
                 placeholder={
                   categoryDetails?.detailPlaceholder ||
-                  "What happened? (optional)"
+                  t("driver.request.whatHappenedOptional", "What happened? (optional)")
                 }
                 rows={4}
                 value={requestForm.description}
               />
               <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
                 <span className="font-medium text-slate-700">
-                  {categoryDetails?.detailFieldLabel || "Issue details"}
+                  {categoryDetails?.detailFieldLabel ||
+                    t("driver.request.issueDetails", "Issue details")}
                 </span>
                 {requiresDescription ? (
                   <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
-                    Required
+                    {t("driver.request.required", "Required")}
                   </span>
                 ) : null}
               </div>
@@ -1366,14 +1410,14 @@ function DriverServiceRequestSection({
               />
               {requiresPhotos ? (
                 <p className="text-[11px] text-amber-700 sm:text-xs">
-                  At least one damage photo is required.
+                  {t("driver.request.damagePhotoRequired", "At least one damage photo is required.")}
                 </p>
               ) : null}
               {photoPreviews.length > 0 ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold text-slate-800">
-                      Uploaded images
+                      {t("driver.request.uploadedImages", "Uploaded images")}
                     </p>
                     <button
                       className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
@@ -1381,7 +1425,7 @@ function DriverServiceRequestSection({
                       type="button"
                     >
                       <Trash2 size={12} />
-                      Clear all
+                        {t("actions.clearAll", "Clear all")}
                     </button>
                   </div>
                   <div className="card-list-scrollbar mt-3 grid max-h-[18rem] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3">
@@ -1433,7 +1477,7 @@ function DriverServiceRequestSection({
                   }
                   type="checkbox"
                 />
-                Emergency breakdown
+                {t("driver.request.emergencyBreakdown", "Emergency breakdown")}
               </label>
             </div>
           </div>
@@ -1442,24 +1486,26 @@ function DriverServiceRequestSection({
         <aside className="min-w-0 space-y-4 sm:space-y-6 xl:sticky xl:top-8 xl:self-start">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
             <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
-              Request summary
+              {t("driver.request.requestSummary", "Request summary")}
             </h3>
             <div className="mt-4 space-y-3 text-xs text-slate-700 sm:text-sm">
               <p>
-                Problem:{" "}
+                {t("driver.request.problem", "Problem")}:{" "}
                 <span className="font-semibold text-slate-900">
-                  {requestForm.problemType || "Not selected"}
+                  {requestForm.problemType || t("driver.request.notSelected", "Not selected")}
                 </span>
               </p>
               <p>
-                Service option:{" "}
+                {t("driver.request.serviceOption", "Service option")}:{" "}
                 <span className="font-semibold text-slate-900">
                   {requestForm.problemSubtype ||
-                    (requiresSubtype ? "Not selected" : "Not required")}
+                    (requiresSubtype
+                      ? t("driver.request.notSelected", "Not selected")
+                      : t("driver.request.notRequired", "Not required"))}
                 </span>
               </p>
               <p>
-                Odometer:{" "}
+                {t("driver.request.odometer", "Odometer")}:{" "}
                 <span className="font-semibold text-slate-900">
                   {requestForm.odometerReading
                     ? `${Number(
@@ -1468,39 +1514,43 @@ function DriverServiceRequestSection({
                           "",
                         ),
                       ).toLocaleString()} ${requestForm.odometerUnit || "km"}`
-                    : "Not entered"}
+                    : t("driver.request.notEntered", "Not entered")}
                 </span>
               </p>
               <p>
-                Nearest Point S:{" "}
+                {t("driver.request.nearestPointS", "Nearest Point S")}:{" "}
                 <span className="font-semibold text-slate-900">
                   {isDamageReportFlow
-                    ? "Not required (direct fleet handling)"
-                    : selectedPos?.name || "Not selected"}
+                    ? t("driver.request.notRequiredDirectFleet", "Not required (direct fleet handling)")
+                    : isEmergencyBreakdownFlow
+                      ? t("driver.request.notRequiredEmergency", "Not required (emergency triage)")
+                    : selectedPos?.name || t("driver.request.notSelected", "Not selected")}
                 </span>
               </p>
               {needsTyreSupplySelection ? (
                 <p>
-                  Tyre supply:{" "}
+                  {t("driver.request.tyreSupply", "Tyre supply")}:{" "}
                   <span className="font-semibold text-slate-900">
                     {requestForm.tyreSupplySource === "driver"
-                      ? "Driver bringing tyres"
+                      ? t("driver.request.driverBringingTyres", "Driver bringing tyres")
                       : requestForm.tyreSupplySource === "pos"
                         ? requestForm.posTyreAvailability === false
-                          ? "From POS (currently unavailable)"
-                          : "From POS (available)"
-                        : "Not selected"}
+                          ? t("driver.request.fromPosUnavailable", "From POS (currently unavailable)")
+                          : t("driver.request.fromPosAvailable", "From POS (available)")
+                        : t("driver.request.notSelected", "Not selected")}
                   </span>
                 </p>
               ) : null}
               <p>
-                Date & slot:{" "}
+                {t("driver.request.dateSlot", "Date & slot")}:{" "}
                 <span className="font-semibold text-slate-900">
                   {isDamageReportFlow
-                    ? "Not required for damage report"
+                    ? t("driver.request.notRequiredDamage", "Not required for damage report")
+                    : isEmergencyBreakdownFlow
+                      ? t("driver.request.notRequiredEmergencyBreakdown", "Not required for emergency breakdown")
                     : selectedSlot
                       ? `${requestForm.preferredDate}, ${selectedSlot.label}`
-                      : "Not selected"}
+                      : t("driver.request.notSelected", "Not selected")}
                 </span>
               </p>
               {odometerRecommendation ? (
@@ -1515,16 +1565,16 @@ function DriverServiceRequestSection({
                       >
                         <Sparkles size={13} />
                       </span>
-                      Odometer recommendation
+                      {t("driver.request.odometerRecommendation", "Odometer recommendation")}
                     </p>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${recommendationTone.badge}`}
                     >
                       {odometerRecommendation.level === "high"
-                        ? "Priority"
+                        ? t("driver.request.priority", "Priority")
                         : odometerRecommendation.level === "medium"
-                          ? "Plan soon"
-                          : "Advisory"}
+                          ? t("driver.request.planSoon", "Plan soon")
+                          : t("driver.request.advisory", "Advisory")}
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -1535,13 +1585,13 @@ function DriverServiceRequestSection({
                   </p>
                   <div className="mt-2 rounded-xl border border-white/70 bg-white/60 p-2.5">
                     <p className="text-xs font-medium text-slate-700">
-                      Suggested action:{" "}
+                      {t("driver.request.suggestedAction", "Suggested action")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {odometerRecommendation.suggestion}
                       </span>
                     </p>
                     <p className="mt-1 text-xs text-slate-600">
-                      Suggested category:{" "}
+                      {t("driver.request.suggestedCategory", "Suggested category")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {odometerRecommendation.suggestedCategory}
                       </span>
@@ -1560,19 +1610,25 @@ function DriverServiceRequestSection({
                       type="checkbox"
                     />
                     <span className="text-xs font-medium text-slate-800">
-                      Book service appointment with this recommendation
+                      {t(
+                        "driver.request.bookWithRecommendation",
+                        "Book service appointment with this recommendation",
+                      )}
                     </span>
                   </label>
                   {requestForm.recommendationAccepted ? (
                     <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-                      Recommendation will be included in this request
+                      {t(
+                        "driver.request.recommendationIncluded",
+                        "Recommendation will be included in this request",
+                      )}
                     </span>
                   ) : null}
                 </div>
               ) : null}
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-500">
-                  Policy validation
+                  {t("driver.request.policyValidation", "Policy validation")}
                 </p>
                 <span
                   className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${policyStatusClass}`}
@@ -1597,21 +1653,40 @@ function DriverServiceRequestSection({
                 {isSubmittingRequest ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 className="size-4 animate-spin" />
-                    Sending...
+                    {t("driver.request.sending", "Sending...")}
                   </span>
                 ) : isDamageReportFlow ? (
-                  "Send damage report to fleet"
+                  t("driver.request.sendDamageReport", "Send damage report to fleet")
+                ) : isEmergencyBreakdownFlow ? (
+                  t(
+                    "driver.request.sendEmergencyBreakdown",
+                    "Send emergency breakdown request",
+                  )
                 ) : (
-                  "Book service appointment"
+                  t("driver.request.bookServiceAppointment", "Book service appointment")
                 )}
               </Button>
               {!isSubmittingRequest && !isServiceRequestFormReady ? (
                 <p className="text-[11px] text-slate-500 sm:text-xs">
                   {isTyreStockBlocked
-                    ? "Selected POS is out of stock for requested tyres. We will notify you once tyres are available, then you can book slot."
+                    ? t(
+                        "driver.request.posOutOfStock",
+                        "Selected POS is out of stock for requested tyres. We will notify you once tyres are available, then you can book slot.",
+                      )
                     : isDamageReportFlow
-                      ? "Complete required details and at least one photo to send this report directly to fleet."
-                      : "Complete the required service details, then choose station, date, and a free slot to enable the request."}
+                      ? t(
+                          "driver.request.completeDamageDetails",
+                          "Complete required details and at least one photo to send this report directly to fleet.",
+                        )
+                      : isEmergencyBreakdownFlow
+                        ? t(
+                            "driver.request.completeEmergencyDetails",
+                            "Complete the required details to send this emergency breakdown request for direct triage.",
+                          )
+                      : t(
+                          "driver.request.completeServiceDetails",
+                          "Complete the required service details, then choose station, date, and a free slot to enable the request.",
+                        )}
                 </p>
               ) : null}
             </div>
@@ -1621,10 +1696,10 @@ function DriverServiceRequestSection({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
-                  Recent requests
+                  {t("driver.request.recentRequests", "Recent requests")}
                 </h3>
                 <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
-                  Your latest submitted service requests.
+                  {t("driver.request.recentRequestsHint", "Your latest submitted service requests.")}
                 </p>
               </div>
               <Button
@@ -1640,12 +1715,14 @@ function DriverServiceRequestSection({
                 type="button"
                 variant="outline"
               >
-                View full history
+                {t("driver.request.viewFullHistory", "View full history")}
               </Button>
             </div>
 
             {recentDriverRequests.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-500">No requests yet.</p>
+              <p className="mt-4 text-sm text-slate-500">
+                {t("driver.request.noRequestsYet", "No requests yet.")}
+              </p>
             ) : (
               <div className="card-list-scrollbar mt-4 max-h-[18rem] space-y-2.5 overflow-y-auto pr-1">
                 {recentDriverRequests.map((order) => {
@@ -1727,16 +1804,21 @@ function DriverServiceRequestSection({
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
-            Full request history
+            {t("driver.request.fullHistory", "Full request history")}
           </h3>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-            {driverServiceRequests.length} requests
+            {t("driver.request.requestsCount", "{{count}} requests", {
+              count: driverServiceRequests.length,
+            })}
           </span>
         </div>
 
         {driverServiceRequests.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">
-            No requests yet. Submit one using the quick form above.
+            {t(
+              "driver.request.noRequestsHistory",
+              "No requests yet. Submit one using the quick form above.",
+            )}
           </p>
         ) : (
           <div className="mt-4 grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[340px_1fr]">
@@ -1803,37 +1885,39 @@ function DriverServiceRequestSection({
 
                   <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2 sm:text-sm">
                     <p>
-                      Service type:{" "}
+                      {t("driver.request.serviceType", "Service type")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {selectedRequest.serviceType}
                       </span>
                     </p>
                     <p>
-                      Requested at:{" "}
+                      {t("driver.request.requestedAt", "Requested at")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {formatDateTime(selectedRequest.requestedAt)}
                       </span>
                     </p>
                     <p>
-                      Priority:{" "}
+                      {t("driver.request.priorityLabel", "Priority")}:{" "}
                       <span className="font-semibold text-slate-900">
-                        {selectedRequest.priority || "Normal"}
+                        {selectedRequest.priority || t("driver.request.normal", "Normal")}
                       </span>
                     </p>
                     <p>
-                      Emergency:{" "}
+                      {t("driver.request.emergency", "Emergency")}:{" "}
                       <span className="font-semibold text-slate-900">
-                        {selectedRequest.emergency ? "Yes" : "No"}
+                        {selectedRequest.emergency
+                          ? t("driver.request.yes", "Yes")
+                          : t("driver.request.no", "No")}
                       </span>
                     </p>
                     <p>
-                      Location:{" "}
+                      {t("driver.request.location", "Location")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {selectedRequest.orderDetails?.location || "N/A"}
                       </span>
                     </p>
                     <p>
-                      Odometer:{" "}
+                      {t("driver.request.odometer", "Odometer")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {selectedRequest.orderDetails?.odometerReading !==
                           null &&
@@ -1848,24 +1932,24 @@ function DriverServiceRequestSection({
                       </span>
                     </p>
                     <p>
-                      Appointment:{" "}
+                      {t("driver.request.appointment", "Appointment")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {selectedRequest.appointment?.dateTime
                           ? formatDateTime(selectedRequest.appointment.dateTime)
-                          : "Not scheduled"}
+                          : t("driver.request.notScheduled", "Not scheduled")}
                       </span>
                     </p>
                   </div>
 
                   <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Description
+                      {t("driver.request.description", "Description")}
                     </p>
                     <p className="mt-1 text-xs text-slate-700 sm:text-sm">
                       {selectedRequest.orderDetails?.description || "N/A"}
                     </p>
                     <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Notes
+                      {t("driver.request.notes", "Notes")}
                     </p>
                     <p className="mt-1 text-xs text-slate-700 sm:text-sm">
                       {selectedRequest.orderDetails?.notes || "N/A"}
@@ -1874,7 +1958,7 @@ function DriverServiceRequestSection({
 
                   <div className="mt-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Lifecycle
+                      {t("driver.request.lifecycle", "Lifecycle")}
                     </p>
                     <div className="card-list-scrollbar mt-2 max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                       {(selectedRequest.lifecycle || [])
@@ -1890,8 +1974,8 @@ function DriverServiceRequestSection({
                               {entry.stage}
                             </p>
                             <p className="text-[11px] text-slate-500 sm:text-xs">
-                              {formatDateTime(entry.time)} by{" "}
-                              {entry.actor || "System"}
+                              {formatDateTime(entry.time)} {t("driver.request.by", "by")}{" "}
+                              {entry.actor || t("driver.request.system", "System")}
                             </p>
                             {entry.note ? (
                               <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
@@ -1915,10 +1999,10 @@ function DriverServiceRequestSection({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-900">
-                  All services
+                  {t("driver.request.allServices", "All services")}
                 </p>
                 <p className="text-sm text-slate-500">
-                  Select one service to continue
+                  {t("driver.request.selectOneService", "Select one service to continue")}
                 </p>
               </div>
               <Button
@@ -1926,11 +2010,11 @@ function DriverServiceRequestSection({
                 type="button"
                 variant="outline"
               >
-                Close
+                {t("driver.request.close", "Close")}
               </Button>
             </div>
             <div className="mt-4">
-              <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
                 {orderedServiceOptions.map((option) => (
                   <ServiceCategoryCard
                     cardKey={`modal-${option.value}`}
@@ -1951,13 +2035,13 @@ function DriverServiceRequestSection({
         </div>
       ) : null}
 
-      {showAllStations && !isDamageReportFlow ? (
+      {showAllStations && !isDamageReportFlow && !isEmergencyBreakdownFlow ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/45 p-2 sm:items-center sm:p-4">
           <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-900">
-                  All nearby Point S stations
+                  {t("driver.request.allNearbyStations", "All nearby Point S stations")}
                 </p>
                 {/* <p className="text-sm text-slate-500">
                   Select one Point S station to continue ({filteredStations.length} shown of{" "}
@@ -1969,7 +2053,7 @@ function DriverServiceRequestSection({
                 type="button"
                 variant="outline"
               >
-                Close
+                {t("driver.request.close", "Close")}
               </Button>
             </div>
             <div className="max-w-sm">
@@ -1977,12 +2061,15 @@ function DriverServiceRequestSection({
                 <Input
                   className="pr-10"
                   onChange={(event) => setStationSearch(event.target.value)}
-                  placeholder="Search station, location or capability..."
+                  placeholder={t(
+                    "driver.request.searchStations",
+                    "Search station, location or capability...",
+                  )}
                   value={stationSearch}
                 />
                 {stationSearch ? (
                   <button
-                    aria-label="Clear search"
+                    aria-label={t("driver.request.clearSearch", "Clear search")}
                     className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                     onClick={() => setStationSearch("")}
                     type="button"
@@ -1995,10 +2082,14 @@ function DriverServiceRequestSection({
                 {isSearchDebouncing ? (
                   <>
                     <Loader2 className="size-3 animate-spin text-sky-600" />
-                    <span>Searching stations...</span>
+                    <span>{t("driver.request.searchingStations", "Searching stations...")}</span>
                   </>
                 ) : (
-                  <span>{filteredStations.length} matching stations</span>
+                  <span>
+                    {t("driver.request.matchingStations", "{{count}} matching stations", {
+                      count: filteredStations.length,
+                    })}
+                  </span>
                 )}
               </div>
             </div>
@@ -2009,11 +2100,11 @@ function DriverServiceRequestSection({
               {isSearchDebouncing ? (
                 <div className="col-span-full flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                   <Loader2 className="mr-2 size-4 animate-spin text-sky-600" />
-                  Loading matching stations...
+                  {t("driver.request.loadingMatchingStations", "Loading matching stations...")}
                 </div>
               ) : filteredStations.length === 0 ? (
                 <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                  No stations found for this search.
+                  {t("driver.request.noStationsFound", "No stations found for this search.")}
                 </p>
               ) : (
                 visibleFilteredStations.map((pos) =>
@@ -2027,13 +2118,13 @@ function DriverServiceRequestSection({
                 <div className="col-span-full flex justify-center pt-1">
                   <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
                     <Loader2 className="size-3.5 animate-spin text-sky-600" />
-                    Loading more stations...
+                    {t("driver.request.loadingMoreStations", "Loading more stations...")}
                   </span>
                 </div>
               ) : hasMoreFilteredStations ? (
                 <div className="col-span-full flex justify-center pt-1">
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-                    Scroll to load more stations
+                    {t("driver.request.scrollMoreStations", "Scroll to load more stations")}
                   </span>
                 </div>
               ) : null}
@@ -2048,17 +2139,18 @@ function DriverServiceRequestSection({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-900">
-                  Tyre choice
+                  {t("driver.request.tyreChoice", "Tyre choice")}
                 </p>
                 <p className="mt-1 text-sm text-slate-600">
-                  For{" "}
+                  {t("driver.request.for", "For")}{" "}
                   <span className="font-semibold text-slate-900">
-                    {requestForm.problemSubtype || "this tyre request"}
+                    {requestForm.problemSubtype ||
+                      t("driver.request.thisTyreRequest", "this tyre request")}
                   </span>
-                  , choose how tyres will be provided.
+                  , {t("driver.request.chooseTyreProvision", "choose how tyres will be provided.")}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Selected POS: {pendingPosSelection.pos.name}
+                  {t("driver.request.selectedPos", "Selected POS")}: {pendingPosSelection.pos.name}
                 </p>
               </div>
               <Button
@@ -2069,7 +2161,7 @@ function DriverServiceRequestSection({
                 type="button"
                 variant="outline"
               >
-                Close
+                {t("driver.request.close", "Close")}
               </Button>
             </div>
 
@@ -2086,10 +2178,13 @@ function DriverServiceRequestSection({
                 type="button"
               >
                 <p className="text-sm font-semibold text-emerald-900">
-                  I will bring tyres
+                  {t("driver.request.iWillBringTyres", "I will bring tyres")}
                 </p>
                 <p className="mt-1 text-xs text-emerald-700">
-                  POS will be informed that tyres are driver-supplied.
+                  {t(
+                    "driver.request.posInformedDriverTyres",
+                    "POS will be informed that tyres are driver-supplied.",
+                  )}
                 </p>
               </button>
 
@@ -2111,14 +2206,15 @@ function DriverServiceRequestSection({
                 type="button"
               >
                 <p className="text-sm font-semibold text-sky-900">
-                  Get tyres from POS
+                  {t("driver.request.getTyresFromPos", "Get tyres from POS")}
                 </p>
                 <p className="mt-1 text-xs text-sky-700">
-                  Slot booking opens only if stock is available.
+                  {t("driver.request.slotBookingStock", "Slot booking opens only if stock is available.")}
                 </p>
                 <p className="mt-1 text-[11px] text-sky-800">
-                  Vehicle spec: {assignedVehicle?.tyreSpecs?.size || "N/A"} |
-                  Qty: {requiredTyreQty}
+                  {t("driver.request.vehicleSpec", "Vehicle spec")}:{" "}
+                  {assignedVehicle?.tyreSpecs?.size || "N/A"} | {t("driver.request.qty", "Qty")}:{" "}
+                  {requiredTyreQty}
                 </p>
               </button>
             </div>

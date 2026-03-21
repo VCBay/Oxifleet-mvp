@@ -7,6 +7,7 @@ import {
   Siren,
   XCircle,
 } from "lucide-react";
+import { useTranslation } from "../i18n/useTranslation";
 import { buildDriverBookingNotifications } from "../lib/driverBookingNotifications";
 import { Input } from "./ui/input";
 
@@ -57,6 +58,7 @@ function DriverBookingTrackingPanel({
   nextServiceDate,
   orders = [],
 }) {
+  const { t } = useTranslation();
   const [bookingSearch, setBookingSearch] = useState("");
   const scopedOrders = useMemo(() => {
     const vehicleId = normalize(vehicle?.id);
@@ -209,34 +211,34 @@ function DriverBookingTrackingPanel({
         lastMonthValue:
           card.valueType === "number"
             ? Math.max(0, Math.round(numericValue * 0.85))
-            : "Monitoring",
+            : t("driver.tracking.monitoring", "Monitoring"),
       };
     });
-  }, [bookingHistory.length, liveBooking?.status, upcomingBookings.length]);
+  }, [bookingHistory.length, liveBooking?.status, upcomingBookings.length, t]);
 
   return (
     <section className="min-w-0 space-y-4 sm:space-y-6">
       <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Upcoming bookings</p>
+          <p className="text-xs text-slate-500">{t("driver.tracking.upcomingBookings", "Upcoming bookings")}</p>
           <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
             {filteredUpcomingBookings.length}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Booking history</p>
+          <p className="text-xs text-slate-500">{t("driver.tracking.bookingHistory", "Booking history")}</p>
           <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
             {filteredBookingHistory.length}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Live status</p>
+          <p className="text-xs text-slate-500">{t("driver.tracking.liveStatus", "Live status")}</p>
           <p className="mt-2 text-xs font-semibold text-slate-900 sm:text-sm">
-            {liveBooking?.status || "No active bookings"}
+            {liveBooking?.status || t("driver.tracking.noActiveBookings", "No active bookings")}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <p className="text-xs text-slate-500">Active workflows</p>
+          <p className="text-xs text-slate-500">{t("driver.tracking.activeWorkflows", "Active workflows")}</p>
           <p className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
             {upcomingBookings.length}
           </p>
@@ -247,16 +249,16 @@ function DriverBookingTrackingPanel({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-              Find bookings
+              {t("driver.tracking.findBookings", "Find bookings")}
             </h2>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-              Search by booking code, service type, or status.
+              {t("driver.tracking.findBookingsDesc", "Search by booking code, service type, or status.")}
             </p>
           </div>
           <div className="w-full sm:w-72">
             <Input
               onChange={(event) => setBookingSearch(event.target.value)}
-              placeholder="Search bookings"
+              placeholder={t("driver.tracking.searchBookings", "Search bookings")}
               value={bookingSearch}
             />
           </div>
@@ -266,12 +268,12 @@ function DriverBookingTrackingPanel({
       <div className="grid min-w-0 items-start gap-4 sm:gap-6 xl:grid-cols-2">
         <div className="flex flex-col rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6 xl:h-[30rem]">
           <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-            Upcoming bookings
+            {t("driver.tracking.upcomingBookings", "Upcoming bookings")}
           </h2>
           <div className="sidebar-scrollbar mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 sm:pr-2">
             {filteredUpcomingBookings.length === 0 ? (
               <p className="text-xs text-slate-500 sm:text-sm">
-                No upcoming bookings found.
+                {t("driver.tracking.noUpcomingBookings", "No upcoming bookings found.")}
               </p>
             ) : (
               filteredUpcomingBookings.map((booking) => (
@@ -292,11 +294,11 @@ function DriverBookingTrackingPanel({
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
-                    Requested: {formatDateTime(booking.requestedAt)}
+                    {t("driver.tracking.requested", "Requested")}: {formatDateTime(booking.requestedAt)}
                   </p>
                   {booking?.appointment?.dateTime ? (
                     <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
-                      Appointment:{" "}
+                      {t("driver.tracking.appointment", "Appointment")}:{" "}
                       {formatDateTime(booking.appointment.dateTime)}
                     </p>
                   ) : null}
@@ -308,12 +310,12 @@ function DriverBookingTrackingPanel({
 
         <div className="flex flex-col rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6 xl:h-[30rem]">
           <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-            Booking history
+            {t("driver.tracking.bookingHistory", "Booking history")}
           </h2>
           <div className="sidebar-scrollbar mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 sm:pr-2">
             {filteredBookingHistory.length === 0 ? (
               <p className="text-xs text-slate-500 sm:text-sm">
-                No historical bookings found.
+                {t("driver.tracking.noHistoricalBookings", "No historical bookings found.")}
               </p>
             ) : (
               filteredBookingHistory.map((booking) => (
@@ -334,7 +336,7 @@ function DriverBookingTrackingPanel({
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
-                    Updated:{" "}
+                    {t("driver.tracking.updated", "Updated")}:{" "}
                     {formatDateTime(booking.updatedAt || booking.requestedAt)}
                   </p>
                 </div>
@@ -346,11 +348,11 @@ function DriverBookingTrackingPanel({
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
         <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-          Live booking status tracking
+          {t("driver.tracking.liveBookingStatusTracking", "Live booking status tracking")}
         </h2>
         {!liveBooking ? (
           <p className="mt-4 text-xs text-slate-500 sm:text-sm">
-            No active booking available for live tracking.
+            {t("driver.tracking.noLiveBooking", "No active booking available for live tracking.")}
           </p>
         ) : (
           <div className="mt-4 space-y-3">
@@ -359,11 +361,11 @@ function DriverBookingTrackingPanel({
                 {liveBooking.id} - {liveBooking.serviceType}
               </p>
               <p className="text-[11px] text-slate-500 sm:text-xs">
-                Current status: {liveBooking.status}
+                {t("driver.tracking.currentStatus", "Current status")}: {liveBooking.status}
               </p>
               {liveBooking?.appointment?.dateTime ? (
                 <p className="text-[11px] text-slate-500 sm:text-xs">
-                  Appointment:{" "}
+                  {t("driver.tracking.appointment", "Appointment")}:{" "}
                   {formatDateTime(liveBooking.appointment.dateTime)}
                 </p>
               ) : null}
@@ -398,7 +400,7 @@ function DriverBookingTrackingPanel({
                                 </span>
                               </p>
                               <p className="text-[11px] text-slate-500 sm:text-xs">
-                                by {entry.actor}
+                                {t("driver.request.by", "by")} {entry.actor}
                               </p>
                               {entry.note ? (
                                 <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
