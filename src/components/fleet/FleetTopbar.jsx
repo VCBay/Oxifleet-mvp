@@ -58,7 +58,7 @@ function FleetTopbar({
   };
 
   return (
-    <header className="w-full border-slate-200/70 px-3 py-3 sm:px-4 sm:py-3.5">
+    <header className="w-full border-slate-200/70 px-3 py-3 sm:px-4 sm:py-3.5 bg-white">
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2.5">
@@ -132,7 +132,10 @@ function FleetTopbar({
                   <div className="sidebar-scrollbar mt-3 max-h-[min(62vh,24rem)] space-y-2 overflow-y-auto pr-1 sm:max-h-[22rem]">
                     {notificationCount === 0 ? (
                       <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
-                        {t("common.noNewNotifications", "No new notifications.")}
+                        {t(
+                          "common.noNewNotifications",
+                          "No new notifications.",
+                        )}
                       </p>
                     ) : (
                       notificationItems.map((item) => {
@@ -204,7 +207,9 @@ function FleetTopbar({
                 <p className="text-xs font-semibold text-slate-900 sm:text-sm">
                   {displayName}
                 </p>
-                <p className="truncate text-xs text-slate-500">{displayEmail}</p>
+                <p className="truncate text-xs text-slate-500">
+                  {displayEmail}
+                </p>
               </div>
             </div>
           </div>
