@@ -87,7 +87,6 @@ const STATION_MODAL_BATCH_SIZE = 24;
 const STATION_MODAL_SCROLL_THROTTLE_MS = 180;
 const TYRE_SUPPLY_REQUIRED_SUBTYPES = new Set([
   "Tyre change (seasonal change)",
-  "New tyre installation",
 ]);
 
 const requiresTyreSupplySelection = (problemType, problemSubtype) =>
@@ -163,6 +162,8 @@ function DriverServiceRequestSection({
   selectedSlot,
   isServiceRequestFormReady,
   isSubmittingRequest,
+  tyreWaitlistNotice,
+  onCloseTyreWaitlistNotice,
   onPhotoChange,
   policyValidation,
   lastRecordedOdometer,
@@ -183,8 +184,6 @@ function DriverServiceRequestSection({
     simpleIssueOptions.map((option) => option.value),
   );
   const [showAllStations, setShowAllStations] = useState(false);
-  const [showTyreSupplyModal, setShowTyreSupplyModal] = useState(false);
-  const [pendingPosSelection, setPendingPosSelection] = useState(null);
   const [stationSearch, setStationSearch] = useState("");
   const [debouncedStationSearch, setDebouncedStationSearch] = useState("");
   const [visibleStationCount, setVisibleStationCount] = useState(
@@ -285,6 +284,8 @@ function DriverServiceRequestSection({
     needsTyreSupplySelection &&
     requestForm.tyreSupplySource === "pos" &&
     requestForm.posTyreAvailability === false;
+  const isDriverBringingTyres =
+    needsTyreSupplySelection && requestForm.tyreSupplySource === "driver";
   const requiredTyreQty = useMemo(
     () => (needsTyreSupplySelection ? 4 : 1),
     [needsTyreSupplySelection],
@@ -441,7 +442,7 @@ function DriverServiceRequestSection({
     }));
     scrollToSection(nearestPosSectionRef);
   };
-  const policyStatusLabel = "Covered";
+  const policyStatusLabel = t("driver.request.covered", "Covered");
   const policyStatusClass = eligibilityClass("Allowed");
   const recommendationTone = useMemo(() => {
     if (!odometerRecommendation) {
@@ -517,8 +518,6 @@ function DriverServiceRequestSection({
     if (closeOnSelect) {
       setShowAllStations(false);
     }
-    setShowTyreSupplyModal(false);
-    setPendingPosSelection(null);
     scrollToSection(dateSlotSectionRef);
   };
   const handlePosSelection = (pos, { closeOnSelect = false } = {}) => {
@@ -530,8 +529,62 @@ function DriverServiceRequestSection({
       });
       return;
     }
-    setPendingPosSelection({ pos, closeOnSelect });
-    setShowTyreSupplyModal(true);
+    if (requestForm.tyreSupplySource === "driver") {
+      applyPosSelection(pos, {
+        closeOnSelect,
+        tyreSupplySource: "driver",
+        posTyreAvailability: true,
+      });
+      return;
+    }
+    const stockCheck = evaluateTyreStock({
+      size: assignedVehicle?.tyreSpecs?.size || "",
+      preferredBrand: assignedVehicle?.tyreSpecs?.brand || "",
+      requiredQty: requiredTyreQty,
+    });
+    applyPosSelection(pos, {
+      closeOnSelect,
+      tyreSupplySource: "pos",
+      posTyreAvailability: Boolean(stockCheck.canFulfill),
+    });
+  };
+  const handleDriverTyreToggle = (checked) => {
+    if (!needsTyreSupplySelection) {
+      return;
+    }
+    if (checked) {
+      setRequestForm((prev) => ({
+        ...prev,
+        tyreSupplySource: "driver",
+        posTyreAvailability: true,
+      }));
+      return;
+    }
+
+    if (!selectedPos?.id) {
+      setRequestForm((prev) => ({
+        ...prev,
+        tyreSupplySource: "pos",
+        posTyreAvailability: null,
+        preferredDate: "",
+        preferredSlotId: "",
+      }));
+      return;
+    }
+
+    const stockCheck = evaluateTyreStock({
+      size: assignedVehicle?.tyreSpecs?.size || "",
+      preferredBrand: assignedVehicle?.tyreSpecs?.brand || "",
+      requiredQty: requiredTyreQty,
+    });
+    const available = Boolean(stockCheck.canFulfill);
+    setRequestForm((prev) => ({
+      ...prev,
+      tyreSupplySource: "pos",
+      posTyreAvailability: available,
+      preferredDate: available ? prev.preferredDate : "",
+      preferredSlotId: available ? prev.preferredSlotId : "",
+    }));
   };
   const renderStationCard = (
     pos,
@@ -923,6 +976,59 @@ function DriverServiceRequestSection({
           </div>
         </div>
       ) : null}
+      {tyreWaitlistNotice ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/45 p-2 sm:items-center sm:p-4">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-slate-900 sm:text-lg">
+                  Tyre availability update
+                </p>
+                <p className="mt-1 text-xs text-slate-600 sm:text-sm">
+                  Your request is submitted. We will notify you once tyres are
+                  available, then you can pick date and slot.
+                </p>
+              </div>
+              <Button
+                onClick={onCloseTyreWaitlistNotice}
+                type="button"
+                variant="outline"
+              >
+                Close
+              </Button>
+            </div>
+            <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900 sm:text-sm">
+              <p>
+                Request ID:{" "}
+                <span className="font-semibold">
+                  {tyreWaitlistNotice.orderId || "Pending"}
+                </span>
+              </p>
+              <p className="mt-1">
+                Station:{" "}
+                <span className="font-semibold">
+                  {tyreWaitlistNotice.stationName || "Selected Point S"}
+                </span>
+              </p>
+              <p className="mt-1">
+                Tyre spec:{" "}
+                <span className="font-semibold">
+                  {tyreWaitlistNotice.tyreSize || "N/A"}
+                </span>
+              </p>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button
+                className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
+                onClick={onCloseTyreWaitlistNotice}
+                type="button"
+              >
+                Okay, got it
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <section className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <div className="min-w-0 space-y-4 sm:space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
@@ -1143,6 +1249,7 @@ function DriverServiceRequestSection({
                 <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
                   {t("driver.request.selectDateSlot", "Select date and slot")}
                 </h2>
+
                 {isTyreStockBlocked ? (
                   <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:text-sm">
                     {t(
@@ -1300,27 +1407,37 @@ function DriverServiceRequestSection({
           ) : null}
 
           <div
-            className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
+            className="scroll-mt-24 rounded-3xl border border-slate-200/70 bg-gradient-to-b from-white via-white to-slate-50/80 p-4 shadow-sm sm:scroll-mt-28 sm:p-5"
             ref={optionalDetailsSectionRef}
           >
-            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-              {t("driver.request.requiredDetails", "Required details")}
-            </h2>
-            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-              {requiresPhotos
-                ? t(
-                    "driver.request.damageRequiresPhoto",
-                    "Damage report requires a clear description and at least one photo.",
-                  )
-                : requiresDescription
-                  ? t(
-                      "driver.request.addRequiredDetails",
-                      "Add the required issue details before sending the request.",
-                    )
-                  : t("driver.request.addShortNote", "Add short note or photos if available.")}
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+                  {t("driver.request.requiredDetails", "Required details")}
+                </h2>
+                <p className="mt-2 text-xs text-slate-500 sm:text-sm">
+                  {requiresPhotos
+                    ? t(
+                        "driver.request.damageRequiresPhoto",
+                        "Damage report requires a clear description and at least one photo.",
+                      )
+                    : requiresDescription
+                      ? t(
+                          "driver.request.addRequiredDetails",
+                          "Add the required issue details before sending the request.",
+                        )
+                      : t(
+                          "driver.request.addShortNote",
+                          "Add short note or photos if available.",
+                        )}
+                </p>
+              </div>
+              <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700 sm:text-xs">
+                {t("driver.request.quickChecklist", "Quick checklist")}
+              </span>
+            </div>
             <div className="mt-4 space-y-3">
-              <div className="space-y-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
                   <span className="font-medium text-slate-700">
                     {t("driver.request.currentOdometer", "Current odometer reading")}
@@ -1329,18 +1446,19 @@ function DriverServiceRequestSection({
                     {t("driver.request.required", "Required")}
                   </span>
                 </div>
-                <Input
-                  inputMode="numeric"
-                  onChange={(event) =>
-                    setRequestForm((prev) => ({
-                      ...prev,
-                      odometerReading: event.target.value,
-                    }))
-                  }
-                  placeholder={t("driver.request.enterOdometer", "Enter current odometer")}
-                  value={requestForm.odometerReading}
-                />
-                <div className="max-w-[10rem]">
+                <div className="mt-2 flex h-10 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-violet-200/70">
+                  <Input
+                    className="h-full flex-1 rounded-none border-0 bg-transparent px-3 text-sm shadow-none focus-visible:ring-0"
+                    inputMode="numeric"
+                    onChange={(event) =>
+                      setRequestForm((prev) => ({
+                        ...prev,
+                        odometerReading: event.target.value,
+                      }))
+                    }
+                    placeholder={t("driver.request.enterOdometer", "Enter current odometer")}
+                    value={requestForm.odometerReading}
+                  />
                   <Select
                     onValueChange={(value) =>
                       setRequestForm((prev) => ({
@@ -1350,7 +1468,7 @@ function DriverServiceRequestSection({
                     }
                     value={requestForm.odometerUnit || "km"}
                   >
-                    <SelectTrigger className="bg-slate-50">
+                    <SelectTrigger className="h-full w-[96px] rounded-none border-0 border-l border-slate-200 bg-slate-50 px-3 text-sm shadow-none focus:ring-0 focus:ring-offset-0">
                       <SelectValue placeholder={t("driver.request.unit", "Unit")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -1359,7 +1477,7 @@ function DriverServiceRequestSection({
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-[11px] text-slate-500 sm:text-xs">
+                <p className="mt-2 text-[11px] text-slate-500 sm:text-xs">
                   {t("driver.request.lastRecorded", "Last recorded")}:{" "}
                   <span className="font-semibold text-slate-700">
                     {lastRecordedOdometer?.reading !== null &&
@@ -1370,115 +1488,170 @@ function DriverServiceRequestSection({
                   {lastRecordedOdometer?.isFallback ? ` ${t("driver.request.sample", "(sample)")}` : ""}
                 </p>
                 {odometerError ? (
-                  <p className="text-[11px] text-rose-700 sm:text-xs">
+                  <p className="mt-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-medium text-rose-700 sm:text-xs">
                     {odometerError}
                   </p>
                 ) : null}
               </div>
-              <Textarea
-                onChange={(event) =>
-                  setRequestForm((prev) => ({
-                    ...prev,
-                    description: event.target.value,
-                  }))
-                }
-                placeholder={
-                  categoryDetails?.detailPlaceholder ||
-                  t("driver.request.whatHappenedOptional", "What happened? (optional)")
-                }
-                rows={4}
-                value={requestForm.description}
-              />
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
-                <span className="font-medium text-slate-700">
-                  {categoryDetails?.detailFieldLabel ||
-                    t("driver.request.issueDetails", "Issue details")}
-                </span>
-                {requiresDescription ? (
-                  <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
-                    {t("driver.request.required", "Required")}
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
+                  <span className="font-medium text-slate-700">
+                    {categoryDetails?.detailFieldLabel ||
+                      t("driver.request.issueDetails", "Issue details")}
                   </span>
-                ) : null}
-              </div>
-              <Input
-                accept="image/*"
-                className="w-full text-xs sm:text-sm"
-                multiple
-                onChange={onPhotoChange}
-                ref={photoInputRef}
-                type="file"
-              />
-              {requiresPhotos ? (
-                <p className="text-[11px] text-amber-700 sm:text-xs">
-                  {t("driver.request.damagePhotoRequired", "At least one damage photo is required.")}
-                </p>
-              ) : null}
-              {photoPreviews.length > 0 ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-semibold text-slate-800">
-                      {t("driver.request.uploadedImages", "Uploaded images")}
-                    </p>
-                    <button
-                      className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
-                      onClick={clearAllPhotos}
-                      type="button"
-                    >
-                      <Trash2 size={12} />
-                        {t("actions.clearAll", "Clear all")}
-                    </button>
-                  </div>
-                  <div className="card-list-scrollbar mt-3 grid max-h-[18rem] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3">
-                    {photoPreviews.map((preview) => (
-                      <figure
-                        className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-                        key={preview.id}
-                      >
-                        <img
-                          alt={preview.file.name}
-                          className="h-24 w-full object-cover sm:h-28"
-                          loading="lazy"
-                          src={preview.url}
-                        />
-                        <button
-                          aria-label={`Remove ${preview.file.name}`}
-                          className="absolute right-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full bg-slate-900/80 text-white opacity-100 transition hover:bg-rose-600 sm:opacity-0 sm:group-hover:opacity-100"
-                          onClick={() => removePhotoById(preview.id)}
-                          type="button"
-                        >
-                          <X size={12} />
-                        </button>
-                        <figcaption className="border-t border-slate-200 px-2 py-1.5">
-                          <p
-                            className="truncate text-[11px] font-medium text-slate-800"
-                            title={preview.file.name}
-                          >
-                            {preview.file.name}
-                          </p>
-                          <p className="text-[10px] text-slate-500">
-                            {Math.max(1, Math.round(preview.file.size / 1024))}{" "}
-                            KB
-                          </p>
-                        </figcaption>
-                      </figure>
-                    ))}
-                  </div>
+                  {requiresDescription ? (
+                    <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
+                      {t("driver.request.required", "Required")}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
+                      {t("driver.request.optional", "Optional")}
+                    </span>
+                  )}
                 </div>
-              ) : null}
-              <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
-                <input
-                  checked={requestForm.emergency}
-                  className="size-4 accent-slate-900"
+                <Textarea
+                  className="mt-2 bg-white"
                   onChange={(event) =>
                     setRequestForm((prev) => ({
                       ...prev,
-                      emergency: event.target.checked,
+                      description: event.target.value,
                     }))
                   }
-                  type="checkbox"
+                  placeholder={
+                    categoryDetails?.detailPlaceholder ||
+                    t(
+                      "driver.request.whatHappenedOptional",
+                      "What happened? (optional)",
+                    )
+                  }
+                  rows={4}
+                  value={requestForm.description}
                 />
-                {t("driver.request.emergencyBreakdown", "Emergency breakdown")}
-              </label>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
+                  <span className="font-medium text-slate-700">
+                    {t("driver.request.uploadPhotos", "Upload photos")}
+                  </span>
+                  {requiresPhotos ? (
+                    <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
+                      {t("driver.request.required", "Required")}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
+                      {t("driver.request.optional", "Optional")}
+                    </span>
+                  )}
+                </div>
+                <Input
+                  accept="image/*"
+                  className="mt-2 w-full text-xs sm:text-sm"
+                  multiple
+                  onChange={onPhotoChange}
+                  ref={photoInputRef}
+                  type="file"
+                />
+                {requiresPhotos ? (
+                  <p className="mt-1 text-[11px] text-amber-700 sm:text-xs">
+                    {t(
+                      "driver.request.damagePhotoRequired",
+                      "At least one damage photo is required.",
+                    )}
+                  </p>
+                ) : null}
+
+                {photoPreviews.length > 0 ? (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-slate-800">
+                        {t("driver.request.uploadedImages", "Uploaded images")}
+                      </p>
+                      <button
+                        className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
+                        onClick={clearAllPhotos}
+                        type="button"
+                      >
+                        <Trash2 size={12} />
+                        {t("actions.clearAll", "Clear all")}
+                      </button>
+                    </div>
+                    <div className="card-list-scrollbar mt-3 grid max-h-[18rem] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3">
+                      {photoPreviews.map((preview) => (
+                        <figure
+                          className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                          key={preview.id}
+                        >
+                          <img
+                            alt={preview.file.name}
+                            className="h-24 w-full object-cover sm:h-28"
+                            loading="lazy"
+                            src={preview.url}
+                          />
+                          <button
+                            aria-label={`Remove ${preview.file.name}`}
+                            className="absolute right-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full bg-slate-900/80 text-white opacity-100 transition hover:bg-rose-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            onClick={() => removePhotoById(preview.id)}
+                            type="button"
+                          >
+                            <X size={12} />
+                          </button>
+                          <figcaption className="border-t border-slate-200 px-2 py-1.5">
+                            <p
+                              className="truncate text-[11px] font-medium text-slate-800"
+                              title={preview.file.name}
+                            >
+                              {preview.file.name}
+                            </p>
+                            <p className="text-[10px] text-slate-500">
+                              {Math.max(1, Math.round(preview.file.size / 1024))}{" "}
+                              KB
+                            </p>
+                          </figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 shadow-sm transition hover:border-slate-300 sm:text-sm">
+                  <input
+                    checked={requestForm.emergency}
+                    className="size-4 accent-slate-900"
+                    onChange={(event) =>
+                      setRequestForm((prev) => ({
+                        ...prev,
+                        emergency: event.target.checked,
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  {t(
+                    "driver.request.emergencyBreakdown",
+                    "Emergency breakdown",
+                  )}
+                </label>
+                {needsTyreSupplySelection ? (
+                  <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-violet-200 bg-white from-violet-50 to-fuchsia-50 px-3 py-2.5 text-xs text-slate-700 shadow-sm transition hover:border-violet-300 sm:text-sm">
+                    <input
+                      checked={isDriverBringingTyres}
+                      className="size-4 rounded border-slate-300 accent-violet-600"
+                      onChange={(event) =>
+                        handleDriverTyreToggle(event.target.checked)
+                      }
+                      type="checkbox"
+                    />
+                    <span className="text-slate-900">
+                      {t(
+                        "driver.request.iAmBringingTyresMyself",
+                        "I am bringing tyres myself",
+                      )}
+                    </span>
+                  </label>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -1535,8 +1708,14 @@ function DriverServiceRequestSection({
                       ? t("driver.request.driverBringingTyres", "Driver bringing tyres")
                       : requestForm.tyreSupplySource === "pos"
                         ? requestForm.posTyreAvailability === false
-                          ? t("driver.request.fromPosUnavailable", "From POS (currently unavailable)")
-                          : t("driver.request.fromPosAvailable", "From POS (available)")
+                          ? t(
+                              "driver.request.fromPosUnavailable",
+                              "From POS (currently unavailable)",
+                            )
+                          : t(
+                              "driver.request.fromPosAvailable",
+                              "From POS (available)",
+                            )
                         : t("driver.request.notSelected", "Not selected")}
                   </span>
                 </p>
@@ -1545,15 +1724,26 @@ function DriverServiceRequestSection({
                 {t("driver.request.dateSlot", "Date & slot")}:{" "}
                 <span className="font-semibold text-slate-900">
                   {isDamageReportFlow
-                    ? t("driver.request.notRequiredDamage", "Not required for damage report")
+                    ? t(
+                        "driver.request.notRequiredDamage",
+                        "Not required for damage report",
+                      )
                     : isEmergencyBreakdownFlow
-                      ? t("driver.request.notRequiredEmergencyBreakdown", "Not required for emergency breakdown")
-                    : selectedSlot
-                      ? `${requestForm.preferredDate}, ${selectedSlot.label}`
-                      : t("driver.request.notSelected", "Not selected")}
+                      ? t(
+                          "driver.request.notRequiredEmergencyBreakdown",
+                          "Not required for emergency breakdown",
+                        )
+                      : isTyreStockBlocked
+                        ? t(
+                            "driver.request.sharedAfterTyreAvailabilityUpdate",
+                            "Will be shared after tyre availability update",
+                          )
+                        : selectedSlot
+                          ? `${requestForm.preferredDate}, ${selectedSlot.label}`
+                          : t("driver.request.notSelected", "Not selected")}
                 </span>
               </p>
-              {odometerRecommendation ? (
+              {odometerRecommendation && requestForm.problemType !== "Schadensmeldung" ? (
                 <div
                   className={`relative overflow-hidden rounded-2xl border p-3.5 shadow-sm ${recommendationTone.card}`}
                 >
@@ -1670,9 +1860,9 @@ function DriverServiceRequestSection({
                 <p className="text-[11px] text-slate-500 sm:text-xs">
                   {isTyreStockBlocked
                     ? t(
-                        "driver.request.posOutOfStock",
-                        "Selected POS is out of stock for requested tyres. We will notify you once tyres are available, then you can book slot.",
-                      )
+                      "driver.request.posOutOfStock",
+                      "Selected POS is out of stock for requested tyres. We will notify you once tyres are available, then you can book slot.",
+                    )
                     : isDamageReportFlow
                       ? t(
                           "driver.request.completeDamageDetails",
@@ -2133,94 +2323,6 @@ function DriverServiceRequestSection({
         </div>
       ) : null}
 
-      {showTyreSupplyModal && pendingPosSelection?.pos ? (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/45 p-2 sm:items-center sm:p-4">
-          <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-lg font-semibold text-slate-900">
-                  {t("driver.request.tyreChoice", "Tyre choice")}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {t("driver.request.for", "For")}{" "}
-                  <span className="font-semibold text-slate-900">
-                    {requestForm.problemSubtype ||
-                      t("driver.request.thisTyreRequest", "this tyre request")}
-                  </span>
-                  , {t("driver.request.chooseTyreProvision", "choose how tyres will be provided.")}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {t("driver.request.selectedPos", "Selected POS")}: {pendingPosSelection.pos.name}
-                </p>
-              </div>
-              <Button
-                onClick={() => {
-                  setShowTyreSupplyModal(false);
-                  setPendingPosSelection(null);
-                }}
-                type="button"
-                variant="outline"
-              >
-                {t("driver.request.close", "Close")}
-              </Button>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <button
-                className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-100"
-                onClick={() =>
-                  applyPosSelection(pendingPosSelection.pos, {
-                    closeOnSelect: pendingPosSelection.closeOnSelect,
-                    tyreSupplySource: "driver",
-                    posTyreAvailability: true,
-                  })
-                }
-                type="button"
-              >
-                <p className="text-sm font-semibold text-emerald-900">
-                  {t("driver.request.iWillBringTyres", "I will bring tyres")}
-                </p>
-                <p className="mt-1 text-xs text-emerald-700">
-                  {t(
-                    "driver.request.posInformedDriverTyres",
-                    "POS will be informed that tyres are driver-supplied.",
-                  )}
-                </p>
-              </button>
-
-              <button
-                className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-left transition hover:border-sky-300 hover:bg-sky-100"
-                onClick={() => {
-                  const stockCheck = evaluateTyreStock({
-                    size: assignedVehicle?.tyreSpecs?.size || "",
-                    preferredBrand: assignedVehicle?.tyreSpecs?.brand || "",
-                    requiredQty: requiredTyreQty,
-                  });
-                  const available = Boolean(stockCheck.canFulfill);
-                  applyPosSelection(pendingPosSelection.pos, {
-                    closeOnSelect: pendingPosSelection.closeOnSelect,
-                    tyreSupplySource: "pos",
-                    posTyreAvailability: available,
-                  });
-                }}
-                type="button"
-              >
-                <p className="text-sm font-semibold text-sky-900">
-                  {t("driver.request.getTyresFromPos", "Get tyres from POS")}
-                </p>
-                <p className="mt-1 text-xs text-sky-700">
-                  {t("driver.request.slotBookingStock", "Slot booking opens only if stock is available.")}
-                </p>
-                <p className="mt-1 text-[11px] text-sky-800">
-                  {t("driver.request.vehicleSpec", "Vehicle spec")}:{" "}
-                  {assignedVehicle?.tyreSpecs?.size || "N/A"} | {t("driver.request.qty", "Qty")}:{" "}
-                  {requiredTyreQty}
-                </p>
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

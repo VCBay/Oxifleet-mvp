@@ -74,9 +74,7 @@ const toKilometers = (value, unit = "km") => {
   if (!Number.isFinite(numeric) || numeric < 0) {
     return null;
   }
-  return String(unit).toLowerCase() === "miles"
-    ? numeric * 1.60934
-    : numeric;
+  return String(unit).toLowerCase() === "miles" ? numeric * 1.60934 : numeric;
 };
 
 const buildFallbackOdometer = (vehicleId, unit = "km") => {
@@ -295,7 +293,8 @@ const readFileAsDataUrl = (file) =>
     }
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error(`Unable to read file ${file?.name || ""}`));
+    reader.onerror = () =>
+      reject(new Error(`Unable to read file ${file?.name || ""}`));
     reader.readAsDataURL(file);
   });
 
@@ -326,10 +325,9 @@ const getNearestPosForProblem = (problemType) => {
 
 const tyreSupplySelectionRequired = (problemType, problemSubtype) =>
   String(problemType || "").trim() === "Reifen" &&
-  [
-    "Tyre change (seasonal change)",
-    "New tyre installation",
-  ].includes(String(problemSubtype || "").trim());
+  ["Tyre change (seasonal change)"].includes(
+    String(problemSubtype || "").trim(),
+  );
 
 const hashText = (text) => {
   let hash = 0;
@@ -648,11 +646,7 @@ function DriverDashboard() {
       warrantyDaysRemaining,
       serviceEligibilityScore,
     };
-  }, [
-    nextService.date,
-    serviceEligibility.status,
-    warranty.expiryDate,
-  ]);
+  }, [nextService.date, serviceEligibility.status, warranty.expiryDate]);
 
   const displayName =
     driverRecord?.name || session?.driverName || session?.name || "Driver";
@@ -714,6 +708,7 @@ function DriverDashboard() {
     posTyreAvailability: null,
     recommendationAccepted: false,
   });
+  const [tyreWaitlistNotice, setTyreWaitlistNotice] = useState(null);
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [wizardFeedback, setWizardFeedback] = useState("");
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
@@ -749,8 +744,13 @@ function DriverDashboard() {
   );
   const isPosTyreUnavailableForBooking = useMemo(
     () =>
+      requiresTyreSupplySelection && requestForm.posTyreAvailability === false,
+    [requestForm.posTyreAvailability, requiresTyreSupplySelection],
+  );
+  const isTyreAwaitingStock = useMemo(
+    () =>
       requiresTyreSupplySelection &&
-      requestForm.tyreSupplySource === "pos" &&
+      requestForm.tyreSupplySource !== "driver" &&
       requestForm.posTyreAvailability === false,
     [
       requestForm.posTyreAvailability,
@@ -758,24 +758,21 @@ function DriverDashboard() {
       requiresTyreSupplySelection,
     ],
   );
-  const slotAvailability = useMemo(
-    () => {
-      if (isPosTyreUnavailableForBooking) {
-        return [];
-      }
-      return buildSlotAvailability({
-        posId: requestForm.preferredPosId,
-        date: requestForm.preferredDate,
-        problemType: requestForm.problemType,
-      });
-    },
-    [
-      isPosTyreUnavailableForBooking,
-      requestForm.preferredDate,
-      requestForm.preferredPosId,
-      requestForm.problemType,
-    ],
-  );
+  const slotAvailability = useMemo(() => {
+    if (isPosTyreUnavailableForBooking) {
+      return [];
+    }
+    return buildSlotAvailability({
+      posId: requestForm.preferredPosId,
+      date: requestForm.preferredDate,
+      problemType: requestForm.problemType,
+    });
+  }, [
+    isPosTyreUnavailableForBooking,
+    requestForm.preferredDate,
+    requestForm.preferredPosId,
+    requestForm.problemType,
+  ]);
   const selectedSlot = useMemo(
     () =>
       slotAvailability.find(
@@ -785,11 +782,13 @@ function DriverDashboard() {
     [requestForm.preferredSlotId, slotAvailability],
   );
   const isDamageReportFlow = useMemo(
-    () => String(requestForm.problemType || "").trim() === DAMAGE_REPORT_CATEGORY,
+    () =>
+      String(requestForm.problemType || "").trim() === DAMAGE_REPORT_CATEGORY,
     [requestForm.problemType],
   );
   const isEmergencyBreakdownFlow = useMemo(
-    () => String(requestForm.problemType || "").trim() === "Emergency breakdown",
+    () =>
+      String(requestForm.problemType || "").trim() === "Emergency breakdown",
     [requestForm.problemType],
   );
 
@@ -895,10 +894,13 @@ function DriverDashboard() {
     );
     if (latestWithReading) {
       return {
-        reading: parseOdometerReading(latestWithReading.orderDetails?.odometerReading),
+        reading: parseOdometerReading(
+          latestWithReading.orderDetails?.odometerReading,
+        ),
         unit:
-          String(latestWithReading.orderDetails?.odometerUnit || "km").toLowerCase() ===
-          "miles"
+          String(
+            latestWithReading.orderDetails?.odometerUnit || "km",
+          ).toLowerCase() === "miles"
             ? "miles"
             : "km",
         isFallback: false,
@@ -930,7 +932,11 @@ function DriverDashboard() {
       return `Current odometer cannot be less than the last recorded reading of ${lastRecordedOdometer.reading.toLocaleString()} ${lastRecordedOdometer.unit}.`;
     }
     return "";
-  }, [currentOdometerReading, lastRecordedOdometer, requestForm.odometerReading]);
+  }, [
+    currentOdometerReading,
+    lastRecordedOdometer,
+    requestForm.odometerReading,
+  ]);
   const odometerRecommendation = useMemo(() => {
     if (!String(requestForm.odometerReading || "").trim()) {
       return null;
@@ -987,7 +993,8 @@ function DriverDashboard() {
       level: "low",
       title: "Preventive inspection suggested",
       summary: `${distanceKm.toLocaleString()} km driven since last recorded reading.`,
-      suggestion: "A quick Service check can prevent small issues from growing.",
+      suggestion:
+        "A quick Service check can prevent small issues from growing.",
       suggestedCategory: "Service",
     };
   }, [
@@ -1030,11 +1037,14 @@ function DriverDashboard() {
         requestForm.posTyreAvailability === true) ||
       (requestForm.tyreSupplySource === "pos" &&
         requestForm.posTyreAvailability === true);
-    const hasBookingSelection = isDamageReportFlow || isEmergencyBreakdownFlow
-      ? true
-      : Boolean(requestForm.preferredPosId) &&
-        Boolean(requestForm.preferredDate) &&
-        Boolean(selectedSlot);
+    const hasBookingSelection =
+      isDamageReportFlow || isEmergencyBreakdownFlow
+        ? true
+        : isTyreAwaitingStock
+          ? true
+          : Boolean(requestForm.preferredPosId) &&
+            Boolean(requestForm.preferredDate) &&
+            Boolean(selectedSlot);
 
     return (
       hasProblemType &&
@@ -1058,6 +1068,7 @@ function DriverDashboard() {
     requestForm.photos.length,
     requestForm.tyreSupplySource,
     requiresTyreSupplySelection,
+    isTyreAwaitingStock,
     selectedSlot,
   ]);
 
@@ -1437,10 +1448,13 @@ function DriverDashboard() {
     approval = true,
     attachments = [],
     routeToFleetOnly = false,
+    awaitingTyreStock = false,
   } = {}) => {
     const selectedPosName = routeToFleetOnly
       ? "Fleet Damage Desk"
-      : selectedPos?.name || tenant?.workshopLead || "Point S station (unassigned)";
+      : selectedPos?.name ||
+        tenant?.workshopLead ||
+        "Point S station (unassigned)";
     const slotLabel = selectedSlot?.label || "Not selected";
     const preferredDateLabel = formatDate(requestForm.preferredDate);
     const serviceLabel = requestForm.problemSubtype
@@ -1467,13 +1481,16 @@ function DriverDashboard() {
       requestedBy: displayName,
       priority: emergency ? "Emergency" : "Normal",
       emergency,
-      status: routeToFleetOnly || approval ? "Pending approval" : "Pending booking",
+      status:
+        routeToFleetOnly || approval ? "Pending approval" : "Pending booking",
       orderDetails: {
         description:
           requestForm.description ||
           (routeToFleetOnly
             ? `${serviceLabel} reported by driver and routed to fleet for direct triage.`
-            : `${serviceLabel} reported by driver. Preferred slot: ${slotLabel} on ${preferredDateLabel}.`),
+            : awaitingTyreStock
+              ? `${serviceLabel} reported by driver. Tyres unavailable at ${selectedPosName}; notify driver when stock is available for slot booking.`
+              : `${serviceLabel} reported by driver. Preferred slot: ${slotLabel} on ${preferredDateLabel}.`),
         vendor: selectedPosName,
         estimatedCost: `$${estimatedCost.total}`,
         location: routeToFleetOnly
@@ -1505,7 +1522,12 @@ function DriverDashboard() {
               } min)`,
           `Tyre supply: ${tyreSupplyText}`,
           `Preferred date: ${requestForm.preferredDate || "N/A"}`,
-          `Preferred slot: ${routeToFleetOnly ? "N/A" : slotLabel}`,
+          `Preferred slot: ${routeToFleetOnly || awaitingTyreStock ? "N/A" : slotLabel}`,
+          `Booking mode: ${
+            awaitingTyreStock
+              ? "Awaiting tyre stock notification (no date/slot selected)"
+              : "Standard slot booking"
+          }`,
           `Photos: ${requestForm.photos.map((file) => file.name).join(", ") || "None"}`,
           `Policy check: ${policyValidation.status}`,
           includeOdometerRecommendation
@@ -1513,12 +1535,13 @@ function DriverDashboard() {
             : "Driver accepted odometer recommendation: No",
         ].join(" | "),
       },
-      appointment: !routeToFleetOnly && selectedSlot
-        ? {
-            dateTime: selectedSlot.dateTime,
-            note: `Preferred slot selected by driver at ${selectedPosName}.`,
-          }
-        : undefined,
+      appointment:
+        !routeToFleetOnly && !awaitingTyreStock && selectedSlot
+          ? {
+              dateTime: selectedSlot.dateTime,
+              note: `Preferred slot selected by driver at ${selectedPosName}.`,
+            }
+          : undefined,
     });
     return order;
   };
@@ -1562,7 +1585,11 @@ function DriverDashboard() {
       });
       return;
     }
-    if (!isDamageReportFlow && !isEmergencyBreakdownFlow && !requestForm.preferredPosId) {
+    if (
+      !isDamageReportFlow &&
+      !isEmergencyBreakdownFlow &&
+      !requestForm.preferredPosId
+    ) {
       const message = "Select a nearby Point S station first.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
@@ -1570,24 +1597,30 @@ function DriverDashboard() {
     }
     if (
       requiresTyreSupplySelection &&
-      (!requestForm.tyreSupplySource || requestForm.posTyreAvailability !== true)
+      requestForm.posTyreAvailability === null
     ) {
-      const message =
-        requestForm.tyreSupplySource === "pos" &&
-        requestForm.posTyreAvailability === false
-          ? "Selected POS has no tyre stock for this request. We will notify you when stock is available."
-          : "Select tyre supply option after choosing Point S station.";
+      const message = "Select Point S station to auto-check tyre availability.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3600 });
       return;
     }
-    if (!isDamageReportFlow && !isEmergencyBreakdownFlow && !requestForm.preferredDate) {
+    if (
+      !isDamageReportFlow &&
+      !isEmergencyBreakdownFlow &&
+      !isTyreAwaitingStock &&
+      !requestForm.preferredDate
+    ) {
       const message = "Select a booking date first.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
       return;
     }
-    if (!isDamageReportFlow && !isEmergencyBreakdownFlow && !selectedSlot) {
+    if (
+      !isDamageReportFlow &&
+      !isEmergencyBreakdownFlow &&
+      !isTyreAwaitingStock &&
+      !selectedSlot
+    ) {
       const message = "Select a free slot to continue.";
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
@@ -1607,7 +1640,10 @@ function DriverDashboard() {
         const message =
           "Could not process uploaded photos. Please re-upload and try again.";
         setWizardFeedback(message);
-        toast.error("Request not sent", { description: message, duration: 3600 });
+        toast.error("Request not sent", {
+          description: message,
+          duration: 3600,
+        });
         return;
       }
       await new Promise((resolve) => {
@@ -1615,22 +1651,34 @@ function DriverDashboard() {
       });
       const createdOrder = createDriverServiceRequest({
         emergency:
-          requestForm.emergency || isDamageReportFlow || isEmergencyBreakdownFlow,
+          requestForm.emergency ||
+          isDamageReportFlow ||
+          isEmergencyBreakdownFlow,
         approval: approvalRequired,
         attachments,
         routeToFleetOnly: isDamageReportFlow || isEmergencyBreakdownFlow,
+        awaitingTyreStock: isTyreAwaitingStock,
       });
       const successMessage = isDamageReportFlow
         ? "Damage report sent directly to fleet manager with your photos."
         : isEmergencyBreakdownFlow
           ? "Emergency breakdown request sent for immediate triage."
-        : approvalRequired
-          ? "Request sent. Fleet manager approval is required."
-          : "Request sent. Booking flow has started.";
+          : isTyreAwaitingStock
+            ? "Request saved. We will notify you once tyres are available for booking."
+            : approvalRequired
+              ? "Request sent. Fleet manager approval is required."
+              : "Request sent. Booking flow has started.";
 
       setWizardFeedback(successMessage);
       if (createdOrder?.id) {
         setSelectedRequestId(createdOrder.id);
+      }
+      if (isTyreAwaitingStock && selectedPos) {
+        setTyreWaitlistNotice({
+          orderId: createdOrder?.id || "",
+          stationName: selectedPos.name,
+          tyreSize: vehicle?.tyreSpecs?.size || "N/A",
+        });
       }
 
       toast.success("Request sent successfully", {
@@ -2005,6 +2053,8 @@ function DriverDashboard() {
               slotAvailability={slotAvailability}
               simpleIssueOptions={simpleIssueOptions}
               odometerRecommendation={odometerRecommendation}
+              tyreWaitlistNotice={tyreWaitlistNotice}
+              onCloseTyreWaitlistNotice={() => setTyreWaitlistNotice(null)}
               wizardFeedback={wizardFeedback}
             />
           ) : null}
