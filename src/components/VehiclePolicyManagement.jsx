@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -17,8 +17,75 @@ import {
   setVehiclePolicyStatus,
   subscribeVehiclePolicies,
 } from "../data/vehiclePolicyStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
+
+const SERVICE_TYPE_OPTIONS = [
+  "Oil change",
+  "Brake service",
+  "Tyre rotation",
+  "Engine diagnostics",
+  "Battery / electrical",
+  "Alignment",
+  "General service",
+  "Emergency breakdown",
+];
+
+const TYRE_BRAND_OPTIONS = [
+  "Michelin",
+  "Bridgestone",
+  "Goodyear",
+  "Continental",
+  "Pirelli",
+  "Uniroyal",
+  "Nokian Tyres",
+];
+
+const TYRE_CATEGORY_OPTIONS = [
+  "Summer",
+  "Winter",
+  "All-season",
+  "Highway",
+  "Performance",
+];
+
+const OEM_OPTIONS = [
+  "Continental",
+  "Michelin",
+  "Bridgestone",
+  "Goodyear",
+  "Uniroyal",
+  "Nokian Tyres",
+];
+
+const toCurrencyEuro = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return "-";
+  }
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(parsed);
+};
+
+const normalizePolicyStatusLabel = (t, status) => {
+  if (status === "Active") {
+    return t("fleet.vehicleManagement.status.active", "Active");
+  }
+  if (status === "Draft") {
+    return t("fleet.policyManagement.statusDraft", "Draft");
+  }
+  if (status === "Retired") {
+    return t("fleet.policyManagement.statusRetired", "Retired");
+  }
+  return status;
+};
 
 const toScopeLabel = (policy) => {
   const scope = policy.appliesTo || {};
@@ -38,6 +105,43 @@ const toScopeLabel = (policy) => {
   return parts.length > 0 ? parts.join(" | ") : "Unscoped";
 };
 
+const listDifference = (current, previous) =>
+  current.filter((entry) => !previous.includes(entry));
+
+const getPolicyChanges = (current, previous) => {
+  if (!previous) {
+    return [];
+  }
+  const changes = [];
+  if (current.status !== previous.status) {
+    changes.push("status");
+  }
+  if (current.servicePriceLimit !== previous.servicePriceLimit) {
+    changes.push("service limit");
+  }
+  if (current.tyrePriceLimit !== previous.tyrePriceLimit) {
+    changes.push("tyre limit");
+  }
+  if (current.approvalThreshold !== previous.approvalThreshold) {
+    changes.push("approval threshold");
+  }
+  if (toScopeLabel(current) !== toScopeLabel(previous)) {
+    changes.push("scope");
+  }
+  if (listDifference(current.allowedServiceTypes, previous.allowedServiceTypes).length > 0) {
+    changes.push("service types");
+  }
+  if (listDifference(current.allowedTyreBrands, previous.allowedTyreBrands).length > 0) {
+    changes.push("tyre brands");
+  }
+  if (
+    listDifference(current.allowedTyreCategories, previous.allowedTyreCategories).length > 0
+  ) {
+    changes.push("tyre categories");
+  }
+  return changes;
+};
+
 const statusClassName = (status) => {
   if (status === "Active") {
     return "bg-emerald-100 text-emerald-700";
@@ -52,6 +156,8 @@ const statusClassName = (status) => {
 };
 
 function VehiclePolicyManagement({ vehicles }) {
+  const { t } = useTranslation();
+  const formRef = useRef(null);
   const policyState = useSyncExternalStore(
     subscribeVehiclePolicies,
     getVehiclePolicyState,
@@ -69,14 +175,34 @@ function VehiclePolicyManagement({ vehicles }) {
     vehicleGroup: "",
     vehicleClass: "",
     vehicleId: "all",
-    allowedServiceTypes: "",
-    allowedTyreBrands: "",
-    allowedTyreCategories: "",
+    allowedServiceTypes: [],
+    allowedTyreBrands: [],
+    allowedTyreCategories: [],
     servicePriceLimit: "",
     tyrePriceLimit: "",
     approvalThreshold: "",
     seasonalTyreRules: "",
     specialCaseExceptions: "",
+    emergencyBreakdownRule: {
+      enabled: true,
+      approvalMode: "auto-allow",
+      maxDistanceKm: "",
+      allowedPOSNetwork: "point-s-only",
+      costLimitEur: "",
+      afterHoursAllowed: false,
+      replacementVehicleAllowed: false,
+      dispatchGuidance: "",
+    },
+    serviceNetworkRule: {
+      networkMode: "point-s-only",
+      preferredOEMs: [],
+      preferredPOSLocations: "",
+      excludedProviders: "",
+      crossBorderAllowed: false,
+      mobileServiceAllowed: false,
+      nearestStationAutoAssign: true,
+      outOfNetworkApprovalRequired: true,
+    },
     changeNote: "",
     effectiveFrom: todayIso(),
   });
@@ -113,6 +239,26 @@ function VehiclePolicyManagement({ vehicles }) {
       a.policyCode.localeCompare(b.policyCode)
     );
   }, [allPolicies]);
+
+  const previousPoliciesById = useMemo(() => {
+    const map = new Map();
+    allPolicies.forEach((policy) => {
+      const previous = allPolicies
+        .filter(
+          (entry) =>
+            entry.policyCode === policy.policyCode &&
+            Number(entry.version) < Number(policy.version),
+        )
+        .sort((left, right) => Number(right.version) - Number(left.version))[0];
+      map.set(policy.id, previous || null);
+    });
+    return map;
+  }, [allPolicies]);
+
+  const activePolicies = useMemo(
+    () => latestPoliciesByCode.filter((policy) => policy.status === "Active"),
+    [latestPoliciesByCode],
+  );
 
   const filteredLatestPolicies = useMemo(() => {
     return latestPoliciesByCode.filter((policy) => {
@@ -165,6 +311,96 @@ function VehiclePolicyManagement({ vehicles }) {
     return allPolicies.filter((policy) => policy.policyCode === historyCode);
   }, [allPolicies, historyCode]);
 
+  const toggleMultiSelectValue = (field, option) => {
+    setForm((prev) => {
+      const currentValues = Array.isArray(prev[field]) ? prev[field] : [];
+      const nextValues = currentValues.includes(option)
+        ? currentValues.filter((entry) => entry !== option)
+        : [...currentValues, option];
+      return {
+        ...prev,
+        [field]: nextValues,
+      };
+    });
+  };
+
+  const setNestedRuleField = (group, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      [group]: {
+        ...prev[group],
+        [field]: value,
+      },
+    }));
+  };
+
+  const affectedVehicles = useMemo(() => {
+    return vehicles.filter((vehicle) => {
+      if (form.vehicleId !== "all" && vehicle.id !== form.vehicleId) {
+        return false;
+      }
+      if (form.vehicleClass && vehicle.type !== form.vehicleClass) {
+        return false;
+      }
+      if (
+        form.vehicleGroup &&
+        ![
+          vehicle.model,
+          vehicle.variant,
+          vehicle.notes,
+          vehicle.type,
+          vehicle.category,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(form.vehicleGroup.toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [form.vehicleClass, form.vehicleGroup, form.vehicleId, vehicles]);
+
+  const affectedClassSummary = useMemo(() => {
+    const counts = affectedVehicles.reduce((acc, vehicle) => {
+      const key = vehicle.type || vehicle.category || "Vehicle";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts)
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [affectedVehicles]);
+
+  const approvalTriggers = useMemo(() => {
+    const items = [];
+    if (form.approvalThreshold) {
+      items.push(`${t("fleet.policyManagement.approvalThreshold", "Approval threshold")}: ${form.approvalThreshold}%`);
+    }
+    if (form.emergencyBreakdownRule.enabled) {
+      items.push(t("fleet.policyManagement.emergencyBreakdownRule", "Emergency breakdown rule"));
+    }
+    if (form.serviceNetworkRule.outOfNetworkApprovalRequired) {
+      items.push(t("fleet.policyManagement.outOfNetworkApprovalRequired", "Out-of-network approval required"));
+    }
+    if (form.allowedTyreBrands.length > 0) {
+      items.push(t("fleet.policyManagement.nonApprovedTyreBrands", "Non-approved tyre brands"));
+    }
+    if (form.allowedTyreCategories.includes("Winter")) {
+      items.push(t("fleet.policyManagement.seasonalPolicyControl", "Seasonal tyre policy control"));
+    }
+    if (String(form.specialCaseExceptions || "").trim()) {
+      items.push(t("fleet.policyManagement.specialCaseExceptions", "Special case exceptions"));
+    }
+    return items;
+  }, [
+    form.allowedTyreBrands,
+    form.allowedTyreCategories,
+    form.approvalThreshold,
+    form.specialCaseExceptions,
+    t,
+  ]);
+
   const handleFormField = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
@@ -191,6 +427,16 @@ function VehiclePolicyManagement({ vehicles }) {
       approvalThreshold: form.approvalThreshold,
       seasonalTyreRules: form.seasonalTyreRules,
       specialCaseExceptions: form.specialCaseExceptions,
+      emergencyBreakdownRule: {
+        ...form.emergencyBreakdownRule,
+        maxDistanceKm: form.emergencyBreakdownRule.maxDistanceKm,
+        costLimitEur: form.emergencyBreakdownRule.costLimitEur,
+      },
+      serviceNetworkRule: {
+        ...form.serviceNetworkRule,
+        preferredPOSLocations: form.serviceNetworkRule.preferredPOSLocations,
+        excludedProviders: form.serviceNetworkRule.excludedProviders,
+      },
       changeNote: form.changeNote,
       effectiveFrom: form.effectiveFrom,
       appliesTo: {
@@ -219,9 +465,9 @@ function VehiclePolicyManagement({ vehicles }) {
       vehicleGroup: policy.appliesTo?.vehicleGroup || "",
       vehicleClass: policy.appliesTo?.vehicleClass || "",
       vehicleId: policy.appliesTo?.vehicleId || "all",
-      allowedServiceTypes: policy.allowedServiceTypes.join(", "),
-      allowedTyreBrands: policy.allowedTyreBrands.join(", "),
-      allowedTyreCategories: policy.allowedTyreCategories.join(", "),
+      allowedServiceTypes: policy.allowedServiceTypes,
+      allowedTyreBrands: policy.allowedTyreBrands,
+      allowedTyreCategories: policy.allowedTyreCategories,
       servicePriceLimit:
         policy.servicePriceLimit === null ? "" : String(policy.servicePriceLimit),
       tyrePriceLimit:
@@ -230,8 +476,49 @@ function VehiclePolicyManagement({ vehicles }) {
         policy.approvalThreshold === null ? "" : String(policy.approvalThreshold),
       seasonalTyreRules: policy.seasonalTyreRules || "",
       specialCaseExceptions: policy.specialCaseExceptions || "",
+      emergencyBreakdownRule: {
+        enabled: Boolean(policy.emergencyBreakdownRule?.enabled),
+        approvalMode: policy.emergencyBreakdownRule?.approvalMode || "auto-allow",
+        maxDistanceKm:
+          policy.emergencyBreakdownRule?.maxDistanceKm === null ||
+          policy.emergencyBreakdownRule?.maxDistanceKm === undefined
+            ? ""
+            : String(policy.emergencyBreakdownRule.maxDistanceKm),
+        allowedPOSNetwork:
+          policy.emergencyBreakdownRule?.allowedPOSNetwork || "point-s-only",
+        costLimitEur:
+          policy.emergencyBreakdownRule?.costLimitEur === null ||
+          policy.emergencyBreakdownRule?.costLimitEur === undefined
+            ? ""
+            : String(policy.emergencyBreakdownRule.costLimitEur),
+        afterHoursAllowed: Boolean(policy.emergencyBreakdownRule?.afterHoursAllowed),
+        replacementVehicleAllowed: Boolean(
+          policy.emergencyBreakdownRule?.replacementVehicleAllowed,
+        ),
+        dispatchGuidance: policy.emergencyBreakdownRule?.dispatchGuidance || "",
+      },
+      serviceNetworkRule: {
+        networkMode: policy.serviceNetworkRule?.networkMode || "point-s-only",
+        preferredOEMs: policy.serviceNetworkRule?.preferredOEMs || [],
+        preferredPOSLocations: (policy.serviceNetworkRule?.preferredPOSLocations || []).join(", "),
+        excludedProviders: (policy.serviceNetworkRule?.excludedProviders || []).join(", "),
+        crossBorderAllowed: Boolean(policy.serviceNetworkRule?.crossBorderAllowed),
+        mobileServiceAllowed: Boolean(policy.serviceNetworkRule?.mobileServiceAllowed),
+        nearestStationAutoAssign: Boolean(
+          policy.serviceNetworkRule?.nearestStationAutoAssign,
+        ),
+        outOfNetworkApprovalRequired: Boolean(
+          policy.serviceNetworkRule?.outOfNetworkApprovalRequired,
+        ),
+      },
       changeNote: "",
       effectiveFrom: todayIso(),
+    });
+    requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     });
   };
 
@@ -241,49 +528,119 @@ function VehiclePolicyManagement({ vehicles }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
-               Policy Management
+               {t("fleet.policyManagement.headerTitle")}
             </p>
 
             <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
-              Define and manage vehicle policies with flexible scoping and versioning.
+              {t("fleet.policyManagement.headerDesc")}
             </p>
           </div>
         </div>
       </header>
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Vehicle Policy</h2>
+        <h2 className="text-xl font-semibold text-slate-900">{t("fleet.policyManagement.title")}</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Configure policy management and class-wise policy rules. You can keep
-          different policies for the same vehicle or the same class by creating
-          separate policy codes and/or versions.
+          {t("fleet.policyManagement.titleDesc")}
         </p>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">
+                {t("fleet.policyManagement.impactPreview", "Policy impact preview")}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {t(
+                  "fleet.policyManagement.impactPreviewDesc",
+                  "Preview how this policy applies before saving a new version.",
+                )}
+              </p>
+            </div>
+            <div className="rounded-xl bg-white px-3 py-2 text-right">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                {t("fleet.policyManagement.affectedVehicles", "Affected vehicles")}
+              </p>
+              <p className="text-xl font-semibold text-slate-900">{affectedVehicles.length}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl bg-white p-3">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                {t("fleet.policyManagement.scopePrecedence", "Scope precedence")}
+              </p>
+              <p className="mt-2 text-sm text-slate-700">
+                {t(
+                  "fleet.policyManagement.scopePrecedenceDesc",
+                  "Vehicle-specific overrides class, class overrides group, and group overrides fleet.",
+                )}
+              </p>
+            </div>
+            <div className="rounded-xl bg-white p-3">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                {t("fleet.policyManagement.approvalTriggers", "Approval triggers")}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(approvalTriggers.length > 0 ? approvalTriggers : [
+                  t("fleet.policyManagement.noApprovalEscalation", "No approval escalations configured"),
+                ]).map((entry) => (
+                  <span
+                    key={entry}
+                    className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800"
+                  >
+                    {entry}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl bg-white p-3">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                {t("fleet.policyManagement.affectedClasses", "Affected vehicle classes")}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(affectedClassSummary.length > 0 ? affectedClassSummary : [
+                  { label: t("fleet.policyManagement.none", "None"), count: 0 },
+                ]).slice(0, 4).map((entry) => (
+                  <span
+                    key={entry.label}
+                    className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+                  >
+                    {entry.label} · {entry.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <form className="mt-5 grid gap-4" onSubmit={handleCreatePolicyVersion}>
+        <form
+          className="mt-5 grid gap-4"
+          onSubmit={handleCreatePolicyVersion}
+          ref={formRef}
+        >
           <div className="grid gap-4 md:grid-cols-3">
             <div className="grid gap-2">
-              <Label htmlFor="policy-name">Policy name</Label>
+              <Label htmlFor="policy-name">{t("fleet.policyManagement.policyName")}</Label>
               <Input
                 id="policy-name"
                 onChange={handleFormField("name")}
-                placeholder="Safety Fleet Standard"
+                placeholder={t("fleet.policyManagement.policyNamePlaceholder")}
                 required
                 value={form.name}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="policy-code">Policy code (version family)</Label>
+              <Label htmlFor="policy-code">{t("fleet.policyManagement.policyCode")}</Label>
               <Input
                 id="policy-code"
                 onChange={handleFormField("policyCode")}
-                placeholder="SAFE-FLEET"
+                placeholder={t("fleet.policyManagement.policyCodePlaceholder")}
                 value={form.policyCode}
               />
             </div>
             <div className="grid gap-2">
-              <Label>Status</Label>
+              <Label>{t("fleet.policyManagement.status")}</Label>
               <Select onValueChange={handleFormSelect("status")} value={form.status}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={t("fleet.policyManagement.status")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Active">Active</SelectItem>
@@ -296,25 +653,25 @@ function VehiclePolicyManagement({ vehicles }) {
 
           <div className="grid gap-4 md:grid-cols-4">
             <div className="grid gap-2">
-              <Label htmlFor="policy-fleet">Apply per fleet</Label>
+              <Label htmlFor="policy-fleet">{t("fleet.policyManagement.applyPerFleet")}</Label>
               <Input
                 id="policy-fleet"
                 onChange={handleFormField("fleet")}
-                placeholder="North Fleet"
+                placeholder={t("fleet.policyManagement.fleetPlaceholder")}
                 value={form.fleet}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="policy-group">Apply per vehicle group</Label>
+              <Label htmlFor="policy-group">{t("fleet.policyManagement.applyPerVehicleGroup")}</Label>
               <Input
                 id="policy-group"
                 onChange={handleFormField("vehicleGroup")}
-                placeholder="Long-haul"
+                placeholder={t("fleet.policyManagement.vehicleGroupPlaceholder")}
                 value={form.vehicleGroup}
               />
             </div>
             <div className="grid gap-2">
-              <Label>Class-wise policy</Label>
+              <Label>{t("fleet.policyManagement.classWisePolicy")}</Label>
               <Select
                 onValueChange={(value) =>
                   setForm((prev) => ({
@@ -325,10 +682,10 @@ function VehiclePolicyManagement({ vehicles }) {
                 value={form.vehicleClass || "none"}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select class" />
+                  <SelectValue placeholder={t("fleet.policyManagement.selectClass")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No class scope</SelectItem>
+                  <SelectItem value="none">{t("fleet.policyManagement.noClassScope")}</SelectItem>
                   {vehicleClasses.map((vehicleClass) => (
                     <SelectItem key={vehicleClass} value={vehicleClass}>
                       {vehicleClass}
@@ -338,13 +695,13 @@ function VehiclePolicyManagement({ vehicles }) {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Vehicle-specific policy</Label>
+              <Label>{t("fleet.policyManagement.vehicleSpecificPolicy")}</Label>
               <Select onValueChange={handleFormSelect("vehicleId")} value={form.vehicleId}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select vehicle" />
+                  <SelectValue placeholder={t("fleet.policyManagement.selectVehicle")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">No vehicle scope</SelectItem>
+                  <SelectItem value="all">{t("fleet.policyManagement.noVehicleScope")}</SelectItem>
                   {vehicles.map((vehicle) => (
                     <SelectItem key={vehicle.id} value={vehicle.id}>
                       {vehicle.id} - {vehicle.model}
@@ -357,57 +714,96 @@ function VehiclePolicyManagement({ vehicles }) {
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="grid gap-2">
-              <Label htmlFor="service-types">Allowed service types</Label>
-              <Input
-                id="service-types"
-                onChange={handleFormField("allowedServiceTypes")}
-                placeholder="Oil change, Brake service, Alignment"
-                value={form.allowedServiceTypes}
-              />
+              <Label>{t("fleet.policyManagement.allowedServiceTypes")}</Label>
+              <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                {SERVICE_TYPE_OPTIONS.map((option) => {
+                  const selected = form.allowedServiceTypes.includes(option);
+                  return (
+                    <button
+                      key={option}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                        selected
+                          ? "bg-slate-900 text-white"
+                          : "bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                      onClick={() => toggleMultiSelectValue("allowedServiceTypes", option)}
+                      type="button"
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="tyre-brands">Allowed tyre brands</Label>
-              <Input
-                id="tyre-brands"
-                onChange={handleFormField("allowedTyreBrands")}
-                placeholder="Michelin, Bridgestone"
-                value={form.allowedTyreBrands}
-              />
+              <Label>{t("fleet.policyManagement.allowedTyreBrands")}</Label>
+              <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                {TYRE_BRAND_OPTIONS.map((option) => {
+                  const selected = form.allowedTyreBrands.includes(option);
+                  return (
+                    <button
+                      key={option}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                        selected
+                          ? "bg-slate-900 text-white"
+                          : "bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                      onClick={() => toggleMultiSelectValue("allowedTyreBrands", option)}
+                      type="button"
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="tyre-categories">Allowed tyre categories</Label>
-              <Input
-                id="tyre-categories"
-                onChange={handleFormField("allowedTyreCategories")}
-                placeholder="All-season, Winter"
-                value={form.allowedTyreCategories}
-              />
+              <Label>{t("fleet.policyManagement.allowedTyreCategories")}</Label>
+              <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                {TYRE_CATEGORY_OPTIONS.map((option) => {
+                  const selected = form.allowedTyreCategories.includes(option);
+                  return (
+                    <button
+                      key={option}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                        selected
+                          ? "bg-slate-900 text-white"
+                          : "bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                      onClick={() => toggleMultiSelectValue("allowedTyreCategories", option)}
+                      type="button"
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-4">
             <div className="grid gap-2">
-              <Label htmlFor="service-limit">Service price limit</Label>
+              <Label htmlFor="service-limit">{t("fleet.policyManagement.servicePriceLimit")}</Label>
               <Input
                 id="service-limit"
                 onChange={handleFormField("servicePriceLimit")}
-                placeholder="1500"
+                placeholder="1500 EUR"
                 type="number"
                 value={form.servicePriceLimit}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="tyre-limit">Tyre price limit</Label>
+              <Label htmlFor="tyre-limit">{t("fleet.policyManagement.tyrePriceLimit")}</Label>
               <Input
                 id="tyre-limit"
                 onChange={handleFormField("tyrePriceLimit")}
-                placeholder="2400"
+                placeholder="2400 EUR"
                 type="number"
                 value={form.tyrePriceLimit}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="approval-threshold">Approval threshold</Label>
+              <Label htmlFor="approval-threshold">{t("fleet.policyManagement.approvalThreshold")}</Label>
               <Input
                 id="approval-threshold"
                 max={100}
@@ -419,7 +815,7 @@ function VehiclePolicyManagement({ vehicles }) {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="effective-from">Effective from</Label>
+              <Label htmlFor="effective-from">{t("fleet.policyManagement.effectiveFrom")}</Label>
               <Input
                 id="effective-from"
                 onChange={handleFormField("effectiveFrom")}
@@ -431,52 +827,410 @@ function VehiclePolicyManagement({ vehicles }) {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="seasonal-rules">Seasonal tyre rules</Label>
+              <Label htmlFor="seasonal-rules">{t("fleet.policyManagement.seasonalTyreRules")}</Label>
               <Textarea
                 id="seasonal-rules"
                 onChange={handleFormField("seasonalTyreRules")}
-                placeholder="Dec-Feb: Winter tyres mandatory in northern routes."
+                placeholder={t("fleet.policyManagement.seasonalTyreRulesPlaceholder")}
                 rows={3}
                 value={form.seasonalTyreRules}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="special-exceptions">Special case exceptions</Label>
+              <Label htmlFor="special-exceptions">{t("fleet.policyManagement.specialCaseExceptions")}</Label>
               <Textarea
                 id="special-exceptions"
                 onChange={handleFormField("specialCaseExceptions")}
-                placeholder="Emergency dispatch vehicles can exceed tyre limit by 10%."
+                placeholder={t("fleet.policyManagement.specialCaseExceptionsPlaceholder")}
                 rows={3}
                 value={form.specialCaseExceptions}
               />
             </div>
           </div>
 
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {t("fleet.policyManagement.emergencyBreakdownRule", "Emergency breakdown rule")}
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {t("fleet.policyManagement.emergencyBreakdownRuleDesc", "Control approval, dispatch, radius, and replacement handling for emergency breakdown requests.")}
+                  </p>
+                </div>
+                <Select
+                  onValueChange={(value) =>
+                    setNestedRuleField(
+                      "emergencyBreakdownRule",
+                      "enabled",
+                      value === "true",
+                    )
+                  }
+                  value={String(form.emergencyBreakdownRule.enabled)}
+                >
+                  <SelectTrigger className="w-[120px] bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">{t("fleet.policyManagement.enabled", "Enabled")}</SelectItem>
+                    <SelectItem value="false">{t("fleet.policyManagement.disabled", "Disabled")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>{t("fleet.policyManagement.approvalMode", "Approval mode")}</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setNestedRuleField("emergencyBreakdownRule", "approvalMode", value)
+                    }
+                    value={form.emergencyBreakdownRule.approvalMode}
+                  >
+                    <SelectTrigger className="w-full bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto-allow">{t("fleet.policyManagement.autoAllow", "Auto-allow")}</SelectItem>
+                      <SelectItem value="fleet-approval-required">{t("fleet.policyManagement.fleetApprovalRequired", "Fleet approval required")}</SelectItem>
+                      <SelectItem value="restricted">{t("fleet.policyManagement.restricted", "Restricted")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t("fleet.policyManagement.allowedPosNetwork", "Allowed POS network")}</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setNestedRuleField(
+                        "emergencyBreakdownRule",
+                        "allowedPOSNetwork",
+                        value,
+                      )
+                    }
+                    value={form.emergencyBreakdownRule.allowedPOSNetwork}
+                  >
+                    <SelectTrigger className="w-full bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="point-s-only">Point S only</SelectItem>
+                      <SelectItem value="preferred-network">Preferred network</SelectItem>
+                      <SelectItem value="any-approved-provider">Any approved provider</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t("fleet.policyManagement.maxDistanceKm", "Max distance (km)")}</Label>
+                  <Input
+                    type="number"
+                    value={form.emergencyBreakdownRule.maxDistanceKm}
+                    onChange={(event) =>
+                      setNestedRuleField(
+                        "emergencyBreakdownRule",
+                        "maxDistanceKm",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="75"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t("fleet.policyManagement.costLimitEur", "Cost limit (EUR)")}</Label>
+                  <Input
+                    type="number"
+                    value={form.emergencyBreakdownRule.costLimitEur}
+                    onChange={(event) =>
+                      setNestedRuleField(
+                        "emergencyBreakdownRule",
+                        "costLimitEur",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="1200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t("fleet.policyManagement.afterHoursAllowed", "After-hours allowed")}</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setNestedRuleField(
+                        "emergencyBreakdownRule",
+                        "afterHoursAllowed",
+                        value === "true",
+                      )
+                    }
+                    value={String(form.emergencyBreakdownRule.afterHoursAllowed)}
+                  >
+                    <SelectTrigger className="w-full bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">{t("driver.request.yes", "Yes")}</SelectItem>
+                      <SelectItem value="false">{t("driver.request.no", "No")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t("fleet.policyManagement.replacementVehicleAllowed", "Replacement vehicle allowed")}</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setNestedRuleField(
+                        "emergencyBreakdownRule",
+                        "replacementVehicleAllowed",
+                        value === "true",
+                      )
+                    }
+                    value={String(form.emergencyBreakdownRule.replacementVehicleAllowed)}
+                  >
+                    <SelectTrigger className="w-full bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">{t("driver.request.yes", "Yes")}</SelectItem>
+                      <SelectItem value="false">{t("driver.request.no", "No")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="mt-3 grid gap-2">
+                <Label>{t("fleet.policyManagement.dispatchGuidance", "Dispatch guidance")}</Label>
+                <Textarea
+                  rows={3}
+                  value={form.emergencyBreakdownRule.dispatchGuidance}
+                  onChange={(event) =>
+                    setNestedRuleField(
+                      "emergencyBreakdownRule",
+                      "dispatchGuidance",
+                      event.target.value,
+                    )
+                  }
+                  placeholder={t("fleet.policyManagement.dispatchGuidancePlaceholder", "Routing or escalation guidance for breakdown dispatch.")}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {t("fleet.policyManagement.serviceNetworkRule", "Service network rule")}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  {t("fleet.policyManagement.serviceNetworkRuleDesc", "Define where vehicles may be serviced, which OEMs are preferred, and when out-of-network approval is required.")}
+                </p>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>{t("fleet.policyManagement.networkMode", "Network mode")}</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setNestedRuleField("serviceNetworkRule", "networkMode", value)
+                    }
+                    value={form.serviceNetworkRule.networkMode}
+                  >
+                    <SelectTrigger className="w-full bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="point-s-only">Point S only</SelectItem>
+                      <SelectItem value="preferred-oem-and-point-s">Preferred OEM and Point S</SelectItem>
+                      <SelectItem value="approved-network-only">Approved network only</SelectItem>
+                      <SelectItem value="open-network">Open network</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t("fleet.policyManagement.preferredOems", "Preferred OEMs")}</Label>
+                  <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                    {OEM_OPTIONS.map((option) => {
+                      const selected = form.serviceNetworkRule.preferredOEMs.includes(option);
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => {
+                            const currentValues = form.serviceNetworkRule.preferredOEMs;
+                            setNestedRuleField(
+                              "serviceNetworkRule",
+                              "preferredOEMs",
+                              selected
+                                ? currentValues.filter((entry) => entry !== option)
+                                : [...currentValues, option],
+                            );
+                          }}
+                          className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                            selected
+                              ? "bg-slate-900 text-white"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label>{t("fleet.policyManagement.preferredPosLocations", "Preferred POS locations")}</Label>
+                  <Input
+                    value={form.serviceNetworkRule.preferredPOSLocations}
+                    onChange={(event) =>
+                      setNestedRuleField(
+                        "serviceNetworkRule",
+                        "preferredPOSLocations",
+                        event.target.value,
+                      )
+                    }
+                    placeholder={t("fleet.policyManagement.preferredPosLocationsPlaceholder", "Frankfurt Nord, Darmstadt, Wiesbaden")}
+                  />
+                </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label>{t("fleet.policyManagement.excludedProviders", "Excluded providers")}</Label>
+                  <Input
+                    value={form.serviceNetworkRule.excludedProviders}
+                    onChange={(event) =>
+                      setNestedRuleField(
+                        "serviceNetworkRule",
+                        "excludedProviders",
+                        event.target.value,
+                      )
+                    }
+                    placeholder={t("fleet.policyManagement.excludedProvidersPlaceholder", "Open roadside vendors")}
+                  />
+                </div>
+                {[
+                  ["crossBorderAllowed", t("fleet.policyManagement.crossBorderAllowed", "Cross-border allowed")],
+                  ["mobileServiceAllowed", t("fleet.policyManagement.mobileServiceAllowed", "Mobile service allowed")],
+                  ["nearestStationAutoAssign", t("fleet.policyManagement.nearestStationAutoAssign", "Nearest station auto-assign")],
+                  ["outOfNetworkApprovalRequired", t("fleet.policyManagement.outOfNetworkApprovalRequired", "Out-of-network approval required")],
+                ].map(([field, label]) => (
+                  <div className="grid gap-2" key={field}>
+                    <Label>{label}</Label>
+                    <Select
+                      onValueChange={(value) =>
+                        setNestedRuleField(
+                          "serviceNetworkRule",
+                          field,
+                          value === "true",
+                        )
+                      }
+                      value={String(form.serviceNetworkRule[field])}
+                    >
+                      <SelectTrigger className="w-full bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">{t("driver.request.yes", "Yes")}</SelectItem>
+                        <SelectItem value="false">{t("driver.request.no", "No")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-2">
-            <Label htmlFor="change-note">Version change note</Label>
+            <Label htmlFor="change-note">{t("fleet.policyManagement.versionChangeNote")}</Label>
             <Input
               id="change-note"
               onChange={handleFormField("changeNote")}
-              placeholder="Raised service cap for class Truck."
+              placeholder={t("fleet.policyManagement.versionChangeNotePlaceholder")}
               value={form.changeNote}
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">Save as policy version</Button>
+            <Button type="submit" className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">{t("fleet.policyManagement.saveAsPolicyVersion")}</Button>
             <p className="text-xs text-slate-500">
-              New save creates the next version in the selected policy code family.
+              {t("fleet.policyManagement.saveHint")}
+            </p>
+            <p className="text-xs text-slate-500">
+              {t(
+                "fleet.policyManagement.livePolicyGuardrail",
+                "Saving creates a new version. If saved as Active, the previous active version for this code is retired automatically.",
+              )}
             </p>
           </div>
         </form>
       </div>
 
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">
+              {t("fleet.policyManagement.activePolicySummary", "Active policy summary")}
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              {t(
+                "fleet.policyManagement.activePolicySummaryDesc",
+                "Current live versions per policy code with scope, limits, and affected vehicle count.",
+              )}
+            </p>
+          </div>
+          <span className="text-xs text-slate-500">
+            {activePolicies.length} {t("fleet.policyManagement.activePolicies", "active policies")}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {activePolicies.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+              {t("fleet.policyManagement.noActivePolicies", "No active policies.")}
+            </div>
+          ) : (
+            activePolicies.map((policy) => {
+              const impactedCount = vehicles.filter((vehicle) => {
+                if (policy.appliesTo?.vehicleId && vehicle.id !== policy.appliesTo.vehicleId) {
+                  return false;
+                }
+                if (policy.appliesTo?.vehicleClass && vehicle.type !== policy.appliesTo.vehicleClass) {
+                  return false;
+                }
+                return true;
+              }).length;
+              return (
+                <article
+                  key={policy.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        {policy.name} · {policy.policyCode} · v{policy.version}
+                      </p>
+                      <p className="text-xs text-slate-500">{toScopeLabel(policy)}</p>
+                    </div>
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                      {t("fleet.policyManagement.currentActiveVersion", "Current active version")}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                    <p>{t("fleet.policyManagement.serviceCap", "Service cap")}: {toCurrencyEuro(policy.servicePriceLimit)}</p>
+                    <p>{t("fleet.policyManagement.tyreCap", "Tyre cap")}: {toCurrencyEuro(policy.tyrePriceLimit)}</p>
+                    <p>{t("fleet.policyManagement.approvalThreshold", "Approval threshold")}: {policy.approvalThreshold === null ? "-" : `${policy.approvalThreshold}%`}</p>
+                    <p>{t("fleet.policyManagement.affectedVehicles", "Affected vehicles")}: {impactedCount}</p>
+                    <p>{t("fleet.policyManagement.emergencyBreakdownRule", "Emergency breakdown rule")}: {policy.emergencyBreakdownRule?.enabled ? normalizePolicyStatusLabel(t, "Active") : t("fleet.policyManagement.disabled", "Disabled")}</p>
+                    <p>{t("fleet.policyManagement.networkMode", "Network mode")}: {policy.serviceNetworkRule?.networkMode || "-"}</p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {policy.allowedTyreBrands.slice(0, 4).map((brand) => (
+                      <span key={brand} className="rounded-full bg-white px-2.5 py-1 text-slate-700">
+                        {brand}
+                      </span>
+                    ))}
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-slate-900">Policy records</h3>
+            <h3 className="text-lg font-semibold text-slate-900">{t("fleet.policyManagement.policyRecords")}</h3>
             <span className="text-xs text-slate-500">
-              {filteredLatestPolicies.length} policy families
+              {t("fleet.policyManagement.policyFamilies", { count: filteredLatestPolicies.length })}
             </span>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -484,12 +1238,12 @@ function VehiclePolicyManagement({ vehicles }) {
               <Input
                 className="pr-10"
                 onChange={(event) => setPolicySearch(event.target.value)}
-                placeholder="Search name/code/scope"
+                placeholder={t("fleet.policyManagement.searchNameCodeScope")}
                 value={policySearch}
               />
               {policySearch ? (
                 <button
-                  aria-label="Clear search"
+                  aria-label={t("fleet.policyManagement.clearSearch")}
                   className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                   onClick={() => setPolicySearch("")}
                   type="button"
@@ -500,10 +1254,10 @@ function VehiclePolicyManagement({ vehicles }) {
             </div>
             <Select onValueChange={setStatusFilter} value={statusFilter}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Status filter" />
+                <SelectValue placeholder={t("fleet.policyManagement.statusFilter")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="all">{t("fleet.policyManagement.allStatuses")}</SelectItem>
                 <SelectItem value="Active">Active</SelectItem>
                 <SelectItem value="Draft">Draft</SelectItem>
                 <SelectItem value="Retired">Retired</SelectItem>
@@ -514,7 +1268,7 @@ function VehiclePolicyManagement({ vehicles }) {
           <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-3 overflow-y-auto pr-1">
             {filteredLatestPolicies.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                No policy records found.
+                {t("fleet.policyManagement.noPolicyRecordsFound")}
               </div>
             ) : (
               filteredLatestPolicies.map((policy) => (
@@ -531,13 +1285,27 @@ function VehiclePolicyManagement({ vehicles }) {
                         {policy.policyCode} | {toScopeLabel(policy)}
                       </p>
                     </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassName(
-                        policy.status
-                      )}`}
-                    >
-                      {policy.status}
-                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassName(
+                          policy.status
+                        )}`}
+                      >
+                        {normalizePolicyStatusLabel(t, policy.status)}
+                      </span>
+                      {policy.status === "Active" ? (
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                          {t("fleet.policyManagement.currentActiveVersion", "Current active version")}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                    <p>{t("fleet.policyManagement.serviceCap", "Service cap")}: {toCurrencyEuro(policy.servicePriceLimit)}</p>
+                    <p>{t("fleet.policyManagement.tyreCap", "Tyre cap")}: {toCurrencyEuro(policy.tyrePriceLimit)}</p>
+                    <p>{t("fleet.policyManagement.approvalThreshold", "Approval threshold")}: {policy.approvalThreshold === null ? "-" : `${policy.approvalThreshold}%`}</p>
+                    <p>{t("fleet.policyManagement.allowedBrands", "Allowed brands")}: {policy.allowedTyreBrands.length}</p>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -547,7 +1315,7 @@ function VehiclePolicyManagement({ vehicles }) {
                       type="button"
                       variant="outline"
                     >
-                      Load in form
+                      {t("fleet.policyManagement.loadInForm")}
                     </Button>
                     <Select
                       onValueChange={(value) => setVehiclePolicyStatus(policy.id, value)}
@@ -570,15 +1338,14 @@ function VehiclePolicyManagement({ vehicles }) {
         </div>
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">Class-wise policy view</h3>
+          <h3 className="text-lg font-semibold text-slate-900">{t("fleet.policyManagement.classWisePolicyView")}</h3>
           <p className="mt-1 text-sm text-slate-500">
-            Multiple policies can exist for the same class. Latest version per policy
-            code is shown here.
+            {t("fleet.policyManagement.classWisePolicyViewDesc")}
           </p>
           <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-3 overflow-y-auto pr-1">
             {classWisePolicies.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                No class-scoped policies yet.
+                {t("fleet.policyManagement.noClassScopedPoliciesYet")}
               </div>
             ) : (
               classWisePolicies.map((item) => (
@@ -589,7 +1356,7 @@ function VehiclePolicyManagement({ vehicles }) {
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-slate-900">{item.className}</p>
                     <span className="text-xs text-slate-500">
-                      {item.policies.length} policies
+                      {t("fleet.policyManagement.policiesCount", { count: item.policies.length })}
                     </span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -611,13 +1378,13 @@ function VehiclePolicyManagement({ vehicles }) {
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold text-slate-900">Policy version history</h3>
+          <h3 className="text-lg font-semibold text-slate-900">{t("fleet.policyManagement.policyVersionHistory")}</h3>
           <Select onValueChange={setHistoryCode} value={historyCode}>
             <SelectTrigger className="w-[240px]">
-              <SelectValue placeholder="Filter by policy code" />
+              <SelectValue placeholder={t("fleet.policyManagement.filterByPolicyCode")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All policy codes</SelectItem>
+              <SelectItem value="all">{t("fleet.policyManagement.allPolicyCodes")}</SelectItem>
               {policyCodes.map((code) => (
                 <SelectItem key={code} value={code}>
                   {code}
@@ -630,7 +1397,7 @@ function VehiclePolicyManagement({ vehicles }) {
         <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-3 overflow-y-auto pr-1">
           {selectedHistory.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-              No version history found.
+              {t("fleet.policyManagement.noVersionHistoryFound")}
             </div>
           ) : (
             selectedHistory.map((policy) => (
@@ -652,46 +1419,91 @@ function VehiclePolicyManagement({ vehicles }) {
                       policy.status
                     )}`}
                   >
-                    {policy.status}
+                    {normalizePolicyStatusLabel(t, policy.status)}
                   </span>
                 </div>
 
                 <div className="mt-3 grid gap-2 text-xs text-slate-600 md:grid-cols-2">
                   <p>
-                    Allowed service types:{" "}
+                    {t("fleet.policyManagement.allowedServiceTypes", "Allowed service types")}:{" "}
                     {policy.allowedServiceTypes.length > 0
                       ? policy.allowedServiceTypes.join(", ")
                       : "-"}
                   </p>
                   <p>
-                    Allowed tyre brands/categories:{" "}
+                    {t("fleet.policyManagement.allowedTyreBrandsCategories", "Allowed tyre brands/categories")}:{" "}
                     {[...policy.allowedTyreBrands, ...policy.allowedTyreCategories].length >
                     0
                       ? `${policy.allowedTyreBrands.join(", ")} | ${policy.allowedTyreCategories.join(", ")}`
                       : "-"}
                   </p>
                   <p>
-                    Price limits: Service{" "}
-                    {policy.servicePriceLimit === null ? "-" : `$${policy.servicePriceLimit}`},
-                    Tyre {policy.tyrePriceLimit === null ? "-" : `$${policy.tyrePriceLimit}`}
+                    {t("fleet.policyManagement.priceLimits", "Price limits")}: {t("fleet.policyManagement.serviceCap", "Service cap")}{" "}
+                    {toCurrencyEuro(policy.servicePriceLimit)}, {t("fleet.policyManagement.tyreCap", "Tyre cap")} {toCurrencyEuro(policy.tyrePriceLimit)}
                   </p>
                   <p>
-                    Approval threshold:{" "}
+                    {t("fleet.policyManagement.approvalThreshold", "Approval threshold")}:{" "}
                     {policy.approvalThreshold === null
                       ? "-"
                       : `${policy.approvalThreshold}%`}
                   </p>
+                  <p>
+                    {t("fleet.policyManagement.emergencyBreakdownRule", "Emergency breakdown rule")}:{" "}
+                    {policy.emergencyBreakdownRule?.enabled
+                      ? `${policy.emergencyBreakdownRule.approvalMode} | ${toCurrencyEuro(policy.emergencyBreakdownRule.costLimitEur)}`
+                      : t("fleet.policyManagement.disabled", "Disabled")}
+                  </p>
+                  <p>
+                    {t("fleet.policyManagement.serviceNetworkRule", "Service network rule")}:{" "}
+                    {policy.serviceNetworkRule?.networkMode || "-"} |{" "}
+                    {policy.serviceNetworkRule?.outOfNetworkApprovalRequired
+                      ? t("fleet.policyManagement.outOfNetworkApprovalRequired", "Out-of-network approval required")
+                      : t("fleet.policyManagement.openNetworkAllowed", "Open network allowed")}
+                  </p>
                 </div>
+
+                {getPolicyChanges(policy, previousPoliciesById.get(policy.id)).length > 0 ? (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t("fleet.policyManagement.versionChanges", "Version changes")}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {getPolicyChanges(policy, previousPoliciesById.get(policy.id)).map((change) => (
+                        <span
+                          key={change}
+                          className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
+                        >
+                          {change}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
                 {(policy.seasonalTyreRules || policy.specialCaseExceptions) && (
                   <div className="mt-3 grid gap-2 text-xs text-slate-600 md:grid-cols-2">
-                    <p>Seasonal tyre rules: {policy.seasonalTyreRules || "-"}</p>
-                    <p>Special case exceptions: {policy.specialCaseExceptions || "-"}</p>
+                    <p>{t("fleet.policyManagement.seasonalTyreRules", "Seasonal tyre rules")}: {policy.seasonalTyreRules || "-"}</p>
+                    <p>{t("fleet.policyManagement.specialCaseExceptions", "Special case exceptions")}: {policy.specialCaseExceptions || "-"}</p>
+                  </div>
+                )}
+
+                {(policy.emergencyBreakdownRule || policy.serviceNetworkRule) && (
+                  <div className="mt-3 grid gap-2 text-xs text-slate-600 md:grid-cols-2">
+                    <p>
+                      {t("fleet.policyManagement.dispatchGuidance", "Dispatch guidance")}:{" "}
+                      {policy.emergencyBreakdownRule?.dispatchGuidance || "-"}
+                    </p>
+                    <p>
+                      {t("fleet.policyManagement.preferredOems", "Preferred OEMs")}:{" "}
+                      {policy.serviceNetworkRule?.preferredOEMs?.length
+                        ? policy.serviceNetworkRule.preferredOEMs.join(", ")
+                        : "-"}
+                    </p>
                   </div>
                 )}
 
                 <p className="mt-3 text-xs text-slate-500">
-                  Change note: {policy.changeNote || "-"} | Updated{" "}
+                  {t("fleet.policyManagement.versionChangeNote", "Version change note")}: {policy.changeNote || "-"} | {t("fleet.policyManagement.updated", "Updated")}{" "}
                   {new Date(policy.updatedAt).toLocaleString()}
                 </p>
               </article>

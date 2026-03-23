@@ -72,6 +72,34 @@ const defaultServiceHistory = (vehicleId) => {
   ];
 };
 
+const buildLeaseProfileDefaults = (vehicleId, seedSnapshot) => {
+  const numericId = Number(String(vehicleId || "").replace(/\D/g, "")) || 0;
+  const firstRegistrationDate = `202${2 + (numericId % 3)}-${String(
+    (numericId % 12) + 1,
+  ).padStart(2, "0")}-${String(3 + (numericId % 25)).padStart(2, "0")}`;
+  const leaseEndDate = `202${7 + (numericId % 2)}-${String(
+    ((numericId + 4) % 12) + 1,
+  ).padStart(2, "0")}-28`;
+  const leasingCompany = [
+    "ALD Automotive Deutschland GmbH",
+    "Arval Deutschland GmbH",
+    "LeasePlan Deutschland GmbH",
+    "Athlon Germany GmbH",
+  ][numericId % 4];
+  const category = seedSnapshot?.type || "Fahrzeug";
+  return {
+    firstRegistrationDate,
+    leasingCompany,
+    allowedMileage: deriveAllowedMileage(
+      leasingCompany,
+      category,
+      normalizeSeedVehicleType(category),
+    ),
+    leaseEndDate,
+    category,
+  };
+};
+
 const normalizeSeedVehicleType = (value) => {
   const type = String(value || "")
     .trim()
@@ -145,10 +173,79 @@ const normalizeOdometerValue = (value) => {
   return Math.round(parsed);
 };
 
+const mileageTypeKey = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (
+    normalized.includes("suv") ||
+    normalized.includes("kombi") ||
+    normalized.includes("kleinwagen") ||
+    normalized.includes("limousine") ||
+    normalized.includes("car") ||
+    normalized.includes("pkw")
+  ) {
+    return "car";
+  }
+  if (
+    normalized.includes("van") ||
+    normalized.includes("transporter") ||
+    normalized.includes("kastenwagen")
+  ) {
+    return "van";
+  }
+  if (normalized.includes("trailer") || normalized.includes("anhänger")) {
+    return "trailer";
+  }
+  if (normalized.includes("utility") || normalized.includes("baumaschine")) {
+    return "utility";
+  }
+  return "vehicle";
+};
+
+export const deriveAllowedMileage = (
+  leasingCompany,
+  vehicleCategory,
+  vehicleType,
+) => {
+  const company = String(leasingCompany || "")
+    .trim()
+    .toLowerCase();
+  const categoryKey = mileageTypeKey(vehicleCategory);
+  const typeKey =
+    categoryKey !== "vehicle" ? categoryKey : mileageTypeKey(vehicleType);
+
+  const companyBaseMileage = company.includes("ald")
+    ? 30000
+    : company.includes("arval")
+      ? 35000
+      : company.includes("leaseplan")
+        ? 40000
+        : company.includes("athlon")
+          ? 45000
+          : 32000;
+
+  const typeAdjustment = typeKey === "car"
+    ? 0
+    : typeKey === "van"
+      ? 10000
+      : typeKey === "trailer"
+        ? 15000
+        : typeKey === "utility"
+          ? 12000
+          : 5000;
+
+  return companyBaseMileage + typeAdjustment;
+};
+
 const normalizeVehicle = (vehicle = {}) => {
   const id = vehicle.id?.trim() || createVehicleId();
   const status = vehicle.status?.trim() || "Active";
   const normalizedWarrantyDate = toIsoDate(vehicle.warrantyExpiryDate);
+  const normalizedFirstRegistrationDate = toIsoDate(
+    vehicle.firstRegistrationDate,
+  );
+  const normalizedLeaseEndDate = toIsoDate(vehicle.leaseEndDate);
   const tyreSpecs = {
     ...defaultTyreSpec(id),
     ...(vehicle.tyreSpecs || {}),
@@ -159,13 +256,21 @@ const normalizeVehicle = (vehicle = {}) => {
   const seedSnapshot = getSeedVehicleSnapshot(id);
   const nextType = vehicle.type?.trim() || seedSnapshot?.type || "Vehicle";
   const normalizedType = normalizeSeedVehicleType(nextType);
+  const leaseProfileDefaults = buildLeaseProfileDefaults(id, seedSnapshot);
+  const category =
+    vehicle.category?.trim() ||
+    seedSnapshot?.type?.trim() ||
+    leaseProfileDefaults.category;
+  const leasingCompany =
+    vehicle.leasingCompany?.trim() || leaseProfileDefaults.leasingCompany;
+  const normalizedAllowedMileage = normalizeOdometerValue(vehicle.allowedMileage);
 
   return {
     id,
     model: vehicle.model?.trim() || "Unknown model",
     plate: vehicle.plate?.trim() || "N/A",
     type: normalizedType,
-    category: nextType,
+    category,
     status,
     notes: vehicle.notes?.trim() || "",
     variant: vehicle.variant?.trim() || seedSnapshot?.variant?.trim() || "",
@@ -178,6 +283,14 @@ const normalizeVehicle = (vehicle = {}) => {
     serviceHistory: history.slice(0, 10),
     warrantyProvider: vehicle.warrantyProvider?.trim() || "OEM",
     warrantyExpiryDate: normalizedWarrantyDate || "",
+    firstRegistrationDate:
+      normalizedFirstRegistrationDate || leaseProfileDefaults.firstRegistrationDate,
+    leasingCompany,
+    allowedMileage:
+      normalizedAllowedMileage && normalizedAllowedMileage > 0
+        ? normalizedAllowedMileage
+        : deriveAllowedMileage(leasingCompany, category, normalizedType),
+    leaseEndDate: normalizedLeaseEndDate || leaseProfileDefaults.leaseEndDate,
     warrantyStatus:
       vehicle.warrantyStatus?.trim() ||
       getWarrantyStatus(normalizedWarrantyDate || ""),
@@ -212,6 +325,7 @@ const getDefaultVehicles = () =>
     warrantyExpiryDate: `202${6 + (index % 2)}-${String((index % 12) + 1).padStart(2, "0")}-${String(
       10 + (index % 18),
     ).padStart(2, "0")}`,
+    ...buildLeaseProfileDefaults(vehicle.id, vehicle),
     replacementVehicleId: index === 0 ? "VH-241" : "",
     replacementNotes:
       index === 0 ? "Alternate vehicle available during workshop intake." : "",

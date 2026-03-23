@@ -33,7 +33,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import { updateVehicle, upsertVehicles } from "../data/vehicleStore";
+import {
+  deriveAllowedMileage,
+  updateVehicle,
+  upsertVehicles,
+} from "../data/vehicleStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const toIsoDate = (value) => {
   const raw = value?.trim?.() || "";
@@ -141,6 +146,17 @@ const buildProfileDraft = (vehicle) => ({
   model: vehicle?.model || "",
   plate: vehicle?.plate || "",
   type: vehicle?.type || "Truck",
+  category: vehicle?.category || "",
+  firstRegistrationDate: vehicle?.firstRegistrationDate || "",
+  leasingCompany: vehicle?.leasingCompany || "",
+  allowedMileage: String(
+    deriveAllowedMileage(
+      vehicle?.leasingCompany,
+      vehicle?.category,
+      vehicle?.type,
+    ) ?? vehicle?.allowedMileage ?? "",
+  ),
+  leaseEndDate: vehicle?.leaseEndDate || "",
   notes: vehicle?.notes || "",
 });
 
@@ -162,6 +178,7 @@ const buildReplacementDraft = (vehicle) => ({
 });
 
 function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -178,6 +195,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
   const [bulkPayload, setBulkPayload] = useState("");
   const [bulkFeedback, setBulkFeedback] = useState("");
   const [profileDraftById, setProfileDraftById] = useState({});
+  const [profileEditModeById, setProfileEditModeById] = useState({});
   const [tyreDraftById, setTyreDraftById] = useState({});
   const [warrantyDraftById, setWarrantyDraftById] = useState({});
   const [replacementDraftById, setReplacementDraftById] = useState({});
@@ -247,6 +265,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
   const profileDraft = selectedVehicle
     ? profileDraftById[selectedId] || buildProfileDraft(selectedVehicle)
     : null;
+  const isProfileEditing = Boolean(profileEditModeById[selectedId]);
   const tyreDraft = selectedVehicle
     ? tyreDraftById[selectedId] || buildTyreDraft(selectedVehicle)
     : null;
@@ -286,55 +305,55 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
   const vehicleOverviewCards = [
     {
       key: "total",
-      title: "Total vehicles",
+      title: t("fleet.vehicleManagement.cards.totalVehicles"),
       value: summary.total,
-      helper: "Vehicles in catalog",
-      status: "On track",
+      helper: t("fleet.vehicleManagement.cards.vehiclesInCatalog"),
+      status: t("fleet.vehicleManagement.cards.onTrack"),
       tone: "good",
       icon: Truck,
     },
     {
       key: "active",
-      title: "Active",
+      title: t("fleet.vehicleManagement.status.active"),
       value: summary.active,
-      helper: "Currently operating",
-      status: "Running",
+      helper: t("fleet.vehicleManagement.cards.currentlyOperating"),
+      status: t("fleet.vehicleManagement.cards.running"),
       tone: "good",
       icon: Gauge,
     },
     {
       key: "in-service",
-      title: "In service",
+      title: t("fleet.vehicleManagement.status.inService"),
       value: summary.inService,
-      helper: "Assigned to workshop",
-      status: "Workshop",
+      helper: t("fleet.vehicleManagement.cards.assignedToWorkshop"),
+      status: t("fleet.vehicleManagement.cards.workshop"),
       tone: "info",
       icon: Wrench,
     },
     {
       key: "inactive",
-      title: "Inactive",
+      title: t("fleet.vehicleManagement.status.inactive"),
       value: summary.inactive,
-      helper: "Not currently active",
-      status: "Paused",
+      helper: t("fleet.vehicleManagement.cards.notCurrentlyActive"),
+      status: t("fleet.vehicleManagement.cards.paused"),
       tone: "neutral",
       icon: ShieldX,
     },
     {
       key: "warranty-alerts",
-      title: "Warranty alerts",
+      title: t("fleet.vehicleManagement.cards.warrantyAlerts"),
       value: summary.expiring,
-      helper: "Expiring within 60 days",
-      status: "Expiring soon",
+      helper: t("fleet.vehicleManagement.cards.expiringWithin60Days"),
+      status: t("fleet.vehicleManagement.status.expiringSoon"),
       tone: "warn",
       icon: AlertTriangle,
     },
     {
       key: "replacement-mapped",
-      title: "Replacement mapped",
+      title: t("fleet.vehicleManagement.cards.replacementMapped"),
       value: summary.replacementAssigned,
-      helper: "Backup vehicle linked",
-      status: "Ready backup",
+      helper: t("fleet.vehicleManagement.cards.backupVehicleLinked"),
+      status: t("fleet.vehicleManagement.cards.readyBackup"),
       tone: "good",
       icon: ShieldCheck,
     },
@@ -428,11 +447,25 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
     }
     setProfileDraftById((prev) => ({
       ...prev,
-      [selectedId]: {
-        ...buildProfileDraft(selectedVehicle),
-        ...(prev[selectedId] || {}),
-        [field]: value,
-      },
+      [selectedId]: (() => {
+        const nextDraft = {
+          ...buildProfileDraft(selectedVehicle),
+          ...(prev[selectedId] || {}),
+          [field]: value,
+        };
+
+        if (field === "leasingCompany" || field === "category" || field === "type") {
+          nextDraft.allowedMileage = String(
+            deriveAllowedMileage(
+              field === "leasingCompany" ? value : nextDraft.leasingCompany,
+              field === "category" ? value : nextDraft.category,
+              field === "type" ? value : nextDraft.type,
+            ),
+          );
+        }
+
+        return nextDraft;
+      })(),
     }));
   };
 
@@ -486,8 +519,17 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
       model: profileDraft.model,
       plate: profileDraft.plate,
       type: profileDraft.type,
+      category: profileDraft.category,
+      firstRegistrationDate: profileDraft.firstRegistrationDate,
+      leasingCompany: profileDraft.leasingCompany,
+      allowedMileage: profileDraft.allowedMileage,
+      leaseEndDate: profileDraft.leaseEndDate,
       notes: profileDraft.notes,
     });
+    setProfileEditModeById((prev) => ({
+      ...prev,
+      [selectedId]: false,
+    }));
   };
 
   const handleTyreSave = () => {
@@ -613,6 +655,22 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
     }
   };
 
+  const handleProfileEditToggle = () => {
+    if (!selectedVehicle) {
+      return;
+    }
+    setProfileEditModeById((prev) => ({
+      ...prev,
+      [selectedId]: !prev[selectedId],
+    }));
+    if (profileEditModeById[selectedId]) {
+      setProfileDraftById((prev) => ({
+        ...prev,
+        [selectedId]: buildProfileDraft(selectedVehicle),
+      }));
+    }
+  };
+
   const showMobileDetailPage = isMobileView && isMobileDetailOpen;
 
   return (
@@ -621,16 +679,16 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
-              Vehicle Management
+              {t("fleet.vehicleManagement.headerTitle")}
             </p>
 
             <p className="mt-2 max-w-3xl text-xs text-white/70 sm:text-sm">
-              Operate vehicles with one command surface. Keep service history in sync from a single workflow.
+              {t("fleet.vehicleManagement.headerDesc")}
             </p>
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
             <p className="text-[10px] uppercase tracking-[0.2em] text-slate-300">
-              Live fleet
+              {t("fleet.vehicleManagement.liveFleet")}
             </p>
             <p className="mt-1 text-2xl font-semibold text-center">{summary.total}</p> 
             {/* <p className="text-xs text-slate-300">Vehicles in catalog</p> */}
@@ -688,13 +746,13 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder={
                   isMobileView
-                    ? "Search ID, model, plate or type"
-                    : "Search by ID, model, plate, type or warranty"
+                    ? t("fleet.vehicleManagement.searchMobile")
+                    : t("fleet.vehicleManagement.searchDesktop")
                 }
               />
               {searchQuery ? (
                 <button
-                  aria-label="Clear search"
+                  aria-label={t("fleet.vehicleManagement.clearSearch")}
                   className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                   onClick={() => setSearchQuery("")}
                   type="button"
@@ -712,7 +770,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                 variant="outline"
               >
                 <Upload size={15} />
-                Bulk upload
+                {t("fleet.vehicleManagement.bulkUpload")}
               </Button>
               <Button
                 // className="h-10 w-full justify-center px-3 text-sm sm:w-auto"
@@ -721,7 +779,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                 type="button"
               >
                 <Plus size={15} />
-                Add vehicle
+                {t("fleet.vehicleManagement.addVehicle")}
               </Button>
             </div>
           </div>
@@ -761,10 +819,10 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
             <div>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="h-10 w-full bg-white text-sm">
-                  <SelectValue placeholder="Vehicle type" />
+                  <SelectValue placeholder={t("fleet.vehicleManagement.vehicleType")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="all">{t("fleet.vehicleManagement.allTypes")}</SelectItem>
                   {typeOptions.length > 0 ? (
                     typeOptions.map((type) => (
                       <SelectItem key={type} value={type}>
@@ -787,10 +845,10 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
             }`}
         >
           <h3 className="text-lg font-semibold text-slate-900">
-            Vehicles
+            {t("fleet.vehicleManagement.vehicles")}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            {filteredVehicles.length} vehicles matched
+            {t("fleet.vehicleManagement.vehiclesMatched", { count: filteredVehicles.length })}
           </p>
 
           <div className="vehicle-list-scrollbar mt-4 min-h-[1100px] max-h-[1100px] space-y-3 overflow-y-auto pr-1">
@@ -846,7 +904,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                             : "bg-indigo-100 text-indigo-700"
                           }`}
                       >
-                        Health {score}%
+                        {t("fleet.vehicleManagement.healthScore", { score })}
                       </span>
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ${isSelected
@@ -877,7 +935,9 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                         type="button"
                         variant={isSelected ? "secondary" : "outline"}
                       >
-                        {vehicle.status === "Inactive" ? "Activate" : "Deactivate"}
+                        {vehicle.status === "Inactive"
+                          ? t("fleet.vehicleManagement.activate")
+                          : t("fleet.vehicleManagement.deactivate")}
                       </Button>
                     </div>
                   </div>
@@ -885,8 +945,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
               })
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                No vehicles available. Add vehicles from the top Add Vehicle button
-                or use bulk upload.
+                {t("fleet.vehicleManagement.noVehiclesAvailable")}
               </div>
             )}
           </div>
@@ -904,26 +963,37 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                 type="button"
               >
                 <ArrowLeft size={14} />
-                Back to vehicle list
+                {t("fleet.vehicleManagement.backToVehicleList")}
               </button>
             ) : null}
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">
-                  Vehicle profile details
+                  {t("fleet.vehicleManagement.vehicleProfileDetails")}
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
                   {selectedVehicle
                     ? `${selectedVehicle.id} - ${selectedVehicle.model}`
-                    : "Select a vehicle from the list"}
+                    : t("fleet.vehicleManagement.selectVehicleFromList")}
                 </p>
               </div>
               {selectedVehicle ? (
-                <Button onClick={handleActivationToggle} type="button" variant="outline">
-                  {selectedVehicle.status === "Inactive"
-                    ? "Activate vehicle"
-                    : "Deactivate vehicle"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleProfileEditToggle}
+                    type="button"
+                    variant="outline"
+                  >
+                    {isProfileEditing
+                      ? t("fleet.vehicleManagement.cancelEdit")
+                      : t("fleet.vehicleManagement.editDetails")}
+                  </Button>
+                  <Button onClick={handleActivationToggle} type="button" variant="outline">
+                    {selectedVehicle.status === "Inactive"
+                      ? t("fleet.vehicleManagement.activateVehicle")
+                      : t("fleet.vehicleManagement.deactivateVehicle")}
+                  </Button>
+                </div>
               ) : null}
             </div>
 
@@ -936,9 +1006,9 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                         <Gauge size={15} />
                       </span>
                       <div>
-                        <p className="text-sm font-semibold">Operations score</p>
+                        <p className="text-sm font-semibold">{t("fleet.vehicleManagement.operationsScore")}</p>
                         <p className="text-xs text-slate-300">
-                          Derived from status, service recency and warranty health
+                          {t("fleet.vehicleManagement.operationsScoreDesc")}
                         </p>
                       </div>
                     </div>
@@ -949,71 +1019,147 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="vehicle-profile-model">Model</Label>
+                    <Label htmlFor="vehicle-profile-model">{t("fleet.vehicleManagement.model")}</Label>
                     <Input
                       id="vehicle-profile-model"
                       value={profileDraft.model}
                       onChange={(event) => setProfileField("model", event.target.value)}
+                      disabled={!isProfileEditing}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="vehicle-profile-plate">Plate</Label>
+                    <Label htmlFor="vehicle-profile-plate">{t("fleet.vehicleManagement.plate")}</Label>
                     <Input
                       id="vehicle-profile-plate"
                       value={profileDraft.plate}
                       onChange={(event) => setProfileField("plate", event.target.value)}
+                      disabled={!isProfileEditing}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Type</Label>
-                    <Select
-                      value={profileDraft.type}
-                      onValueChange={(value) => setProfileField("type", value)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Truck">Truck</SelectItem>
-                        <SelectItem value="Van">Van</SelectItem>
-                        <SelectItem value="Trailer">Trailer</SelectItem>
-                        <SelectItem value="Utility">Utility</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>{t("fleet.vehicleManagement.statusLabel")}</Label>
+                    <Input value={selectedVehicle.status} disabled />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Status</Label>
-                    <Input value={selectedVehicle.status} disabled />
+                    <Label htmlFor="vehicle-profile-source-type">
+                      {t("fleet.vehicleManagement.typeOfVehicle")}
+                    </Label>
+                    <Input
+                      id="vehicle-profile-source-type"
+                      value={profileDraft.category}
+                      onChange={(event) =>
+                        setProfileField("category", event.target.value)
+                      }
+                      disabled={!isProfileEditing}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="vehicle-profile-first-registration">
+                      {t("fleet.vehicleManagement.firstRegistrationDate")}
+                    </Label>
+                    <Input
+                      id="vehicle-profile-first-registration"
+                      value={profileDraft.firstRegistrationDate}
+                      onChange={(event) =>
+                        setProfileField(
+                          "firstRegistrationDate",
+                          event.target.value,
+                        )
+                      }
+                      type="date"
+                      disabled={!isProfileEditing}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="vehicle-profile-leasing-company">
+                      {t("fleet.vehicleManagement.leasingCompany")}
+                    </Label>
+                    <Input
+                      id="vehicle-profile-leasing-company"
+                      value={profileDraft.leasingCompany}
+                      onChange={(event) =>
+                        setProfileField("leasingCompany", event.target.value)
+                      }
+                      disabled={!isProfileEditing}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="vehicle-profile-allowed-mileage">
+                      {t("fleet.vehicleManagement.allowedMileage")}
+                    </Label>
+                    <Input
+                      id="vehicle-profile-allowed-mileage"
+                      value={profileDraft.allowedMileage}
+                      placeholder="30000"
+                      type="number"
+                      disabled
+                    />
+                    <p className="text-xs text-slate-500">
+                      {t("fleet.vehicleManagement.allowedMileageHint")}
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="vehicle-profile-lease-end-date">
+                      {t("fleet.vehicleManagement.leaseEndDate")}
+                    </Label>
+                    <Input
+                      id="vehicle-profile-lease-end-date"
+                      value={profileDraft.leaseEndDate}
+                      onChange={(event) =>
+                        setProfileField("leaseEndDate", event.target.value)
+                      }
+                      type="date"
+                      disabled={!isProfileEditing}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>{t("fleet.vehicleManagement.leaseEndMonth")}</Label>
+                    <Input
+                      value={
+                        profileDraft.leaseEndDate
+                          ? new Date(
+                              `${profileDraft.leaseEndDate}T00:00:00`,
+                            ).toLocaleDateString("en-US", {
+                              month: "long",
+                              year: "numeric",
+                            })
+                          : ""
+                      }
+                      disabled
+                    />
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="vehicle-profile-notes">Notes</Label>
+                    <Label htmlFor="vehicle-profile-notes">{t("fleet.vehicleManagement.notes")}</Label>
                   <Textarea
                     id="vehicle-profile-notes"
                     value={profileDraft.notes}
                     onChange={(event) => setProfileField("notes", event.target.value)}
                     rows={3}
+                    disabled={!isProfileEditing}
                   />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-slate-500">
-                    Added{" "}
+                    {t("fleet.vehicleManagement.added")}{" "}
                     {selectedVehicle.createdAt
                       ? new Date(selectedVehicle.createdAt).toLocaleString()
                       : "-"}
                   </p>
-                  <Button onClick={handleProfileSave} type="button">
-                    Save profile
-                  </Button>
+                  {isProfileEditing ? (
+                    <Button onClick={handleProfileSave} type="button">
+                      {t("fleet.vehicleManagement.saveProfile")}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ) : (
               <div className="mt-4 grid min-h-[290px] place-items-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
                 <p className="text-sm font-semibold text-slate-700">
-                  No vehicle selected
+                  {t("fleet.vehicleManagement.noVehicleSelected")}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Select a vehicle from the list to view and edit profile details.
+                  {t("fleet.vehicleManagement.noVehicleSelectedDesc")}
                 </p>
               </div>
             )}
@@ -1022,42 +1168,42 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
           <div className="grid gap-6 md:grid-cols-2">
             <div className="min-h-[320px] rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900">
-                Tyre specifications
+                {t("fleet.vehicleManagement.tyreSpecifications")}
               </h3>
               {selectedVehicle && tyreDraft ? (
                 <div className="mt-4 grid gap-3">
                   <Input
                     value={tyreDraft.brand}
                     onChange={(event) => setTyreField("brand", event.target.value)}
-                    placeholder="Brand"
+                    placeholder={t("fleet.vehicleManagement.brand")}
                   />
                   <Input
                     value={tyreDraft.size}
                     onChange={(event) => setTyreField("size", event.target.value)}
-                    placeholder="Size"
+                    placeholder={t("fleet.vehicleManagement.size")}
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <Input
                       value={tyreDraft.frontPsi}
                       onChange={(event) => setTyreField("frontPsi", event.target.value)}
-                      placeholder="Front PSI"
+                      placeholder={t("fleet.vehicleManagement.frontPsi")}
                       type="number"
                     />
                     <Input
                       value={tyreDraft.rearPsi}
                       onChange={(event) => setTyreField("rearPsi", event.target.value)}
-                      placeholder="Rear PSI"
+                      placeholder={t("fleet.vehicleManagement.rearPsi")}
                       type="number"
                     />
                   </div>
                   <Button onClick={handleTyreSave} type="button" variant="outline">
-                    Save tyre specs
+                    {t("fleet.vehicleManagement.saveTyreSpecs")}
                   </Button>
                 </div>
               ) : (
                 <div className="mt-4 grid min-h-[215px] place-items-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
                   <p className="text-sm text-slate-600">
-                    Tyre specification fields will appear here.
+                    {t("fleet.vehicleManagement.tyreFieldsPlaceholder")}
                   </p>
                 </div>
               )}
@@ -1065,7 +1211,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
 
             <div className="min-h-[320px] rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900">
-                Warranty tracking
+                {t("fleet.vehicleManagement.warrantyTracking")}
               </h3>
               {selectedVehicle && warrantyDraft ? (
                 <>
@@ -1084,7 +1230,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                       onChange={(event) =>
                         setWarrantyField("provider", event.target.value)
                       }
-                      placeholder="Warranty provider"
+                      placeholder={t("fleet.vehicleManagement.warrantyProvider")}
                     />
                     <Input
                       value={warrantyDraft.expiryDate}
@@ -1098,14 +1244,14 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                       type="button"
                       variant="outline"
                     >
-                      Save warranty
+                      {t("fleet.vehicleManagement.saveWarranty")}
                     </Button>
                   </div>
                 </>
               ) : (
                 <div className="mt-4 grid min-h-[215px] place-items-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
                   <p className="text-sm text-slate-600">
-                    Warranty status and editable fields will appear here.
+                    {t("fleet.vehicleManagement.warrantyPlaceholder")}
                   </p>
                 </div>
               )}
@@ -1116,7 +1262,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
           <div className="grid gap-6 md:grid-cols-2">
             <div className="min-h-[360px] rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900">
-                Service history
+                {t("fleet.vehicleManagement.serviceHistory")}
               </h3>
               {selectedVehicle ? (
                 <>
@@ -1146,24 +1292,24 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                       onChange={(event) =>
                         setServiceForm((prev) => ({ ...prev, event: event.target.value }))
                       }
-                      placeholder="Service event"
+                      placeholder={t("fleet.vehicleManagement.serviceEvent")}
                     />
                     <Input
                       value={serviceForm.cost}
                       onChange={(event) =>
                         setServiceForm((prev) => ({ ...prev, cost: event.target.value }))
                       }
-                      placeholder="Cost, e.g. $560"
+                      placeholder={t("fleet.vehicleManagement.serviceCostExample")}
                     />
                     <Button onClick={handleServiceAdd} type="button" variant="outline">
-                      Add service entry
+                      {t("fleet.vehicleManagement.addServiceEntry")}
                     </Button>
                   </div>
                 </>
               ) : (
                 <div className="mt-4 grid min-h-[245px] place-items-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
                   <p className="text-sm text-slate-600">
-                    Service history and add-entry form will appear here.
+                    {t("fleet.vehicleManagement.serviceHistoryPlaceholder")}
                   </p>
                 </div>
               )}
@@ -1171,7 +1317,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
 
             <div className="min-h-[360px] rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900">
-                Replacement
+                {t("fleet.vehicleManagement.replacement")}
               </h3>
               {selectedVehicle && replacementDraft ? (
                 <div className="mt-4 grid gap-3">
@@ -1182,10 +1328,10 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                     }
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select replacement vehicle" />
+                      <SelectValue placeholder={t("fleet.vehicleManagement.selectReplacementVehicle")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No replacement</SelectItem>
+                      <SelectItem value="none">{t("fleet.vehicleManagement.noReplacement")}</SelectItem>
                       {replacementOptions.map((vehicle) => (
                         <SelectItem key={vehicle.id} value={vehicle.id}>
                           {vehicle.id} - {vehicle.model}
@@ -1198,7 +1344,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                     onChange={(event) =>
                       setReplacementField("replacementNotes", event.target.value)
                     }
-                    placeholder="Replacement reason, dates, and planning notes"
+                    placeholder={t("fleet.vehicleManagement.replacementPlaceholder")}
                     rows={4}
                   />
                   <Button
@@ -1206,13 +1352,13 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                     type="button"
                     variant="outline"
                   >
-                    Save replacement plan
+                    {t("fleet.vehicleManagement.saveReplacementPlan")}
                   </Button>
                 </div>
               ) : (
                 <div className="mt-4 grid min-h-[245px] place-items-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
                   <p className="text-sm text-slate-600">
-                    Replacement mapping controls will appear here.
+                    {t("fleet.vehicleManagement.replacementPlaceholderEmpty")}
                   </p>
                 </div>
               )}

@@ -72,6 +72,19 @@ const toNullableNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const toBoolean = (value, fallback = false) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  return fallback;
+};
+
 const normalizePolicy = (policy = {}) => {
   const name = String(policy.name || "").trim() || "Untitled Policy";
   const policyCode = normalizeCode(policy.policyCode, name);
@@ -91,6 +104,53 @@ const normalizePolicy = (policy = {}) => {
     approvalThreshold: toNullableNumber(policy.approvalThreshold),
     seasonalTyreRules: String(policy.seasonalTyreRules || "").trim(),
     specialCaseExceptions: String(policy.specialCaseExceptions || "").trim(),
+    emergencyBreakdownRule: {
+      enabled: toBoolean(policy.emergencyBreakdownRule?.enabled, false),
+      approvalMode:
+        String(policy.emergencyBreakdownRule?.approvalMode || "auto-allow").trim() ||
+        "auto-allow",
+      maxDistanceKm: toNullableNumber(policy.emergencyBreakdownRule?.maxDistanceKm),
+      allowedPOSNetwork:
+        String(
+          policy.emergencyBreakdownRule?.allowedPOSNetwork || "point-s-only",
+        ).trim() || "point-s-only",
+      costLimitEur: toNullableNumber(policy.emergencyBreakdownRule?.costLimitEur),
+      afterHoursAllowed: toBoolean(
+        policy.emergencyBreakdownRule?.afterHoursAllowed,
+        false,
+      ),
+      replacementVehicleAllowed: toBoolean(
+        policy.emergencyBreakdownRule?.replacementVehicleAllowed,
+        false,
+      ),
+      dispatchGuidance: String(
+        policy.emergencyBreakdownRule?.dispatchGuidance || "",
+      ).trim(),
+    },
+    serviceNetworkRule: {
+      networkMode:
+        String(policy.serviceNetworkRule?.networkMode || "point-s-only").trim() ||
+        "point-s-only",
+      preferredOEMs: parseList(policy.serviceNetworkRule?.preferredOEMs),
+      preferredPOSLocations: parseList(policy.serviceNetworkRule?.preferredPOSLocations),
+      excludedProviders: parseList(policy.serviceNetworkRule?.excludedProviders),
+      crossBorderAllowed: toBoolean(
+        policy.serviceNetworkRule?.crossBorderAllowed,
+        false,
+      ),
+      mobileServiceAllowed: toBoolean(
+        policy.serviceNetworkRule?.mobileServiceAllowed,
+        false,
+      ),
+      nearestStationAutoAssign: toBoolean(
+        policy.serviceNetworkRule?.nearestStationAutoAssign,
+        false,
+      ),
+      outOfNetworkApprovalRequired: toBoolean(
+        policy.serviceNetworkRule?.outOfNetworkApprovalRequired,
+        true,
+      ),
+    },
     appliesTo: {
       fleet: String(appliesTo.fleet || policy.fleet || "").trim(),
       vehicleGroup: String(appliesTo.vehicleGroup || policy.vehicleGroup || "").trim(),
@@ -132,6 +192,26 @@ const getDefaultPolicies = () => {
       approvalThreshold: null,
       seasonalTyreRules: "No seasonal restriction in demo policy.",
       specialCaseExceptions: "All request categories are covered in demo mode.",
+      emergencyBreakdownRule: {
+        enabled: true,
+        approvalMode: "auto-allow",
+        maxDistanceKm: 75,
+        allowedPOSNetwork: "any-approved-provider",
+        costLimitEur: 1200,
+        afterHoursAllowed: true,
+        replacementVehicleAllowed: true,
+        dispatchGuidance: "Route emergency requests directly to nearest approved provider.",
+      },
+      serviceNetworkRule: {
+        networkMode: "approved-network-only",
+        preferredOEMs: ["Continental", "Michelin", "Bridgestone"],
+        preferredPOSLocations: ["Frankfurt Nord", "Darmstadt", "Wiesbaden"],
+        excludedProviders: [],
+        crossBorderAllowed: false,
+        mobileServiceAllowed: true,
+        nearestStationAutoAssign: true,
+        outOfNetworkApprovalRequired: true,
+      },
       appliesTo: {
         fleet: "",
         vehicleGroup: "",
@@ -163,6 +243,26 @@ const getDefaultPolicies = () => {
         "December to February: winter tyres required for northern routes.",
       specialCaseExceptions:
         "Emergency dispatch units may exceed tyre limit by 10% with supervisor approval.",
+      emergencyBreakdownRule: {
+        enabled: true,
+        approvalMode: "fleet-approval-required",
+        maxDistanceKm: 50,
+        allowedPOSNetwork: "preferred-network",
+        costLimitEur: 900,
+        afterHoursAllowed: true,
+        replacementVehicleAllowed: false,
+        dispatchGuidance: "Fleet approval required before dispatch beyond preferred network.",
+      },
+      serviceNetworkRule: {
+        networkMode: "preferred-oem-and-point-s",
+        preferredOEMs: ["Goodyear", "Bridgestone", "Michelin"],
+        preferredPOSLocations: ["North Fleet Hub", "Kassel Point S"],
+        excludedProviders: ["Open roadside vendors"],
+        crossBorderAllowed: false,
+        mobileServiceAllowed: false,
+        nearestStationAutoAssign: true,
+        outOfNetworkApprovalRequired: true,
+      },
       appliesTo: {
         fleet: "North Fleet",
         vehicleGroup: "Long-haul",
@@ -236,7 +336,23 @@ export const saveVehiclePolicyVersion = (payload) => {
     version: payload.version ? Number(payload.version) : getNextVersion(normalized.policyCode),
   };
 
-  const nextPolicies = [...state.policies, nextPolicy];
+  const nextPolicies = [
+    ...state.policies.map((policy) => {
+      if (
+        nextPolicy.status === "Active" &&
+        policy.policyCode === nextPolicy.policyCode &&
+        policy.status === "Active"
+      ) {
+        return {
+          ...policy,
+          status: "Retired",
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return policy;
+    }),
+    nextPolicy,
+  ];
   state = {
     ...state,
     policies: nextPolicies,
@@ -254,7 +370,22 @@ export const setVehiclePolicyStatus = (policyId, status) => {
   const nextStatus = String(status || "").trim() || "Active";
   let updatedPolicy = null;
 
+  const currentPolicy = state.policies.find((policy) => policy.id === targetId);
+
   const nextPolicies = state.policies.map((policy) => {
+    if (
+      nextStatus === "Active" &&
+      currentPolicy &&
+      policy.id !== targetId &&
+      policy.policyCode === currentPolicy.policyCode &&
+      policy.status === "Active"
+    ) {
+      return {
+        ...policy,
+        status: "Retired",
+        updatedAt: new Date().toISOString(),
+      };
+    }
     if (policy.id !== targetId) {
       return policy;
     }
