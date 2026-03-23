@@ -1,12 +1,11 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Area,
   AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,7 +14,6 @@ import {
 import {
   CalendarClock,
   Bell,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
@@ -134,7 +132,7 @@ const renderFleetSpendTooltip = ({ active, payload, label }) => {
         className="text-[10px] uppercase tracking-[0.16em]"
         style={{ color: figmaChartTheme.tooltipLabel }}
       >
-        Service Spend
+        Fleet spend
       </p>
       <p
         className="mt-1 text-sm font-semibold"
@@ -156,67 +154,45 @@ const renderFleetSpendTooltip = ({ active, payload, label }) => {
           className="mt-1 text-sm font-semibold"
           style={{ color: figmaChartTheme.tooltipValue }}
         >
-          ${spend.toLocaleString()}
+          {new Intl.NumberFormat("de-DE", {
+            style: "currency",
+            currency: "EUR",
+            maximumFractionDigits: 0,
+          }).format(spend)}
         </p>
       </div>
     </div>
   );
 };
 
-const renderFleetUtilizationTooltip = ({ active, payload, label }) => {
+const renderFleetVehicleCostTooltip = ({ active, payload, label }) => {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
-  const rows = payload
-    .filter((item) => Number.isFinite(Number(item.value)))
-    .map((item) => ({
-      key: String(item.dataKey || ""),
-      value: Number(item.value) || 0,
-      date:
-        item?.payload?.dateLabel ||
-        (item?.payload?.day ? `${item.payload.day} 11 Feb` : "Wed 11 Feb"),
-    }))
-    .sort((a, b) => b.value - a.value);
-
-  const primary = rows[0];
-  const secondary = rows[1];
+  const total = Number(payload[0]?.value) || 0;
+  const requests = Number(payload[0]?.payload?.requestCount) || 0;
 
   return (
     <div
-      className="min-w-[124px] rounded-md px-3 py-2 shadow-xl backdrop-blur-sm"
+      className="min-w-[164px] rounded-md px-3 py-2 shadow-xl backdrop-blur-sm"
       style={{
         background: "rgba(255,255,255,0.92)",
         border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
       }}
     >
-      <div className="flex items-center gap-1.5 text-xs">
-        <span
-          className="font-medium"
-          style={{ color: figmaChartTheme.tooltipValue }}
-        >
-          {primary?.value ?? 0}%
-        </span>
-        <span
-          className="text-[10px]"
-          style={{ color: figmaChartTheme.tooltipLabel }}
-        >
-          {primary?.date || `${label} 11 Feb`}
-        </span>
-      </div>
-      <div className="mt-1 flex items-center gap-1.5 text-xs">
-        <span
-          className="font-medium"
-          style={{ color: figmaChartTheme.tooltipValue }}
-        >
-          {secondary?.value ?? 0}%
-        </span>
-        <span
-          className="text-[10px]"
-          style={{ color: figmaChartTheme.tooltipLabel }}
-        >
-          {secondary?.date || `${label} 11 Feb`}
-        </span>
-      </div>
+      <p className="text-xs font-semibold" style={{ color: figmaChartTheme.tooltipTitle }}>
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-semibold" style={{ color: figmaChartTheme.tooltipValue }}>
+        {new Intl.NumberFormat("de-DE", {
+          style: "currency",
+          currency: "EUR",
+          maximumFractionDigits: 0,
+        }).format(total)}
+      </p>
+      <p className="mt-1 text-[10px]" style={{ color: figmaChartTheme.tooltipLabel }}>
+        {requests} requests in selected period
+      </p>
     </div>
   );
 };
@@ -283,6 +259,7 @@ function Dashboard() {
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] =
     useState(false);
   const [driverSearchQuery, setDriverSearchQuery] = useState("");
+  const [selectedDashboardPeriod, setSelectedDashboardPeriod] = useState("90");
   const activePageTitle = t(
     `fleet.menu.${activeMenu}`,
     activeMenu === "dashboard" ? "Dashboard" : activeMenu,
@@ -307,138 +284,249 @@ function Dashboard() {
     hour: "2-digit",
     minute: "2-digit",
   });
-  const servicedVehicles = [
-    { id: "VH-884", model: "Freightliner Cascadia", date: "Jan 29, 2026" },
-    { id: "VH-241", model: "Volvo VNL 760", date: "Jan 27, 2026" },
-    { id: "VH-553", model: "Kenworth T680", date: "Jan 24, 2026" },
-    { id: "VH-102", model: "Peterbilt 579", date: "Jan 22, 2026" },
+  const formatEuro = (value) =>
+    new Intl.NumberFormat("de-DE", {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: 0,
+    }).format(Number(value) || 0);
+
+  const dashboardPeriodOptions = [
+    { value: "30", label: t("fleet.dashboard.last30Days", "Last 30 days") },
+    { value: "90", label: t("fleet.dashboard.last90Days", "Last 90 days") },
+    { value: "180", label: t("fleet.dashboard.last180Days", "Last 180 days") },
+    { value: "365", label: t("fleet.dashboard.last365Days", "Last 365 days") },
   ];
 
-  const pendingVehicles = [
-    { id: "VH-901", model: "Mack Anthem", date: "Feb 4, 2026" },
-    { id: "VH-617", model: "International LT", date: "Feb 6, 2026" },
-    { id: "VH-730", model: "Volvo VNR", date: "Feb 9, 2026" },
-  ];
+  const dashboardAnalytics = useMemo(() => {
+    const now = Date.now();
+    const days = Number(selectedDashboardPeriod) || 90;
+    const threshold = now - days * 24 * 60 * 60 * 1000;
+    const parseTime = (value) => {
+      const time = new Date(value || 0).getTime();
+      return Number.isFinite(time) ? time : 0;
+    };
+    const normalize = (value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase();
+    const allInvoices = Array.isArray(billingState.invoices)
+      ? billingState.invoices
+      : [];
+    const allOrders = Array.isArray(serviceOrderState.orders)
+      ? serviceOrderState.orders
+      : [];
+    const invoiceSet = allInvoices.filter((invoice) => parseTime(invoice.date) >= threshold);
+    const orderSet = allOrders.filter(
+      (order) =>
+        parseTime(
+          order.appointment?.dateTime || order.updatedAt || order.requestedAt,
+        ) >= threshold,
+    );
+    const invoices = invoiceSet.length > 0 ? invoiceSet : allInvoices;
+    const orders = orderSet.length > 0 ? orderSet : allOrders;
+
+    const totalSpend = invoices.reduce(
+      (sum, invoice) => sum + (Number(invoice.totalAmount) || 0),
+      0,
+    );
+    const pendingInvoiceStatuses = new Set(["processing", "unpaid"]);
+    const invoicesAwaitingReview = invoices
+      .filter((invoice) => pendingInvoiceStatuses.has(normalize(invoice.status)))
+      .reduce((sum, invoice) => sum + (Number(invoice.totalAmount) || 0), 0);
+    const openStatuses = ["pending", "approved", "scheduled", "checked in", "in progress", "invoice processing", "re-submitted"];
+    const openRequests = orders.filter((order) =>
+      openStatuses.some((status) => normalize(order.status).includes(status)),
+    );
+    const activeDriversWithRequests = new Set(
+      orders.map((order) => String(order.requestedBy || "").trim()).filter(Boolean),
+    ).size;
+
+    const monthMap = new Map();
+    invoices.forEach((invoice) => {
+      const time = parseTime(invoice.date);
+      if (!time) {
+        return;
+      }
+      const date = new Date(time);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const label = date.toLocaleString("en-US", { month: "short" });
+      const current = monthMap.get(key) || { month: label, spend: 0, sortKey: time };
+      current.spend += Number(invoice.totalAmount) || 0;
+      current.sortKey = Math.min(current.sortKey, time);
+      monthMap.set(key, current);
+    });
+    const spendTrend = [...monthMap.values()]
+      .sort((a, b) => a.sortKey - b.sortKey)
+      .slice(-6)
+      .map(({ month, spend }) => ({ week: month, spend }));
+
+    const vehicleMap = new Map();
+    invoices.forEach((invoice) => {
+      const key = String(invoice.vehicleId || "N/A").trim();
+      const current = vehicleMap.get(key) || {
+        id: key,
+        model: invoice.vehicleModel || key,
+        total: 0,
+        requestCount: 0,
+        latestDate: invoice.date,
+      };
+      current.total += Number(invoice.totalAmount) || 0;
+      current.requestCount += 1;
+      current.latestDate =
+        parseTime(invoice.date) > parseTime(current.latestDate)
+          ? invoice.date
+          : current.latestDate;
+      vehicleMap.set(key, current);
+    });
+    const mostCostlyVehicles = [...vehicleMap.values()]
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    const driverMap = new Map();
+    orders.forEach((order) => {
+      const key = String(order.requestedBy || "Unassigned").trim() || "Unassigned";
+      const current = driverMap.get(key) || {
+        name: key,
+        requests: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+      };
+      current.requests += 1;
+      const status = normalize(order.status);
+      if (status.includes("rejected")) {
+        current.rejected += 1;
+      } else if (
+        status.includes("approved") ||
+        status.includes("scheduled") ||
+        status.includes("checked in") ||
+        status.includes("in progress") ||
+        status.includes("completed") ||
+        status.includes("invoice processing")
+      ) {
+        current.approved += 1;
+      } else {
+        current.pending += 1;
+      }
+      driverMap.set(key, current);
+    });
+    const requestsByDriver = [...driverMap.values()]
+      .sort((a, b) => b.requests - a.requests)
+      .slice(0, 6);
+
+    const invoicesRequiringAction = invoices
+      .filter((invoice) => pendingInvoiceStatuses.has(normalize(invoice.status)))
+      .sort((a, b) => parseTime(b.date) - parseTime(a.date))
+      .slice(0, 6);
+
+    const activeServiceRequests = openRequests
+      .sort(
+        (a, b) =>
+          parseTime(b.appointment?.dateTime || b.updatedAt || b.requestedAt) -
+          parseTime(a.appointment?.dateTime || a.updatedAt || a.requestedAt),
+      )
+      .slice(0, 6)
+      .map((order) => ({
+        id: order.id,
+        model: order.vehicleModel,
+        vehicleId: order.vehicleId,
+        requestTitle: order.requestTitle,
+        requestedBy: order.requestedBy,
+        date: new Date(
+          order.appointment?.dateTime || order.updatedAt || order.requestedAt,
+        ).toLocaleDateString("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        }),
+        status: order.status,
+      }));
+
+    const financialSnapshot = [
+      {
+        key: "paid",
+        label: t("fleet.dashboard.paidInvoices", "Paid invoices"),
+        amount: invoices
+          .filter((invoice) => normalize(invoice.status) === "paid")
+          .reduce((sum, invoice) => sum + (Number(invoice.totalAmount) || 0), 0),
+        tone: "bg-emerald-50 text-emerald-700 border-emerald-100",
+      },
+      {
+        key: "processing",
+        label: t("fleet.dashboard.processingInvoices", "Processing"),
+        amount: invoices
+          .filter((invoice) => normalize(invoice.status) === "processing")
+          .reduce((sum, invoice) => sum + (Number(invoice.totalAmount) || 0), 0),
+        tone: "bg-amber-50 text-amber-700 border-amber-100",
+      },
+      {
+        key: "unpaid",
+        label: t("fleet.dashboard.unpaidInvoices", "Unpaid"),
+        amount: invoices
+          .filter((invoice) => normalize(invoice.status) === "unpaid")
+          .reduce((sum, invoice) => sum + (Number(invoice.totalAmount) || 0), 0),
+        tone: "bg-rose-50 text-rose-700 border-rose-100",
+      },
+    ];
+
+    return {
+      invoices,
+      orders,
+      totalSpend,
+      invoicesAwaitingReview,
+      openRequests,
+      activeDriversWithRequests,
+      avgCostPerRequest:
+        orders.length > 0 ? totalSpend / orders.length : totalSpend,
+      spendTrend,
+      mostCostlyVehicles,
+      requestsByDriver,
+      invoicesRequiringAction,
+      activeServiceRequests,
+      financialSnapshot,
+    };
+  }, [
+    billingState.invoices,
+    selectedDashboardPeriod,
+    serviceOrderState.orders,
+    t,
+  ]);
 
   const dashboardSummaryCards = [
     {
-      title: t("fleet.dashboard.totalVehicles", "Total vehicles"),
-      value: `${totalVehicles}`,
-      helper: t("fleet.dashboard.upFromLastMonth", "Up from last month"),
+      title: t("fleet.dashboard.fleetSpendThisPeriod", "Fleet spend this period"),
+      value: formatEuro(dashboardAnalytics.totalSpend),
+      helper: dashboardPeriodOptions.find(
+        (option) => option.value === selectedDashboardPeriod,
+      )?.label,
       status: "good",
-      icon: Truck,
+      icon: CircleDollarSign,
     },
     {
-      title: t("fleet.dashboard.totalDrivers", "Total drivers"),
-      value: `${totalDrivers}`,
-      helper: t("fleet.dashboard.stableQuarterToDate", "Stable quarter-to-date"),
-      status: "good",
-      icon: Users,
+      title: t("fleet.dashboard.invoicesAwaitingReview", "Invoices awaiting review"),
+      value: formatEuro(dashboardAnalytics.invoicesAwaitingReview),
+      helper: t("fleet.dashboard.financeRequiresAction", "Finance items requiring action"),
+      status: dashboardAnalytics.invoicesAwaitingReview > 0 ? "warn" : "good",
+      icon: FileUp,
     },
     {
-      title: t("fleet.dashboard.vehicleServices", "Vehicle services"),
-      value: `${servicedVehicles.length}`,
-      helper: t("fleet.dashboard.upThreeFromLastMonth", "Up 3 from last month"),
-      status: "good",
+      title: t("fleet.dashboard.openServiceRequests", "Open service requests"),
+      value: `${dashboardAnalytics.openRequests.length}`,
+      helper: t("fleet.dashboard.requestsAcrossFleet", "Requests across the fleet"),
+      status: dashboardAnalytics.openRequests.length > 3 ? "warn" : "good",
       icon: Wrench,
     },
     {
-      title: t("fleet.dashboard.pendingServices", "Pending services"),
-      value: `${pendingVehicles.length}`,
-      helper: t("fleet.dashboard.awaitingClientInput", "Awaiting client input"),
-      status: pendingVehicles.length > 2 ? "warn" : "good",
-      icon: CalendarClock,
-    },
-  ];
-
-  const invoices = [
-    {
-      id: "INV-2049",
-      vendor: "Metro Service Hub",
-      amount: "$4,860",
-      status: "Paid",
-      date: "Jan 30, 2026",
-    },
-    {
-      id: "INV-2050",
-      vendor: "Westline Tire Care",
-      amount: "$2,140",
-      status: "Processing",
-      date: "Jan 28, 2026",
-    },
-    {
-      id: "INV-2051",
-      vendor: "Northern Fleet Works",
-      amount: "$6,720",
-      status: "Due Feb 5",
-      date: "Jan 26, 2026",
-    },
-  ];
-
-  const serviceSpend = [
-    { week: "Wk 1", spend: 12400 },
-    { week: "Wk 2", spend: 9800 },
-    { week: "Wk 3", spend: 15600 },
-    { week: "Wk 4", spend: 11200 },
-    { week: "Wk 5", spend: 14100 },
-    { week: "Wk 6", spend: 13200 },
-    { week: "Wk 7", spend: 16850 },
-    { week: "Wk 8", spend: 14900 },
-    { week: "Wk 9", spend: 17240 },
-    { week: "Wk 10", spend: 15820 },
-    { week: "Wk 11", spend: 18110 },
-    { week: "Wk 12", spend: 16940 },
-  ];
-
-  const utilization = [
-    {
-      day: "Mon",
-      primary: 86,
-      secondary: 70,
-      dateLabel: "Mon 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Tue",
-      primary: 80,
-      secondary: 74,
-      dateLabel: "Tue 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Wed",
-      primary: 77,
-      secondary: 40,
-      dateLabel: "Wed 11 Feb",
-      focus: true,
-    },
-    {
-      day: "Thu",
-      primary: 71,
-      secondary: 56,
-      dateLabel: "Thu 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Fri",
-      primary: 76,
-      secondary: 64,
-      dateLabel: "Fri 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Sat",
-      primary: 93,
-      secondary: 88,
-      dateLabel: "Sat 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Sun",
-      primary: 100,
-      secondary: 84,
-      dateLabel: "Sun 11 Feb",
-      focus: false,
+      title: t("fleet.dashboard.avgCostPerRequest", "Average cost per request"),
+      value: formatEuro(dashboardAnalytics.avgCostPerRequest),
+      helper: t(
+        "fleet.dashboard.activeDriversWithRequests",
+        "{{count}} drivers with requests",
+        { count: dashboardAnalytics.activeDriversWithRequests },
+      ),
+      status: "good",
+      icon: Users,
     },
   ];
 
@@ -448,10 +536,20 @@ function Dashboard() {
           id: vehicle.id,
           model: vehicle.model,
         }))
-      : [...servicedVehicles, ...pendingVehicles].map((vehicle) => ({
-          id: vehicle.id,
-          model: vehicle.model,
-        }));
+      : [
+          ...dashboardAnalytics.mostCostlyVehicles.map((vehicle) => ({
+            id: vehicle.id,
+            model: vehicle.model,
+          })),
+          ...dashboardAnalytics.activeServiceRequests.map((vehicle) => ({
+            id: vehicle.vehicleId,
+            model: vehicle.model,
+          })),
+        ].filter(
+          (vehicle, index, list) =>
+            vehicle.id &&
+            list.findIndex((item) => item.id === vehicle.id) === index,
+        );
 
   const fleetNotifications = useMemo(() => {
     const parseTime = (value) => {
@@ -1971,33 +2069,42 @@ function Dashboard() {
                   className="p-4 shadow-sm backdrop-blur-sm sm:p-6"
                   style={figmaChartCardStyle}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <h2
                       className="text-sm font-semibold sm:text-lg"
                       style={{ color: figmaChartTheme.title }}
                     >
-                      {t("fleet.dashboard.serviceSpend", "Service spend")}
+                      {t("fleet.dashboard.costTrend", "Fleet cost trend")}
                     </h2>
-                    <span
-                      className="rounded-full px-3 py-1 text-xs font-semibold"
-                      style={{
-                        background: figmaChartTheme.positivePillBackground,
-                        color: figmaChartTheme.positivePillText,
-                      }}
+                    <Select
+                      onValueChange={setSelectedDashboardPeriod}
+                      value={selectedDashboardPeriod}
                     >
-                      +12%
-                    </span>
+                      <SelectTrigger className="h-8 w-[148px] rounded-full border-slate-200 bg-white text-xs font-semibold text-slate-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dashboardPeriodOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <p
                     className="mt-1 text-[11px] sm:text-sm"
                     style={{ color: figmaChartTheme.subtitle }}
                   >
-                    {t("fleet.dashboard.serviceSpendDesc", "Rolling four-week spend for maintenance and parts.")}
+                    {t(
+                      "fleet.dashboard.costTrendDesc",
+                      "Vehicle service cost over the selected time period, shown in EUR.",
+                    )}
                   </p>
                   <div className="mt-3 h-44 sm:mt-4 sm:h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart
-                        data={serviceSpend}
+                        data={dashboardAnalytics.spendTrend}
                         margin={{ left: -16, right: 8 }}
                       >
                         <defs>
@@ -2040,7 +2147,7 @@ function Dashboard() {
                           tickLine={false}
                           axisLine={false}
                           tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
-                          tickFormatter={(value) => `$${value / 1000}k`}
+                          tickFormatter={(value) => `€${Math.round(value / 1000)}k`}
                         />
                         <Tooltip
                           content={renderFleetSpendTooltip}
@@ -2071,33 +2178,29 @@ function Dashboard() {
                       className="text-sm font-semibold sm:text-lg"
                       style={{ color: figmaChartTheme.title }}
                     >
-                      {t("fleet.dashboard.shipmentsStatistics", "Shipments Statistics")}
+                      {t("fleet.dashboard.mostCostlyVehicles", "Most costly vehicles")}
                     </h2>
-                    <button
-                      className="inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-sm font-medium"
-                      style={{
-                        background: "#F9F9F9",
-                        border: `0.5px solid ${figmaChartTheme.cardBorder}`,
-                        color: figmaChartTheme.title,
-                      }}
-                      type="button"
-                    >
-                      {t("fleet.dashboard.week", "Week")}
-                      <ChevronDown size={14} strokeWidth={1.75} />
-                    </button>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                      {dashboardPeriodOptions.find(
+                        (option) => option.value === selectedDashboardPeriod,
+                      )?.label || t("fleet.dashboard.last90Days", "Last 90 days")}
+                    </span>
                   </div>
                   <p
                     className="mt-1 text-xs sm:text-xs"
                     style={{ color: "#9E9FA2" }}
                   >
-                    {t("fleet.dashboard.totalDeliveries", "Total number of deliveries 50K")}
+                    {t(
+                      "fleet.dashboard.mostCostlyVehiclesDesc",
+                      "Highest service cost by vehicle in the selected period.",
+                    )}
                   </p>
                   <div className="mt-3 h-48 sm:mt-4 sm:h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
-                        data={utilization}
-                        barGap={2}
-                        barSize={16}
+                        data={dashboardAnalytics.mostCostlyVehicles}
+                        barGap={8}
+                        barSize={22}
                         margin={{ left: -14, right: 8, top: 4 }}
                       >
                         <CartesianGrid
@@ -2106,47 +2209,26 @@ function Dashboard() {
                           vertical={false}
                         />
                         <XAxis
-                          dataKey="day"
+                          dataKey="id"
                           tickLine={false}
                           axisLine={false}
                           tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
                         />
                         <YAxis
-                          domain={[0, 100]}
-                          ticks={[0, 25, 50, 75, 100]}
                           tickLine={false}
                           axisLine={false}
                           tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
-                          tickFormatter={(value) => `${value}%`}
+                          tickFormatter={(value) => `€${Math.round(value / 1000)}k`}
                         />
                         <Tooltip
-                          content={renderFleetUtilizationTooltip}
+                          content={renderFleetVehicleCostTooltip}
                           cursor={{ fill: "rgba(36, 17, 77, 0.04)" }}
                         />
-                        <Bar dataKey="primary" radius={[6, 6, 0, 0]}>
-                          {utilization.map((entry) => (
-                            <Cell
-                              key={`primary-${entry.day}`}
-                              fill={
-                                entry.focus
-                                  ? figmaChartTheme.linePrimary
-                                  : "rgba(167, 160, 184, 0.45)"
-                              }
-                            />
-                          ))}
-                        </Bar>
-                        <Bar dataKey="secondary" radius={[6, 6, 0, 0]}>
-                          {utilization.map((entry) => (
-                            <Cell
-                              key={`secondary-${entry.day}`}
-                              fill={
-                                entry.focus
-                                  ? "#A397EE"
-                                  : "rgba(163, 151, 238, 0.5)"
-                              }
-                            />
-                          ))}
-                        </Bar>
+                        <Bar
+                          dataKey="total"
+                          radius={[8, 8, 0, 0]}
+                          fill={figmaChartTheme.linePrimary}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -2157,32 +2239,57 @@ function Dashboard() {
                 <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                      {t("fleet.dashboard.servicedVehicles", "Serviced vehicles")}
+                      {t(
+                        "fleet.dashboard.serviceRequestsByDriver",
+                        "Service requests by driver",
+                      )}
                     </h2>
-                    <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                      {t("fleet.dashboard.completed", "Completed")}
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {dashboardAnalytics.requestsByDriver.length}{" "}
+                      {t("fleet.dashboard.drivers", "drivers")}
                     </span>
                   </div>
                   <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
-                    {servicedVehicles.map((vehicle) => (
-                      <button
-                        key={vehicle.id}
-                        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/60 bg-slate-50 px-3 py-2.5 text-left text-xs transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
-                        onClick={handleVehicleCardClick(vehicle, t("fleet.dashboard.serviced", "Serviced"))}
-                        type="button"
+                    {dashboardAnalytics.requestsByDriver.map((driver) => (
+                      <div
+                        key={driver.name}
+                        className="rounded-2xl border border-slate-200/70 bg-slate-50 p-3 text-xs sm:p-4 sm:text-sm"
                       >
-                        <div>
-                          <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
-                            {vehicle.model}
-                          </p>
-                          <p className="text-[10px] text-slate-500 sm:text-xs">
-                            {vehicle.id}
-                          </p>
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
+                              {driver.name}
+                            </p>
+                            <p className="text-[10px] text-slate-500 sm:text-xs">
+                              {driver.requests}{" "}
+                              {t("fleet.dashboard.requests", "requests")}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-white sm:text-xs">
+                            {driver.requests}
+                          </span>
                         </div>
-                        <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
-                          {vehicle.date}
-                        </p>
-                      </button>
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] sm:text-xs">
+                          <div className="rounded-xl bg-amber-50 px-2.5 py-2 text-amber-700">
+                            <p className="font-semibold">
+                              {t("fleet.dashboard.pending", "Pending")}
+                            </p>
+                            <p className="mt-1">{driver.pending}</p>
+                          </div>
+                          <div className="rounded-xl bg-emerald-50 px-2.5 py-2 text-emerald-700">
+                            <p className="font-semibold">
+                              {t("fleet.dashboard.approved", "Approved")}
+                            </p>
+                            <p className="mt-1">{driver.approved}</p>
+                          </div>
+                          <div className="rounded-xl bg-rose-50 px-2.5 py-2 text-rose-700">
+                            <p className="font-semibold">
+                              {t("fleet.dashboard.rejected", "Rejected")}
+                            </p>
+                            <p className="mt-1">{driver.rejected}</p>
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -2190,17 +2297,17 @@ function Dashboard() {
                 <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                      {t("fleet.dashboard.recentInvoices", "Recent invoices")}
+                      {t(
+                        "fleet.dashboard.invoicesRequiringAction",
+                        "Invoices requiring action",
+                      )}
                     </h2>
-                    {/* <Link
-                      className="text-xs font-semibold text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline"
-                      to="/signup"
-                    >
-                      Create user
-                    </Link> */}
+                    <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
+                      {t("fleet.dashboard.review", "Review")}
+                    </span>
                   </div>
                   <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
-                    {invoices.map((invoice) => (
+                    {dashboardAnalytics.invoicesRequiringAction.map((invoice) => (
                       <div
                         key={invoice.id}
                         className="rounded-2xl border border-slate-200/70 bg-slate-50 p-3 text-xs sm:p-4 sm:text-sm"
@@ -2214,13 +2321,13 @@ function Dashboard() {
                           </span>
                         </div>
                         <p className="mt-2 text-[13px] font-semibold text-slate-900 sm:text-sm">
-                          {invoice.vendor}
+                          {invoice.vehicleModel}
                         </p>
                         <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
-                          {invoice.date}
+                          {invoice.driverName} • {invoice.date}
                         </p>
                         <p className="mt-2.5 text-sm font-semibold text-slate-900 sm:mt-3 sm:text-base">
-                          {invoice.amount}
+                          {formatEuro(invoice.totalAmount)}
                         </p>
                       </div>
                     ))}
@@ -2230,34 +2337,46 @@ function Dashboard() {
                 <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                      {t("fleet.dashboard.pendingService", "Pending service")}
+                      {t(
+                        "fleet.dashboard.activeServiceRequests",
+                        "Active service requests",
+                      )}
                     </h2>
-                    <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
-                      {t("fleet.dashboard.upcoming", "Upcoming")}
+                    <span className="text-xs font-semibold uppercase tracking-wide text-sky-600">
+                      {t("fleet.dashboard.openRequests", "Open")}
                     </span>
                   </div>
                   <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
-                    {pendingVehicles.map((vehicle) => (
+                    {dashboardAnalytics.activeServiceRequests.map((vehicle) => (
                       <button
                         key={vehicle.id}
-                        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-100/80 bg-amber-50 px-3 py-2.5 text-left text-xs transition hover:bg-amber-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
+                        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-sky-100/80 bg-sky-50 px-3 py-2.5 text-left text-xs transition hover:bg-sky-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
                         onClick={handleVehicleCardClick(
-                          vehicle,
-                          t("fleet.dashboard.pendingService", "Pending service"),
+                          {
+                            id: vehicle.vehicleId,
+                            model: vehicle.model,
+                            date: vehicle.date,
+                          },
+                          vehicle.status,
                         )}
                         type="button"
                       >
                         <div>
                           <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
-                            {vehicle.model}
+                            {vehicle.requestTitle}
                           </p>
                           <p className="text-[10px] text-slate-500 sm:text-xs">
-                            {vehicle.id}
+                            {vehicle.vehicleId} • {vehicle.requestedBy}
                           </p>
                         </div>
-                        <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
-                          {vehicle.date}
-                        </p>
+                        <div className="text-right">
+                          <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
+                            {vehicle.date}
+                          </p>
+                          <p className="text-[10px] text-slate-500 sm:text-xs">
+                            {vehicle.status}
+                          </p>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -2267,63 +2386,39 @@ function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-[13px] font-semibold sm:text-sm">
-                        {t("fleet.dashboard.teamFocus", "Team focus")}
+                        {t("fleet.dashboard.financialSnapshot", "Financial snapshot")}
                       </p>
                       <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
-                        {t("fleet.dashboard.activeInitiatives", "Active initiatives this week")}
+                        {t(
+                          "fleet.dashboard.financialSnapshotDesc",
+                          "Invoice status totals for the selected period, all in EUR.",
+                        )}
                       </p>
                     </div>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-700 font-semibold">
-                      {t("fleet.dashboard.tasksCount", "04 tasks")}
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                      {formatEuro(dashboardAnalytics.totalSpend)}
                     </span>
                   </div>
                   <div className="mt-5 space-y-3 text-xs sm:mt-6 sm:space-y-4 sm:text-sm">
-                    <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-emerald-100 p-3 rounded-lg">
-                      <div>
-                        <p className="text-[12px] font-semibold sm:text-sm">
-                          {t("fleet.dashboard.serviceDeskRefresh", "Service desk refresh")}
-                        </p>
-                        <p className="text-[10px] text-slate-500 sm:text-xs">
-                          {t("fleet.dashboard.dueFeb8", "Due Feb 8")}
-                        </p>
+                    {dashboardAnalytics.financialSnapshot.map((item) => (
+                      <div
+                        key={item.key}
+                        className={`flex items-center justify-between rounded-2xl border px-3 py-2.5 sm:px-4 sm:py-3 ${item.tone}`}
+                      >
+                        <div>
+                          <p className="text-[12px] font-semibold sm:text-sm">
+                            {item.label}
+                          </p>
+                          <p className="text-[10px] sm:text-xs">
+                            {t("fleet.dashboard.selectedPeriod", "Selected period")}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold shadow-sm">
+                          {formatEuro(item.amount)}
+                        </span>
                       </div>
-                      <span className="text-xs font-semibold text-emerald-700 bg-green-300 px-2 py-0.5 rounded-full">
-                        {t("fleet.dashboard.onTrack", "On track")}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-amber-100 p-3 rounded-lg">
-                      <div>
-                        <p className="text-[12px] font-semibold sm:text-sm">
-                          {t("fleet.dashboard.driverOnboarding", "Driver onboarding")}
-                        </p>
-                        <p className="text-[10px] text-slate-500 sm:text-xs">
-                          {t("fleet.dashboard.dueFeb10", "Due Feb 10")}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold text-amber-700 bg-amber-300 px-2 py-0.5 rounded-full">
-                        {t("fleet.dashboard.review", "Review")}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-rose-100 p-3 rounded-lg">
-                      <div>
-                        <p className="text-[12px] font-semibold sm:text-sm">
-                          {t("fleet.dashboard.partsInventory", "Parts inventory")}
-                        </p>
-                        <p className="text-[10px] text-slate-500 sm:text-xs">
-                          {t("fleet.dashboard.dueFeb12", "Due Feb 12")}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold text-rose-700 bg-rose-300 px-2 py-0.5 rounded-full">
-                        {t("fleet.dashboard.atRisk", "At risk")}
-                      </span>
-                    </div>
+                    ))}
                   </div>
-                  {/* <button
-                    className="mt-5 w-full rounded-2xl bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 sm:mt-6 sm:text-sm"
-                    type="button"
-                  >
-                    Review all tasks
-                  </button> */}
                 </div>
               </section>
             </>
