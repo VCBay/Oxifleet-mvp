@@ -108,6 +108,106 @@ const getSlotKeyFromDateTime = (value) => {
   return `${hours}:${minutes}`;
 };
 
+const DAMAGE_CAUSER_OPTIONS = [
+  { value: "driver_self", label: "Driver (self)" },
+  { value: "other_party", label: "Other party" },
+  { value: "unknown", label: "Unknown / not sure" },
+];
+
+const DAMAGE_DRIVEABILITY_OPTIONS = [
+  { value: "driveable", label: "Driveable and road-safe" },
+  { value: "limited", label: "Limited driveability" },
+  { value: "not_driveable", label: "Not driveable" },
+];
+
+const DAMAGE_VISUAL_STATUS_OPTIONS = [
+  { value: "", label: "Not checked" },
+  { value: "no_damage", label: "No damage" },
+  { value: "scratch", label: "Scratch" },
+  { value: "dent", label: "Dent" },
+  { value: "crack", label: "Crack" },
+  { value: "broken", label: "Broken" },
+  { value: "other", label: "Other" },
+];
+
+const DAMAGE_VISUAL_PARTS = [
+  { key: "frontRightHeadlight", label: "Front right headlight" },
+  { key: "hood", label: "Hood" },
+  { key: "frontLeftHeadlight", label: "Front left headlight" },
+  { key: "windshield", label: "Windshield" },
+  { key: "roofFront", label: "Roof (front)" },
+  { key: "leftMirror", label: "Left side mirror" },
+  { key: "frontLeftWindow", label: "Front left side window" },
+  { key: "rearLeftWindow", label: "Rear left side window" },
+  { key: "rearUpperLeftPanel", label: "Rear upper left panel" },
+  { key: "rearLeftFender", label: "Rear left fender" },
+  { key: "lowerFrontBumper", label: "Lower front bumper" },
+  { key: "frontBumper", label: "Front bumper" },
+  { key: "frontLeftFender", label: "Front left fender" },
+  { key: "frontLeftTyre", label: "Front left tyre" },
+  { key: "frontLeftRim", label: "Front left rim" },
+  { key: "leftSill", label: "Left side skirt" },
+  { key: "driverDoor", label: "Driver door" },
+  { key: "rearLeftDoor", label: "Rear left door" },
+  { key: "rearLeftTyre", label: "Rear left tyre" },
+  { key: "rearLeftRim", label: "Rear left rim" },
+  { key: "upperTrunkLid", label: "Upper trunk lid" },
+  { key: "rearRightFender", label: "Rear right fender" },
+  { key: "rearRightRim", label: "Rear right rim" },
+  { key: "rightTailLight", label: "Right tail light" },
+  { key: "rearRightTyre", label: "Rear right tyre" },
+  { key: "rearWindow", label: "Rear window" },
+  { key: "rearRightDoor", label: "Rear right door" },
+  { key: "rearUpperRightPanel", label: "Rear upper right panel" },
+  { key: "roofRear", label: "Roof (rear)" },
+  { key: "frontRightRim", label: "Front right rim" },
+  { key: "leftTailLight", label: "Left tail light" },
+  { key: "rearBumper", label: "Rear bumper" },
+  { key: "rightSill", label: "Right side skirt" },
+  { key: "rightMirror", label: "Right side mirror" },
+  { key: "frontRightWindow", label: "Front right side window" },
+  { key: "frontRightTyre", label: "Front right tyre" },
+  { key: "frontRightFender", label: "Front right fender" },
+  { key: "frontRightDoor", label: "Front right door" },
+  { key: "lowerTrunkLid", label: "Lower trunk lid" },
+  { key: "rearRightWindow", label: "Rear right side window" },
+];
+
+const buildEmptyDamageReport = () => ({
+  processNumber: "",
+  plateNumber: "",
+  vehicleDetails: "",
+  driverFullName: "",
+  driverAddress: "",
+  driverPhone: "",
+  driverEmail: "",
+  driverLicense: "",
+  driverBirthDate: "",
+  damageCauser: "",
+  policeRecorded: "",
+  policeAuthority: "",
+  incidentDateTime: "",
+  incidentLocation: "",
+  vehicleDriveable: "",
+  vehicleLocation: "",
+  damageNarrative: "",
+  otherPartyName: "",
+  otherPartyAddress: "",
+  otherPartyPhone: "",
+  otherPartyEmail: "",
+  otherPartyInsurance: "",
+  otherPartyClaimNumber: "",
+  otherPartyVehicleModel: "",
+  otherPartyVehiclePlate: "",
+  injuryPersonName: "",
+  injuryPersonAddress: "",
+  injuryPersonPhone: "",
+  injuryPersonEmail: "",
+  confirmAccuracy: false,
+  privacyAccepted: false,
+  visualInspection: {},
+});
+
 function ServiceCategoryCard({ option, isSelected, onSelect, cardKey }) {
   const pictogram =
     problemPictogramMap[option.iconKey] || problemPictogramMap.default;
@@ -115,22 +215,20 @@ function ServiceCategoryCard({ option, isSelected, onSelect, cardKey }) {
 
   return (
     <button
-      className={`min-w-0 rounded-xl border p-1.5 text-left transition sm:rounded-2xl sm:p-4 ${
-        isSelected
-          ? "border-slate-900 bg-[linear-gradient(180deg,#1f2f47_0%,#0f1d33_52%,#0a1322_100%)] text-white shadow-lg"
-          : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400 hover:bg-white"
-      }`}
+      className={`min-w-0 rounded-xl border p-1.5 text-left transition sm:rounded-2xl sm:p-4 ${isSelected
+        ? "border-slate-900 bg-[linear-gradient(180deg,#1f2f47_0%,#0f1d33_52%,#0a1322_100%)] text-white shadow-lg"
+        : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400 hover:bg-white"
+        }`}
       key={cardKey || option.value}
       onClick={onSelect}
       type="button"
     >
       <div className="flex min-h-[72px] flex-col items-center justify-center gap-1.5 sm:min-h-[96px] sm:gap-2.5">
         <span
-          className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg border shadow-sm sm:size-11 sm:rounded-xl ${
-            isSelected
-              ? "border-white/35 bg-white/15 text-white"
-              : pictogram.accentClass
-          }`}
+          className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg border shadow-sm sm:size-11 sm:rounded-xl ${isSelected
+            ? "border-white/35 bg-white/15 text-white"
+            : pictogram.accentClass
+            }`}
         >
           <Icon size={14} strokeWidth={2.2} className="sm:size-[18px]" />
         </span>
@@ -171,6 +269,7 @@ function DriverServiceRequestSection({
   setSelectedRequestId,
   requestStatusClass,
   formatDateTime,
+  currentDriverProfile = null,
 }) {
   const [showAllServices, setShowAllServices] = useState(false);
   const [serviceOrder, setServiceOrder] = useState(() =>
@@ -384,6 +483,102 @@ function DriverServiceRequestSection({
     },
     [photoPreviews],
   );
+  const damageReport = requestForm.damageReport || {};
+  const updateDamageReportField = (field, value) => {
+    setRequestForm((prev) => {
+      const nextDamageReport = {
+        ...(prev.damageReport || {}),
+        [field]: value,
+      };
+      return {
+        ...prev,
+        damageReport: nextDamageReport,
+        ...(field === "damageNarrative" ? { description: value } : {}),
+      };
+    });
+  };
+  const updateDamageVisualField = (field, value) => {
+    setRequestForm((prev) => ({
+      ...prev,
+      damageReport: {
+        ...(prev.damageReport || {}),
+        visualInspection: {
+          ...((prev.damageReport && prev.damageReport.visualInspection) || {}),
+          [field]: value,
+        },
+      },
+    }));
+  };
+  useEffect(() => {
+    if (!isDamageReportFlow) {
+      return;
+    }
+    setRequestForm((prev) => {
+      const current = prev.damageReport || buildEmptyDamageReport();
+      const next = { ...current };
+      let didChange = false;
+      if (!String(current.plateNumber || "").trim() && assignedVehicle?.plate) {
+        next.plateNumber = assignedVehicle.plate;
+        didChange = true;
+      }
+      if (!String(current.vehicleDetails || "").trim()) {
+        const autoVehicleDetails = [assignedVehicle?.model, assignedVehicle?.id]
+          .filter(Boolean)
+          .join(" | ");
+        if (autoVehicleDetails) {
+          next.vehicleDetails = autoVehicleDetails;
+          didChange = true;
+        }
+      }
+      if (
+        !String(current.driverFullName || "").trim() &&
+        String(currentDriverProfile?.name || "").trim()
+      ) {
+        next.driverFullName = String(currentDriverProfile.name).trim();
+        didChange = true;
+      }
+      if (
+        !String(current.driverEmail || "").trim() &&
+        String(currentDriverProfile?.email || "").trim()
+      ) {
+        next.driverEmail = String(currentDriverProfile.email).trim();
+        didChange = true;
+      }
+      if (
+        !String(current.driverPhone || "").trim() &&
+        String(currentDriverProfile?.phone || "").trim()
+      ) {
+        next.driverPhone = String(currentDriverProfile.phone).trim();
+        didChange = true;
+      }
+      if (
+        !String(current.driverLicense || "").trim() &&
+        String(currentDriverProfile?.license || "").trim()
+      ) {
+        next.driverLicense = String(currentDriverProfile.license).trim();
+        didChange = true;
+      }
+      if (
+        !String(current.driverAddress || "").trim() &&
+        String(currentDriverProfile?.contactAddress || "").trim()
+      ) {
+        next.driverAddress = String(currentDriverProfile.contactAddress).trim();
+        didChange = true;
+      }
+      return didChange ? { ...prev, damageReport: next } : prev;
+    });
+  }, [
+    assignedVehicle?.id,
+    assignedVehicle?.model,
+    assignedVehicle?.plate,
+    currentDriverProfile?.contactAddress,
+    currentDriverProfile?.email,
+    currentDriverProfile?.license,
+    currentDriverProfile?.name,
+    currentDriverProfile?.phone,
+    isDamageReportFlow,
+    setRequestForm,
+  ]);
   const handleServiceSelect = (
     serviceValue,
     { closeModal = false, moveToIndex = null } = {},
@@ -399,6 +594,7 @@ function DriverServiceRequestSection({
       preferredSlotId: "",
       tyreSupplySource: "",
       posTyreAvailability: null,
+      damageReport: buildEmptyDamageReport(),
     }));
     if (moveToIndex !== null && Number.isInteger(moveToIndex)) {
       setServiceOrder((prev) => {
@@ -428,6 +624,7 @@ function DriverServiceRequestSection({
       preferredSlotId: "",
       tyreSupplySource: "",
       posTyreAvailability: null,
+      damageReport: buildEmptyDamageReport(),
     }));
     scrollToSection(nearestPosSectionRef);
   };
@@ -582,26 +779,23 @@ function DriverServiceRequestSection({
     const isSelected = requestForm.preferredPosId === pos.id;
     return (
       <button
-        className={`relative min-w-0 rounded-xl border p-2.5 text-left transition sm:p-3 ${
-          isSelected
-            ? "border-slate-900 bg-slate-900 text-white"
-            : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
-        } ${
-          isRecommended && !isSelected
+        className={`relative min-w-0 rounded-xl border p-2.5 text-left transition sm:p-3 ${isSelected
+          ? "border-slate-900 bg-slate-900 text-white"
+          : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
+          } ${isRecommended && !isSelected
             ? "ring-1 ring-violet-300/70 ring-offset-1 ring-offset-white"
             : ""
-        }`}
+          }`}
         key={pos.id}
         onClick={() => handlePosSelection(pos, { closeOnSelect })}
         type="button"
       >
         {isRecommended ? (
           <span
-            className={`pointer-events-none absolute -top-1.5 left-1/2 z-20 inline-flex -translate-x-1/2 rounded-full border px-2 py-[2px] text-[9px] font-bold uppercase tracking-[0.05em] shadow-lg ${
-              isSelected
-                ? "border-amber-200 bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-300 text-amber-950"
-                : "border-fuchsia-200 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 text-white"
-            }`}
+            className={`pointer-events-none absolute -top-1.5 left-1/2 z-20 inline-flex -translate-x-1/2 rounded-full border px-2 py-[2px] text-[9px] font-bold uppercase tracking-[0.05em] shadow-lg ${isSelected
+              ? "border-amber-200 bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-300 text-amber-950"
+              : "border-fuchsia-200 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 text-white"
+              }`}
           >
             Recommended
           </span>
@@ -611,11 +805,10 @@ function DriverServiceRequestSection({
             <div className="min-w-0 flex-1">
               {pos.type === "PointS" ? (
                 <p
-                  className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
-                    isSelected
-                      ? "bg-white/20 text-slate-100"
-                      : "bg-sky-100 text-sky-700"
-                  }`}
+                  className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${isSelected
+                    ? "bg-white/20 text-slate-100"
+                    : "bg-sky-100 text-sky-700"
+                    }`}
                 >
                   PoS Partner
                 </p>
@@ -628,11 +821,10 @@ function DriverServiceRequestSection({
               </p>
             </div>
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-[11px] ${
-                isSelected
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-200 text-slate-700"
-              }`}
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-[11px] ${isSelected
+                ? "bg-white/20 text-white"
+                : "bg-slate-200 text-slate-700"
+                }`}
             >
               {pos.distanceKm} km
             </span>
@@ -651,24 +843,22 @@ function DriverServiceRequestSection({
           {needsTyreSupplySelection && tyreAvailabilityForSelectedSubtype ? (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  tyreAvailabilityForSelectedSubtype.canFulfill
-                    ? isSelected
-                      ? "bg-emerald-200/30 text-emerald-100"
-                      : "bg-emerald-100 text-emerald-700"
-                    : isSelected
-                      ? "bg-rose-200/30 text-rose-100"
-                      : "bg-rose-100 text-rose-700"
-                }`}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tyreAvailabilityForSelectedSubtype.canFulfill
+                  ? isSelected
+                    ? "bg-emerald-200/30 text-emerald-100"
+                    : "bg-emerald-100 text-emerald-700"
+                  : isSelected
+                    ? "bg-rose-200/30 text-rose-100"
+                    : "bg-rose-100 text-rose-700"
+                  }`}
               >
                 {tyreAvailabilityForSelectedSubtype.canFulfill
                   ? "Tyres available"
                   : "Tyres unavailable"}
               </span>
               <span
-                className={`text-[10px] ${
-                  isSelected ? "text-slate-300" : "text-slate-500"
-                }`}
+                className={`text-[10px] ${isSelected ? "text-slate-300" : "text-slate-500"
+                  }`}
               >
                 {tyreAvailabilityForSelectedSubtype.totalAvailable}/
                 {requiredTyreQty} available
@@ -679,11 +869,10 @@ function DriverServiceRequestSection({
             <div className="mt-auto flex flex-wrap gap-1 pt-2">
               {pos.capabilities.slice(0, 3).map((tag) => (
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] ${
-                    isSelected
-                      ? "bg-white/20 text-slate-100"
-                      : "bg-slate-200 text-slate-700"
-                  }`}
+                  className={`rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] ${isSelected
+                    ? "bg-white/20 text-slate-100"
+                    : "bg-slate-200 text-slate-700"
+                    }`}
                   key={`${pos.id}-${tag}`}
                 >
                   {tag}
@@ -750,9 +939,9 @@ function DriverServiceRequestSection({
         const etaMin = Number(pos.etaMin || 0);
         const capabilityMatch = requestedCapability
           ? Array.isArray(pos.capabilities) &&
-            pos.capabilities
-              .map((item) => String(item).trim().toLowerCase())
-              .includes(requestedCapability)
+          pos.capabilities
+            .map((item) => String(item).trim().toLowerCase())
+            .includes(requestedCapability)
           : false;
 
         let totalHistoryVisits = 0;
@@ -783,8 +972,8 @@ function DriverServiceRequestSection({
             96,
             Math.round(
               70 +
-                Math.max(0, 10 - distanceKm) +
-                Math.min(12, totalHistoryVisits * 3 + sameIssueVisits * 4),
+              Math.max(0, 10 - distanceKm) +
+              Math.min(12, totalHistoryVisits * 3 + sameIssueVisits * 4),
             ),
           ),
         );
@@ -930,8 +1119,8 @@ function DriverServiceRequestSection({
         95,
         Math.round(
           70 +
-            Math.min(12, scoreGap * 5) +
-            Math.min(8, winner.historyCount * 2),
+          Math.min(12, scoreGap * 5) +
+          Math.min(8, winner.historyCount * 2),
         ),
       ),
     );
@@ -1375,7 +1564,6 @@ function DriverServiceRequestSection({
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-           
                 <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
                   Required details
                 </h2>
@@ -1393,94 +1581,545 @@ function DriverServiceRequestSection({
             </div>
 
             <div className="mt-4 space-y-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
-                  <span className="font-medium text-slate-700">
-                    Current odometer reading
-                  </span>
-                  <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
-                    Required
-                  </span>
-                </div>
-                <div className="mt-2 flex h-10 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-violet-200/70">
-                  <Input
-                    className="h-full flex-1 rounded-none border-0 bg-transparent px-3 text-sm shadow-none focus-visible:ring-0"
-                    inputMode="numeric"
-                    onChange={(event) =>
-                      setRequestForm((prev) => ({
-                        ...prev,
-                        odometerReading: event.target.value,
-                      }))
-                    }
-                    placeholder="Enter current odometer"
-                    value={requestForm.odometerReading}
-                  />
-                  <Select
-                    onValueChange={(value) =>
-                      setRequestForm((prev) => ({
-                        ...prev,
-                        odometerUnit: value === "miles" ? "miles" : "km",
-                      }))
-                    }
-                    value={requestForm.odometerUnit || "km"}
-                  >
-                    <SelectTrigger className="h-full w-[96px] rounded-none border-0 border-l border-slate-200 bg-slate-50 px-3 text-sm shadow-none focus:ring-0 focus:ring-offset-0">
-                      <SelectValue placeholder="Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="km">km</SelectItem>
-                      <SelectItem value="miles">miles</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <p className="mt-2 text-[11px] text-slate-500 sm:text-xs">
-                  Last recorded:{" "}
-                  <span className="font-semibold text-slate-700">
-                    {lastRecordedOdometer?.reading !== null &&
-                    lastRecordedOdometer?.reading !== undefined
-                      ? `${lastRecordedOdometer.reading.toLocaleString()} ${lastRecordedOdometer.unit}`
-                      : "No previous reading"}
-                  </span>
-                  {lastRecordedOdometer?.isFallback ? " (sample)" : ""}
-                </p>
-                {odometerError ? (
-                  <p className="mt-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-medium text-rose-700 sm:text-xs">
-                    {odometerError}
-                  </p>
-                ) : null}
-              </div>
+              {isDamageReportFlow ? (
+                <>
+                  {/* <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-3 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-rose-800">
+                      Damage Report Details
+                    </p>
+                    <p className="mt-1 text-[11px] text-rose-700 sm:text-xs">
+                      Based on the Unfall-und-Schadenmeldung structure (English
+                      labels).
+                    </p>
+                  </div> */}
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
-                  <span className="font-medium text-slate-700">
-                    {categoryDetails?.detailFieldLabel || "Issue details"}
-                  </span>
-                  {requiresDescription ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+                      Vehicle & case details
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "processNumber",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Transaction number"
+                        value={damageReport.processNumber || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "plateNumber",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Official plate number *"
+                        value={damageReport.plateNumber || ""}
+                      />
+                      <Input
+                        className="sm:col-span-2"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "vehicleDetails",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Damaged vehicle details (manufacturer / model) *"
+                        value={damageReport.vehicleDetails || ""}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+                      Driver details
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "driverFullName",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Driver full name *"
+                        value={damageReport.driverFullName || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "driverBirthDate",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Date of birth *"
+                        type={damageReport.driverBirthDate ? "date" : "text"}
+                        onFocus={(e) => (e.target.type = "date")}
+                        onBlur={(e) => {
+                          if (!e.target.value) e.target.type = "text";
+                        }}
+                        value={damageReport.driverBirthDate || ""}
+                      />
+                      <Input
+                        className="sm:col-span-2"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "driverAddress",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Address *"
+                        value={damageReport.driverAddress || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "driverPhone",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Phone number *"
+                        value={damageReport.driverPhone || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "driverEmail",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Email address *"
+                        type="email"
+                        value={damageReport.driverEmail || ""}
+                      />
+                      <Input
+                        className="sm:col-span-2"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "driverLicense",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Driver license details *"
+                        value={damageReport.driverLicense || ""}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+                      Accident report
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <select
+                        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "damageCauser",
+                            event.target.value,
+                          )
+                        }
+                        value={damageReport.damageCauser || ""}
+                      >
+                        <option value="">Who caused the damage? *</option>
+                        {DAMAGE_CAUSER_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "policeRecorded",
+                            event.target.value,
+                          )
+                        }
+                        value={damageReport.policeRecorded || ""}
+                      >
+                        <option value="">Was police involved? *</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                      {String(
+                        damageReport.policeRecorded || "",
+                      ).toLowerCase() === "yes" ? (
+                        <Input
+                          className="sm:col-span-2"
+                          onChange={(event) =>
+                            updateDamageReportField(
+                              "policeAuthority",
+                              event.target.value,
+                            )
+                          }
+                          placeholder="Police authority / file number *"
+                          value={damageReport.policeAuthority || ""}
+                        />
+                      ) : null}
+                      {/* <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "incidentDateTime",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Date and time of incident *"
+                        type="datetime-local"
+                        value={damageReport.incidentDateTime || ""}
+                      /> */}
+
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "incidentDateTime",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Date and time of incident *"
+                        type={damageReport.incidentDateTime ? "date" : "text"}
+                        onFocus={(e) => (e.target.type = "date")}
+                        onBlur={(e) => {
+                          if (!e.target.value) e.target.type = "text";
+                        }}
+                        value={damageReport.incidentDateTime || ""}
+                      />
+
+                      <select
+                        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "vehicleDriveable",
+                            event.target.value,
+                          )
+                        }
+                        value={damageReport.vehicleDriveable || ""}
+                      >
+                        <option value="">Vehicle driveability *</option>
+                        {DAMAGE_DRIVEABILITY_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        className="sm:col-span-2"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "incidentLocation",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Incident location *"
+                        value={damageReport.incidentLocation || ""}
+                      />
+                      <Input
+                        className="sm:col-span-2"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "vehicleLocation",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Current vehicle location / pickup address"
+                        value={damageReport.vehicleLocation || ""}
+                      />
+                    </div>
+                    <Textarea
+                      className="mt-2 bg-white"
+                      onChange={(event) =>
+                        updateDamageReportField(
+                          "damageNarrative",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Damage description and what happened *"
+                      rows={4}
+                      value={damageReport.damageNarrative || ""}
+                    />
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+                      Other party details (if available)
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "otherPartyName",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Name"
+                        value={damageReport.otherPartyName || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "otherPartyPhone",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Phone"
+                        value={damageReport.otherPartyPhone || ""}
+                      />
+                      <Input
+                        className="sm:col-span-2"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "otherPartyAddress",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Address"
+                        value={damageReport.otherPartyAddress || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "otherPartyEmail",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Email"
+                        type="email"
+                        value={damageReport.otherPartyEmail || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "otherPartyInsurance",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Insurance company"
+                        value={damageReport.otherPartyInsurance || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "otherPartyClaimNumber",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Claim number"
+                        value={damageReport.otherPartyClaimNumber || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "otherPartyVehicleModel",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Vehicle model"
+                        value={damageReport.otherPartyVehicleModel || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "otherPartyVehiclePlate",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Vehicle plate number"
+                        value={damageReport.otherPartyVehiclePlate || ""}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+                      Injured person details (if any)
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "injuryPersonName",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Name"
+                        value={damageReport.injuryPersonName || ""}
+                      />
+                      <Input
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "injuryPersonPhone",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Phone"
+                        value={damageReport.injuryPersonPhone || ""}
+                      />
+                      <Input
+                        className="sm:col-span-2"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "injuryPersonAddress",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Address"
+                        value={damageReport.injuryPersonAddress || ""}
+                      />
+                      <Input
+                        className="sm:col-span-2"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "injuryPersonEmail",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Email"
+                        type="email"
+                        value={damageReport.injuryPersonEmail || ""}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+                      Visual inspection by vehicle part
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+                      Mark each visible part condition where possible.
+                    </p>
+                    <div className="card-list-scrollbar mt-2 grid max-h-[18rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                      {DAMAGE_VISUAL_PARTS.map((part) => (
+                        <div
+                          className="rounded-xl border border-slate-200 bg-slate-50 p-2"
+                          key={part.key}
+                        >
+                          <p className="text-[11px] font-medium text-slate-700 sm:text-xs">
+                            {part.label}
+                          </p>
+                          <select
+                            className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800"
+                            onChange={(event) =>
+                              updateDamageVisualField(
+                                part.key,
+                                event.target.value,
+                              )
+                            }
+                            value={
+                              (damageReport.visualInspection &&
+                                damageReport.visualInspection[part.key]) ||
+                              ""
+                            }
+                          >
+                            {DAMAGE_VISUAL_STATUS_OPTIONS.map((option) => (
+                              <option
+                                key={option.value || "empty"}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : null}
+
+              {!isDamageReportFlow ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
+                    <span className="font-medium text-slate-700">
+                      Current odometer reading
+                    </span>
                     <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
                       Required
                     </span>
-                  ) : (
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
-                      Optional
+                  </div>
+                  <div className="mt-2 flex h-10 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-violet-200/70">
+                    <Input
+                      className="h-full flex-1 rounded-none border-0 bg-transparent px-3 text-sm shadow-none focus-visible:ring-0"
+                      inputMode="numeric"
+                      onChange={(event) =>
+                        setRequestForm((prev) => ({
+                          ...prev,
+                          odometerReading: event.target.value,
+                        }))
+                      }
+                      placeholder="Enter current odometer"
+                      value={requestForm.odometerReading}
+                    />
+                    <Select
+                      onValueChange={(value) =>
+                        setRequestForm((prev) => ({
+                          ...prev,
+                          odometerUnit: value === "miles" ? "miles" : "km",
+                        }))
+                      }
+                      value={requestForm.odometerUnit || "km"}
+                    >
+                      <SelectTrigger className="h-full w-[96px] rounded-none border-0 border-l border-slate-200 bg-slate-50 px-3 text-sm shadow-none focus:ring-0 focus:ring-offset-0">
+                        <SelectValue placeholder="Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="km">km</SelectItem>
+                        <SelectItem value="miles">miles</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="mt-2 text-[11px] text-slate-500 sm:text-xs">
+                    Last recorded:{" "}
+                    <span className="font-semibold text-slate-700">
+                      {lastRecordedOdometer?.reading !== null &&
+                      lastRecordedOdometer?.reading !== undefined
+                        ? `${lastRecordedOdometer.reading.toLocaleString()} ${lastRecordedOdometer.unit}`
+                        : "No previous reading"}
                     </span>
-                  )}
+                    {lastRecordedOdometer?.isFallback ? " (sample)" : ""}
+                  </p>
+                  {odometerError ? (
+                    <p className="mt-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-medium text-rose-700 sm:text-xs">
+                      {odometerError}
+                    </p>
+                  ) : null}
                 </div>
-                <Textarea
-                  className="mt-2 bg-white"
-                  onChange={(event) =>
-                    setRequestForm((prev) => ({
-                      ...prev,
-                      description: event.target.value,
-                    }))
-                  }
-                  placeholder={
-                    categoryDetails?.detailPlaceholder ||
-                    "What happened? (optional)"
-                  }
-                  rows={4}
-                  value={requestForm.description}
-                />
-              </div>
+              ) : null}
+
+              {!isDamageReportFlow ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
+                    <span className="font-medium text-slate-700">
+                      {categoryDetails?.detailFieldLabel || "Issue details"}
+                    </span>
+                    {requiresDescription ? (
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
+                        Required
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
+                        Optional
+                      </span>
+                    )}
+                  </div>
+                  <Textarea
+                    className="mt-2 bg-white"
+                    onChange={(event) =>
+                      setRequestForm((prev) => ({
+                        ...prev,
+                        description: event.target.value,
+                      }))
+                    }
+                    placeholder={
+                      categoryDetails?.detailPlaceholder ||
+                      "What happened? (optional)"
+                    }
+                    rows={4}
+                    value={requestForm.description}
+                  />
+                </div>
+              ) : null}
 
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
@@ -1554,7 +2193,10 @@ function DriverServiceRequestSection({
                               {preview.file.name}
                             </p>
                             <p className="text-[10px] text-slate-500">
-                              {Math.max(1, Math.round(preview.file.size / 1024))}{" "}
+                              {Math.max(
+                                1,
+                                Math.round(preview.file.size / 1024),
+                              )}{" "}
                               KB
                             </p>
                           </figcaption>
@@ -1565,35 +2207,77 @@ function DriverServiceRequestSection({
                 ) : null}
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 shadow-sm transition hover:border-slate-300 sm:text-sm">
-                  <input
-                    checked={requestForm.emergency}
-                    className="size-4 accent-slate-900"
-                    onChange={(event) =>
-                      setRequestForm((prev) => ({
-                        ...prev,
-                        emergency: event.target.checked,
-                      }))
-                    }
-                    type="checkbox"
-                  />
-                  Emergency breakdown
-                </label>
-                {needsTyreSupplySelection ? (
-                  <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-violet-200 bg-white from-violet-50 to-fuchsia-50 px-3 py-2.5 text-xs text-slate-700 shadow-sm transition hover:border-violet-300 sm:text-sm">
-                    <input
-                      checked={isDriverBringingTyres}
-                      className="size-4 rounded border-slate-300 accent-violet-600"
-                      onChange={(event) =>
-                        handleDriverTyreToggle(event.target.checked)
-                      }
-                      type="checkbox"
-                    />
-                    <span className="text-slate-900">
-                      I am bringing tyres myself
-                    </span>
-                  </label>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+                  {isDamageReportFlow ? "Declarations" : "Additional options "}
+                </p>
+                {isDamageReportFlow ? (
+                  <>
+                    <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
+                      <input
+                        checked={Boolean(damageReport.confirmAccuracy)}
+                        className="size-4 accent-slate-900"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "confirmAccuracy",
+                            event.target.checked,
+                          )
+                        }
+                        type="checkbox"
+                      />
+                      I confirm the above details are accurate. *
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
+                      <input
+                        checked={Boolean(damageReport.privacyAccepted)}
+                        className="size-4 accent-slate-900"
+                        onChange={(event) =>
+                          updateDamageReportField(
+                            "privacyAccepted",
+                            event.target.checked,
+                          )
+                        }
+                        type="checkbox"
+                      />
+                      I accept privacy processing for this report. *
+                    </label>
+                  </>
+                ) : null}
+
+                {!isDamageReportFlow ? (
+                  <>
+                    <div className="mt-2 space-y-2">
+                      <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
+                        <input
+                          checked={requestForm.emergency}
+                          className="size-4 accent-slate-900"
+                          onChange={(event) =>
+                            setRequestForm((prev) => ({
+                              ...prev,
+                              emergency: event.target.checked,
+                            }))
+                          }
+                          type="checkbox"
+                        />
+                        Emergency breakdown
+                      </label>
+                      {needsTyreSupplySelection ? (
+                        <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
+                          <input
+                            checked={isDriverBringingTyres}
+                            className="size-4 rounded border-slate-300 accent-violet-600"
+                            onChange={(event) =>
+                              handleDriverTyreToggle(event.target.checked)
+                            }
+                            type="checkbox"
+                          />
+                          <span className="text-slate-900">
+                            I am bringing tyres myself
+                          </span>
+                        </label>
+                      ) : null}
+                    </div>
+                  </>
                 ) : null}
               </div>
             </div>
@@ -1647,10 +2331,10 @@ function DriverServiceRequestSection({
                     {requestForm.tyreSupplySource === "driver"
                       ? "Driver bringing tyres"
                       : requestForm.tyreSupplySource === "pos"
-                      ? requestForm.posTyreAvailability === false
-                        ? "Auto from POS (currently unavailable)"
-                        : "Auto from POS (available)"
-                      : "Auto check pending"}
+                        ? requestForm.posTyreAvailability === false
+                          ? "Auto from POS (currently unavailable)"
+                          : "Auto from POS (available)"
+                        : "Auto check pending"}
                   </span>
                 </p>
               ) : null}
@@ -1661,12 +2345,13 @@ function DriverServiceRequestSection({
                     ? "Not required for damage report"
                     : isTyreStockBlocked
                       ? "Will be shared after tyre availability update"
-                    : selectedSlot
-                      ? `${requestForm.preferredDate}, ${selectedSlot.label}`
-                    : "Not selected"}
+                      : selectedSlot
+                        ? `${requestForm.preferredDate}, ${selectedSlot.label}`
+                        : "Not selected"}
                 </span>
               </p>
-              {odometerRecommendation && requestForm.problemType !== "Schadensmeldung" ? (
+              {odometerRecommendation &&
+              requestForm.problemType !== "Schadensmeldung" ? (
                 <div
                   className={`relative overflow-hidden rounded-2xl border p-3.5 shadow-sm ${recommendationTone.card}`}
                 >
@@ -2204,7 +2889,6 @@ function DriverServiceRequestSection({
           </div>
         </div>
       ) : null}
-
     </section>
   );
 }

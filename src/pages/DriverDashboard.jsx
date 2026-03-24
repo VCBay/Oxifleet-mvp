@@ -167,6 +167,41 @@ const parseDriverNotes = (value) => {
   };
 };
 
+const createEmptyDamageReport = () => ({
+  processNumber: "",
+  plateNumber: "",
+  vehicleDetails: "",
+  driverFullName: "",
+  driverAddress: "",
+  driverPhone: "",
+  driverEmail: "",
+  driverLicense: "",
+  driverBirthDate: "",
+  damageCauser: "",
+  policeRecorded: "",
+  policeAuthority: "",
+  incidentDateTime: "",
+  incidentLocation: "",
+  vehicleDriveable: "",
+  vehicleLocation: "",
+  damageNarrative: "",
+  otherPartyName: "",
+  otherPartyAddress: "",
+  otherPartyPhone: "",
+  otherPartyEmail: "",
+  otherPartyInsurance: "",
+  otherPartyClaimNumber: "",
+  otherPartyVehicleModel: "",
+  otherPartyVehiclePlate: "",
+  injuryPersonName: "",
+  injuryPersonAddress: "",
+  injuryPersonPhone: "",
+  injuryPersonEmail: "",
+  confirmAccuracy: false,
+  privacyAccepted: false,
+  visualInspection: {},
+});
+
 const getWarrantyStatus = (expiryDate) => {
   const expiry = toDate(expiryDate);
   if (!expiry) {
@@ -712,6 +747,7 @@ function DriverDashboard() {
     tyreSupplySource: "",
     posTyreAvailability: null,
     recommendationAccepted: false,
+    damageReport: createEmptyDamageReport(),
   });
   const [tyreWaitlistNotice, setTyreWaitlistNotice] = useState(null);
   const [selectedRequestId, setSelectedRequestId] = useState("");
@@ -919,6 +955,9 @@ function DriverDashboard() {
   );
 
   const odometerError = useMemo(() => {
+    if (isDamageReportFlow) {
+      return "";
+    }
     if (!String(requestForm.odometerReading || "").trim()) {
       return "Current odometer reading is required.";
     }
@@ -932,7 +971,12 @@ function DriverDashboard() {
       return `Current odometer cannot be less than the last recorded reading of ${lastRecordedOdometer.reading.toLocaleString()} ${lastRecordedOdometer.unit}.`;
     }
     return "";
-  }, [currentOdometerReading, lastRecordedOdometer, requestForm.odometerReading]);
+  }, [
+    currentOdometerReading,
+    isDamageReportFlow,
+    lastRecordedOdometer,
+    requestForm.odometerReading,
+  ]);
   const odometerRecommendation = useMemo(() => {
     if (!String(requestForm.odometerReading || "").trim()) {
       return null;
@@ -1428,7 +1472,7 @@ function DriverDashboard() {
     const files = Array.from(event.target.files || []);
     setRequestForm((prev) => ({
       ...prev,
-      photos: files.slice(0, 6),
+      photos: files.slice(0, 10),
     }));
   };
 
@@ -1439,6 +1483,13 @@ function DriverDashboard() {
     routeToFleetOnly = false,
     awaitingTyreStock = false,
   } = {}) => {
+    const damageReport = requestForm.damageReport || {};
+    const damageVisualSummary = Object.entries(
+      damageReport.visualInspection || {},
+    )
+      .filter(([, value]) => String(value || "").trim())
+      .map(([partKey, value]) => `${partKey}: ${value}`)
+      .join("; ");
     const selectedPosName = routeToFleetOnly
       ? "Fleet Damage Desk"
       : selectedPos?.name || tenant?.workshopLead || "Point S station (unassigned)";
@@ -1473,7 +1524,8 @@ function DriverDashboard() {
         description:
           requestForm.description ||
           (routeToFleetOnly
-            ? `${serviceLabel} reported by driver and routed to fleet for direct triage.`
+            ? damageReport.damageNarrative ||
+              `${serviceLabel} reported by driver and routed to fleet for direct triage.`
             : awaitingTyreStock
               ? `${serviceLabel} reported by driver. Tyres unavailable at ${selectedPosName}; notify driver when stock is available for slot booking.`
             : `${serviceLabel} reported by driver. Preferred slot: ${slotLabel} on ${preferredDateLabel}.`),
@@ -1516,6 +1568,35 @@ function DriverDashboard() {
           }`,
           `Photos: ${requestForm.photos.map((file) => file.name).join(", ") || "None"}`,
           `Policy check: ${policyValidation.status}`,
+          ...(routeToFleetOnly
+            ? [
+                `Damage report no: ${damageReport.processNumber || "N/A"}`,
+                `Reported plate: ${damageReport.plateNumber || "N/A"}`,
+                `Vehicle details: ${damageReport.vehicleDetails || "N/A"}`,
+                `Driver details: ${damageReport.driverFullName || "N/A"}, ${
+                  damageReport.driverPhone || "N/A"
+                }, ${damageReport.driverEmail || "N/A"}, license ${
+                  damageReport.driverLicense || "N/A"
+                }, DOB ${damageReport.driverBirthDate || "N/A"}`,
+                `Damage causer: ${damageReport.damageCauser || "N/A"}`,
+                `Police involved: ${damageReport.policeRecorded || "N/A"} (${damageReport.policeAuthority || "N/A"})`,
+                `Incident time: ${damageReport.incidentDateTime || "N/A"}`,
+                `Incident location: ${damageReport.incidentLocation || "N/A"}`,
+                `Vehicle driveability: ${damageReport.vehicleDriveable || "N/A"}`,
+                `Vehicle location: ${damageReport.vehicleLocation || "N/A"}`,
+                `Counterparty: ${damageReport.otherPartyName || "N/A"} | ${
+                  damageReport.otherPartyPhone || "N/A"
+                } | ${damageReport.otherPartyEmail || "N/A"} | insurance ${
+                  damageReport.otherPartyInsurance || "N/A"
+                } | claim ${damageReport.otherPartyClaimNumber || "N/A"}`,
+                `Counterparty vehicle: ${damageReport.otherPartyVehicleModel || "N/A"} | plate ${damageReport.otherPartyVehiclePlate || "N/A"}`,
+                `Injury person: ${damageReport.injuryPersonName || "N/A"} | ${
+                  damageReport.injuryPersonPhone || "N/A"
+                } | ${damageReport.injuryPersonEmail || "N/A"}`,
+                `Visual inspection: ${damageVisualSummary || "No part-level markings submitted."}`,
+                `Declarations: accuracy=${damageReport.confirmAccuracy ? "yes" : "no"}, privacy=${damageReport.privacyAccepted ? "yes" : "no"}`,
+              ]
+            : []),
           includeOdometerRecommendation
             ? `Driver accepted odometer recommendation: ${odometerRecommendation.title} | ${odometerRecommendation.suggestion} | Suggested category: ${odometerRecommendation.suggestedCategory}`
             : "Driver accepted odometer recommendation: No",
@@ -1540,6 +1621,93 @@ function DriverDashboard() {
       setWizardFeedback(message);
       toast.error("Request not sent", { description: message, duration: 3200 });
       return;
+    }
+    if (isDamageReportFlow) {
+      const report = requestForm.damageReport || {};
+      const requiredDamageChecks = [
+        {
+          value: report.driverFullName,
+          message: "Enter driver full name in Damage report details.",
+        },
+        {
+          value: report.driverAddress,
+          message: "Enter driver address in Damage report details.",
+        },
+        {
+          value: report.driverPhone,
+          message: "Enter driver phone in Damage report details.",
+        },
+        {
+          value: report.driverEmail,
+          message: "Enter driver email in Damage report details.",
+        },
+        {
+          value: report.driverLicense,
+          message: "Enter driver license details in Damage report details.",
+        },
+        {
+          value: report.driverBirthDate,
+          message: "Select driver birth date in Damage report details.",
+        },
+        {
+          value: report.damageCauser,
+          message: "Select who caused the damage in Damage report details.",
+        },
+        {
+          value: report.policeRecorded,
+          message: "Select whether police recorded the incident.",
+        },
+        {
+          value: report.incidentDateTime,
+          message: "Select when the incident happened.",
+        },
+        {
+          value: report.incidentLocation,
+          message: "Enter incident location in Damage report details.",
+        },
+        {
+          value: report.vehicleDriveable,
+          message: "Select vehicle driveability in Damage report details.",
+        },
+        {
+          value: report.damageNarrative,
+          message: "Add damage description in Damage report details.",
+        },
+      ];
+      const missingDamageField = requiredDamageChecks.find(
+        (check) => !String(check.value || "").trim(),
+      );
+      if (missingDamageField) {
+        setWizardFeedback(missingDamageField.message);
+        toast.error("Request not sent", {
+          description: missingDamageField.message,
+          duration: 3200,
+        });
+        return;
+      }
+      if (
+        String(report.policeRecorded || "").toLowerCase() === "yes" &&
+        !String(report.policeAuthority || "").trim()
+      ) {
+        const message =
+          "Enter police authority/reference because police involvement is marked as Yes.";
+        setWizardFeedback(message);
+        toast.error("Request not sent", { description: message, duration: 3200 });
+        return;
+      }
+      if (!Boolean(report.confirmAccuracy)) {
+        const message =
+          "Confirm that the provided damage report details are accurate.";
+        setWizardFeedback(message);
+        toast.error("Request not sent", { description: message, duration: 3200 });
+        return;
+      }
+      if (!Boolean(report.privacyAccepted)) {
+        const message = "Accept privacy statement to submit damage report.";
+        setWizardFeedback(message);
+        toast.error("Request not sent", { description: message, duration: 3200 });
+        return;
+      }
     }
     if (
       doesCategoryRequireDescription(
@@ -1667,6 +1835,7 @@ function DriverDashboard() {
         tyreSupplySource: "",
         posTyreAvailability: null,
         recommendationAccepted: false,
+        damageReport: createEmptyDamageReport(),
       });
     } catch (error) {
       const message = "Unable to send service request. Please try again.";
@@ -2000,6 +2169,7 @@ function DriverDashboard() {
               onPhotoChange={onPhotoChange}
               lastRecordedOdometer={lastRecordedOdometer}
               odometerError={odometerError}
+              currentDriverProfile={profileForm}
               policyValidation={policyValidation}
               requestForm={requestForm}
               requestStatusClass={requestStatusClass}
