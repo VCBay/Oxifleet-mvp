@@ -558,6 +558,13 @@ function POSOrderManagement({
   completionServiceType = "",
 }) {
   const { t } = useTranslation();
+  const translatePriority = (value) =>
+    ({
+      Low: t("pos.order.priorityLow", "Low"),
+      Normal: t("pos.order.priorityNormal", "Normal"),
+      High: t("pos.order.priorityHigh", "High"),
+      Emergency: t("pos.order.priorityEmergency", "Emergency"),
+    })[value] || value;
   const navigate = useNavigate();
   const posOrderState = useSyncExternalStore(
     subscribePosOrders,
@@ -1517,7 +1524,7 @@ function POSOrderManagement({
                           { value: "Emergency", label: "Emergency" },
                         ]}
                         value={orderForm.priority || ""}
-                        placeholder="Priority"
+                  placeholder={t("pos.order.priority", "Priority")}
                         searchPlaceholder="Search priorities"
                         emptyLabel="No priority options"
                         noMatchLabel="No matching priorities"
@@ -2055,11 +2062,11 @@ function POSOrderManagement({
             className={`rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm ${completionMode ? "" : "hidden"}`}
           >
             <h3 className="text-lg font-semibold text-slate-900">
-              Create service order
+              {t("pos.order.createServiceOrder", "Create service order")}
             </h3>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="grid min-w-0 gap-2">
-                <Label>Vehicle</Label>
+                <Label>{t("pos.order.vehicle", "Vehicle")}</Label>
                 <SearchableSelect
                   onValueChange={handleVehicleChange}
                   options={vehicles.map((vehicle) => ({
@@ -2069,35 +2076,35 @@ function POSOrderManagement({
                     meta: vehicle.status,
                   }))}
                   value={orderForm.vehicleId || ""}
-                  placeholder="Select vehicle"
-                  searchPlaceholder="Search vehicles"
-                  emptyLabel="No vehicles"
-                  noMatchLabel="No matching vehicles"
+                  placeholder={t("pos.order.selectVehicle", "Select vehicle")}
+                  searchPlaceholder={t("pos.order.searchVehicles", "Search vehicles")}
+                  emptyLabel={t("pos.order.noVehicles", "No vehicles")}
+                  noMatchLabel={t("pos.order.noMatchingVehicles", "No matching vehicles")}
                   triggerClassName="w-full min-w-0 max-w-full overflow-hidden"
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Priority</Label>
+                <Label>{t("pos.order.priority", "Priority")}</Label>
                 <SearchableSelect
                   onValueChange={(value) =>
                     setOrderForm((prev) => ({ ...prev, priority: value }))
                   }
                   options={[
-                    { value: "Low", label: "Low" },
-                    { value: "Normal", label: "Normal" },
-                    { value: "High", label: "High" },
-                    { value: "Emergency", label: "Emergency" },
+                    { value: "Low", label: t("pos.order.priorityLow", "Low") },
+                    { value: "Normal", label: t("pos.order.priorityNormal", "Normal") },
+                    { value: "High", label: t("pos.order.priorityHigh", "High") },
+                    { value: "Emergency", label: t("pos.order.priorityEmergency", "Emergency") },
                   ]}
                   value={orderForm.priority || ""}
-                  placeholder="Priority"
-                  searchPlaceholder="Search priorities"
-                  emptyLabel="No priority options"
-                  noMatchLabel="No matching priorities"
+                  placeholder={t("pos.order.priority", "Priority")}
+                  searchPlaceholder={t("pos.order.searchPriorities", "Search priorities")}
+                  emptyLabel={t("pos.order.noPriorityOptions", "No priority options")}
+                  noMatchLabel={t("pos.order.noMatchingPriorities", "No matching priorities")}
                   triggerClassName="w-full"
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Service type</Label>
+                <Label>{t("pos.order.serviceType", "Service type")}</Label>
                 <Input
                   onChange={(event) =>
                     setOrderForm((prev) => ({
@@ -2105,12 +2112,12 @@ function POSOrderManagement({
                       serviceType: event.target.value,
                     }))
                   }
-                  placeholder="General service"
+                  placeholder={t("pos.order.generalService", "General service")}
                   value={orderForm.serviceType}
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Problem type</Label>
+                <Label>{t("pos.order.problemType", "Problem type")}</Label>
                 <Input
                   onChange={(event) =>
                     setOrderForm((prev) => ({
@@ -2118,13 +2125,13 @@ function POSOrderManagement({
                       problemType: event.target.value,
                     }))
                   }
-                  placeholder="Brake issue / Tyre wear / Diagnostics"
+                  placeholder={t("pos.order.problemTypePlaceholder", "Brake issue / Tyre wear / Diagnostics")}
                   value={orderForm.problemType}
                 />
               </div>
             </div>
             <div className="mt-3 grid gap-2">
-              <Label>Description</Label>
+              <Label>{t("pos.order.description", "Description")}</Label>
               <Textarea
                 onChange={(event) =>
                   setOrderForm((prev) => ({
@@ -2132,7 +2139,7 @@ function POSOrderManagement({
                     description: event.target.value,
                   }))
                 }
-                placeholder="Describe service issue and observed symptoms."
+                placeholder={t("pos.order.descriptionPlaceholder", "Describe service issue and observed symptoms.")}
                 rows={3}
                 value={orderForm.description}
               />
@@ -2144,7 +2151,7 @@ function POSOrderManagement({
           >
             <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900">
-                Add parts items
+                {t("pos.order.addPartsItems", "Add parts items")}
               </h3>
               <div className="mt-3 grid gap-2">
                 <Input
@@ -2154,7 +2161,7 @@ function POSOrderManagement({
                       name: event.target.value,
                     }))
                   }
-                  placeholder="Part name"
+                  placeholder={t("pos.order.partName", "Part name")}
                   value={partDraft.name}
                 />
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -2166,7 +2173,7 @@ function POSOrderManagement({
                         qty: event.target.value,
                       }))
                     }
-                    placeholder="Qty"
+                    placeholder={t("pos.order.qty", "Qty")}
                     type="number"
                     value={partDraft.qty}
                   />
@@ -2178,20 +2185,20 @@ function POSOrderManagement({
                         unitCost: event.target.value,
                       }))
                     }
-                    placeholder="Unit cost"
+                    placeholder={t("pos.order.unitCost", "Unit cost")}
                     type="number"
                     value={partDraft.unitCost}
                   />
                 </div>
                 <Button onClick={addPartItem} type="button" variant="outline">
-                  Add part
+                  {t("pos.order.addPart", "Add part")}
                 </Button>
               </div>
 
               <div className="card-list-scrollbar mt-3 max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                 {orderForm.parts.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-                    No parts added.
+                    {t("pos.order.noPartsAdded", "No parts added.")}
                   </p>
                 ) : (
                   orderForm.parts.map((item) => (
@@ -2204,7 +2211,7 @@ function POSOrderManagement({
                           {item.name}
                         </p>
                         <p className="text-slate-600">
-                          Qty {item.qty} x {formatEuro(item.unitCost)}
+                          {t("pos.order.qtyShort", "Qty")} {item.qty} x {formatEuro(item.unitCost)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -2221,7 +2228,7 @@ function POSOrderManagement({
                           onClick={removePartItem(item.id)}
                           type="button"
                         >
-                          Remove
+                          {t("actions.remove", "Remove")}
                         </button>
                       </div>
                     </div>
@@ -2232,7 +2239,7 @@ function POSOrderManagement({
 
             <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900">
-                Add labour items
+                {t("pos.order.addLabourItems", "Add labour items")}
               </h3>
               <div className="mt-3 grid gap-2">
                 <Input
@@ -2242,7 +2249,7 @@ function POSOrderManagement({
                       name: event.target.value,
                     }))
                   }
-                  placeholder="Labour task"
+                  placeholder={t("pos.order.labourTask", "Labour task")}
                   value={labourDraft.name}
                 />
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -2254,7 +2261,7 @@ function POSOrderManagement({
                         hours: event.target.value,
                       }))
                     }
-                    placeholder="Hours"
+                    placeholder={t("pos.order.hours", "Hours")}
                     type="number"
                     value={labourDraft.hours}
                   />
@@ -2266,20 +2273,20 @@ function POSOrderManagement({
                         rate: event.target.value,
                       }))
                     }
-                    placeholder="Rate/hr"
+                    placeholder={t("pos.order.ratePerHour", "Rate/hr")}
                     type="number"
                     value={labourDraft.rate}
                   />
                 </div>
                 <Button onClick={addLabourItem} type="button" variant="outline">
-                  Add labour
+                  {t("pos.order.addLabour", "Add labour")}
                 </Button>
               </div>
 
               <div className="card-list-scrollbar mt-3 max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                 {orderForm.labour.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-                    No labour items added.
+                    {t("pos.order.noLabourItemsAdded", "No labour items added.")}
                   </p>
                 ) : (
                   orderForm.labour.map((item) => (
@@ -2309,7 +2316,7 @@ function POSOrderManagement({
                           onClick={removeLabourItem(item.id)}
                           type="button"
                         >
-                          Remove
+                          {t("actions.remove", "Remove")}
                         </button>
                       </div>
                     </div>
@@ -2322,9 +2329,9 @@ function POSOrderManagement({
           <div
             className={`rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm ${completionMode ? "" : "hidden"}`}
           >
-            <h3 className="text-lg font-semibold text-slate-900">
-              Upload images/documents
-            </h3>
+              <h3 className="text-lg font-semibold text-slate-900">
+                {t("pos.order.uploadImagesDocuments", "Upload images/documents")}
+              </h3>
             <div className="mt-3 grid gap-3">
               <Input
                 accept="image/*,.pdf,.doc,.docx"
@@ -2337,7 +2344,7 @@ function POSOrderManagement({
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold text-slate-800">
-                      Uploaded files ({attachmentPreviews.length})
+                      {t("pos.order.uploadedFiles", "Uploaded files")} ({attachmentPreviews.length})
                     </p>
                     <button
                       className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
@@ -2345,7 +2352,7 @@ function POSOrderManagement({
                       type="button"
                     >
                       <Trash2 size={12} />
-                      Clear all
+                      {t("actions.clearAll", "Clear all")}
                     </button>
                   </div>
                   <div className="card-list-scrollbar mt-3 grid max-h-[18rem] grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -2391,7 +2398,7 @@ function POSOrderManagement({
                 </div>
               ) : (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-                  No files attached.
+                  {t("pos.order.noFilesAttached", "No files attached.")}
                 </p>
               )}
               <Textarea
@@ -2401,7 +2408,7 @@ function POSOrderManagement({
                     notes: event.target.value,
                   }))
                 }
-                placeholder="Optional internal notes"
+                placeholder={t("pos.order.optionalInternalNotes", "Optional internal notes")}
                 rows={2}
                 value={orderForm.notes}
               />
@@ -2410,28 +2417,30 @@ function POSOrderManagement({
 
           {completionMode ? (
             <div className="rounded-3xl border border-emerald-200/70 bg-emerald-50/40 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">
-                Generate service invoice
+                <h3 className="text-lg font-semibold text-slate-900">
+                {t("pos.order.generateServiceInvoice", "Generate service invoice")}
               </h3>
               <p className="mt-1 text-sm text-slate-600">
-                Add final replaced parts and labour above, then send invoice to
-                fleet owner for completion confirmation.
+                {t(
+                  "pos.order.generateServiceInvoiceDesc",
+                  "Add final replaced parts and labour above, then send invoice to fleet owner for completion confirmation.",
+                )}
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-emerald-200 bg-white p-3 text-xs">
-                  <p className="text-slate-500">Service request</p>
+                  <p className="text-slate-500">{t("pos.order.serviceRequest", "Service request")}</p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
                     {completionRequestId || "N/A"}
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-200 bg-white p-3 text-xs">
-                  <p className="text-slate-500">POS order</p>
+                  <p className="text-slate-500">{t("pos.order.posOrder", "POS order")}</p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
                     {completionPosOrderId || orderForm.id || "N/A"}
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-200 bg-white p-3 text-xs">
-                  <p className="text-slate-500">Invoice total</p>
+                  <p className="text-slate-500">{t("pos.order.invoiceTotal", "Invoice total")}</p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
                     {formatEuro(totals.total)}
                   </p>
@@ -2447,10 +2456,10 @@ function POSOrderManagement({
                   {isCompletionSubmitting ? (
                     <>
                       <Loader2 className="mr-2 size-4 animate-spin" />
-                      Submitting invoice...
+                      {t("pos.order.submittingInvoice", "Submitting invoice...")}
                     </>
                   ) : (
-                    "Send invoice to fleet owner"
+                    t("pos.order.sendInvoiceToFleetOwner", "Send invoice to fleet owner")
                   )}
                 </Button>
               </div>
@@ -2460,28 +2469,30 @@ function POSOrderManagement({
           <div
             className={`rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm ${completionMode ? "" : "hidden"}`}
           >
-            <h3 className="text-lg font-semibold text-slate-900">
-              Edit order before submission
+              <h3 className="text-lg font-semibold text-slate-900">
+              {t("pos.order.editOrderBeforeSubmission", "Edit order before submission")}
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Modify any details, parts, labour, files, then save as draft or
-              submit.
+              {t(
+                "pos.order.editOrderBeforeSubmissionDesc",
+                "Modify any details, parts, labour, files, then save as draft or submit.",
+              )}
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <p className="text-slate-500">Parts total</p>
+                <p className="text-slate-500">{t("pos.order.partsTotal", "Parts total")}</p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">
                   {formatEuro(totals.partsTotal)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <p className="text-slate-500">Labour total</p>
+                <p className="text-slate-500">{t("pos.order.labourTotal", "Labour total")}</p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">
                   {formatEuro(totals.labourTotal)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <p className="text-slate-500">Order total</p>
+                <p className="text-slate-500">{t("pos.order.orderTotal", "Order total")}</p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">
                   {formatEuro(totals.total)}
                 </p>
@@ -2506,12 +2517,12 @@ function POSOrderManagement({
                   setOrderForm(createInitialForm(selectedVehicle));
                   setSelectedDraftId("");
                   setActiveStep(0);
-                  setFeedback("Form reset.");
+                  setFeedback(t("pos.order.formReset", "Form reset."));
                 }}
                 type="button"
                 variant="secondary"
               >
-                Reset form
+                {t("pos.order.resetForm", "Reset form")}
               </Button>
             </div>
           </div>
@@ -2519,17 +2530,16 @@ function POSOrderManagement({
 
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">
-              Checked-in vehicles and services
+              <h3 className="text-lg font-semibold text-slate-900">
+              {t("pos.order.checkedInVehiclesAndServices", "Checked-in vehicles and services")}
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Create orders from bookings that have already been checked in by
-              POS.
+              {t("pos.order.checkedInVehiclesDesc", "Create orders from bookings that have already been checked in by POS.")}
             </p>
             <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-2 overflow-y-auto pr-1">
               {checkedInRequests.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-                  No checked-in vehicles waiting for order creation.
+                  {t("pos.order.noCheckedInVehicles", "No checked-in vehicles waiting for order creation.")}
                 </p>
               ) : (
                 checkedInRequests.map((request) => {
@@ -2547,11 +2557,11 @@ function POSOrderManagement({
                       <p className="mt-1 text-slate-600">
                         {vehicleMatch?.plate ||
                           request.vehicleModel ||
-                          "Vehicle N/A"}{" "}
+                          t("common.vehicleNA", "Vehicle N/A")}{" "}
                         | {request.requestedBy}
                       </p>
                       <p className="mt-1 text-slate-500">
-                        Check-in:{" "}
+                        {t("pos.order.checkIn", "Check-in")}:{" "}
                         {formatDateTime(
                           request.checkIn?.checkedInAt || request.updatedAt,
                         )}
@@ -2574,16 +2584,16 @@ function POSOrderManagement({
           </div>
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">
-              Draft orders
-            </h3>
+              <h3 className="text-lg font-semibold text-slate-900">
+              {t("pos.order.draftOrders", "Draft orders")}
+              </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Resume and edit saved drafts before submission.
+              {t("pos.order.resumeDrafts", "Resume and edit saved drafts before submission.")}
             </p>
             <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
               {posOrderState.draftOrders.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-                  No draft orders.
+                  {t("pos.order.noDraftOrders", "No draft orders.")}
                 </p>
               ) : (
                 posOrderState.draftOrders.map((draft) => (
@@ -2599,8 +2609,8 @@ function POSOrderManagement({
                       {draft.id} - {draft.serviceType}
                     </p>
                     <p className="mt-1 text-slate-600">
-                      {draft.vehiclePlate || draft.vehicleId || "Vehicle N/A"} |
-                      Priority {draft.priority}
+                      {draft.vehiclePlate || draft.vehicleId || t("common.vehicleNA", "Vehicle N/A")} |
+                      {" "}{t("pos.order.priority", "Priority")} {translatePriority(draft.priority)}
                     </p>
                     <div className="mt-2 flex gap-2">
                       <Button
@@ -2636,16 +2646,16 @@ function POSOrderManagement({
           </div>
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">
-              Duplicate previous order
-            </h3>
+              <h3 className="text-lg font-semibold text-slate-900">
+              {t("pos.order.duplicatePreviousOrder", "Duplicate previous order")}
+              </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Clone submitted orders as new drafts.
+              {t("pos.order.cloneSubmittedOrders", "Clone submitted orders as new drafts.")}
             </p>
             <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
               {posOrderState.submittedOrders.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-                  No submitted orders yet.
+                  {t("pos.order.noSubmittedOrdersYet", "No submitted orders yet.")}
                 </p>
               ) : (
                 posOrderState.submittedOrders.slice(0, 8).map((order) => (
@@ -2657,7 +2667,7 @@ function POSOrderManagement({
                       {order.id} - {order.serviceType}
                     </p>
                     <p className="mt-1 text-slate-600">
-                      {order.vehiclePlate || order.vehicleId || "Vehicle N/A"} |{" "}
+                      {order.vehiclePlate || order.vehicleId || t("common.vehicleNA", "Vehicle N/A")} |{" "}
                       {formatEuro(order.total)}
                     </p>
                     <div className="mt-2 flex gap-2">
@@ -2700,10 +2710,10 @@ function POSOrderManagement({
               <Loader2 className="size-5 animate-spin" />
             </span>
             <p className="mt-3 text-sm font-semibold text-slate-900">
-              Sending invoice...
+              {t("pos.order.sendingInvoice", "Sending invoice...")}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Preparing billing lines and sharing with fleet owner.
+              {t("pos.order.preparingBillingLines", "Preparing billing lines and sharing with fleet owner.")}
             </p>
           </div>
         </div>
@@ -2722,7 +2732,7 @@ function POSOrderManagement({
             <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                  Invoice ID
+                  {t("pos.order.invoiceId", "Invoice ID")}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   {completionPopup.invoiceId || "N/A"}
@@ -2730,7 +2740,7 @@ function POSOrderManagement({
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                  Request ID
+                  {t("pos.order.requestId", "Request ID")}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   {completionPopup.requestId || "N/A"}
@@ -2738,7 +2748,7 @@ function POSOrderManagement({
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                  Vehicle
+                  {t("pos.order.vehicle", "Vehicle")}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   {completionPopup.vehicleId || "N/A"}
@@ -2746,7 +2756,7 @@ function POSOrderManagement({
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                  Service
+                  {t("pos.order.service", "Service")}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   {completionPopup.serviceType || "N/A"}
@@ -2754,16 +2764,16 @@ function POSOrderManagement({
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                  Lines
+                  {t("pos.order.lines", "Lines")}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
-                  Parts {completionPopup.partsCount} • Labour{" "}
+                  {t("pos.order.parts", "Parts")} {completionPopup.partsCount} • {t("pos.order.labour", "Labour")}{" "}
                   {completionPopup.labourCount}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                  Invoice Total
+                  {t("pos.order.invoiceTotal", "Invoice total")}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   {formatEuro(completionPopup.total)}
@@ -2777,7 +2787,7 @@ function POSOrderManagement({
 
             <div className="mt-4 flex items-center justify-between gap-2">
               <p className="text-xs text-slate-500">
-                Redirecting to approval details...
+                {t("pos.order.redirectingToApprovalDetails", "Redirecting to approval details...")}
               </p>
               <Button
                 onClick={() => {
@@ -2792,7 +2802,7 @@ function POSOrderManagement({
                 size="sm"
                 type="button"
               >
-                Open details now
+                {t("pos.order.openDetailsNow", "Open details now")}
               </Button>
             </div>
           </div>
@@ -2813,7 +2823,7 @@ function POSOrderManagement({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Order details
+                  {t("pos.order.orderDetails", "Order details")}
                 </p>
                 <h3 className="mt-1 text-xl font-semibold text-slate-900">
                   {modalOrder.id} - {modalOrder.serviceType}
@@ -2821,15 +2831,15 @@ function POSOrderManagement({
                 <p className="mt-1 text-sm text-slate-600">
                   {modalOrder.vehiclePlate ||
                     modalOrder.vehicleId ||
-                    "Vehicle N/A"}{" "}
+                    t("common.vehicleNA", "Vehicle N/A")}{" "}
                   |{" "}
                   {detailsModal.source === "draft"
-                    ? "Draft order"
-                    : "Submitted order"}
+                    ? t("pos.order.draftOrder", "Draft order")
+                    : t("pos.order.submittedOrder", "Submitted order")}
                 </p>
               </div>
               <button
-                aria-label="Close details"
+                aria-label={t("pos.order.closeDetails", "Close details")}
                 className="rounded-full border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100"
                 onClick={closeOrderDetails}
                 type="button"
@@ -2840,25 +2850,25 @@ function POSOrderManagement({
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <p className="text-slate-500">Priority</p>
+                <p className="text-slate-500">{t("pos.order.priority", "Priority")}</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   {modalOrder.priority}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <p className="text-slate-500">Parts total</p>
+                <p className="text-slate-500">{t("pos.order.partsTotal", "Parts total")}</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   {formatEuro(modalOrder.partsTotal || 0)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <p className="text-slate-500">Labour total</p>
+                <p className="text-slate-500">{t("pos.order.labourTotal", "Labour total")}</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   {formatEuro(modalOrder.labourTotal || 0)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <p className="text-slate-500">Order total</p>
+                <p className="text-slate-500">{t("pos.order.orderTotal", "Order total")}</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   {formatEuro(modalOrder.total || 0)}
                 </p>
@@ -2868,43 +2878,43 @@ function POSOrderManagement({
             <div className="mt-5 grid gap-6 xl:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <h4 className="text-sm font-semibold text-slate-900">
-                  Core details
+                  {t("pos.order.coreDetails", "Core details")}
                 </h4>
                 <div className="mt-3 space-y-1.5 text-xs text-slate-700">
                   <p>
-                    Service type:{" "}
+                    {t("pos.order.serviceType", "Service type")}:{" "}
                     <span className="font-semibold">
-                      {modalOrder.serviceType || "N/A"}
+                      {modalOrder.serviceType || t("common.notAvailable", "N/A")}
                     </span>
                   </p>
                   <p>
-                    Problem type:{" "}
+                    {t("pos.order.problemType", "Problem type")}:{" "}
                     <span className="font-semibold">
-                      {modalOrder.problemType || "N/A"}
+                      {modalOrder.problemType || t("common.notAvailable", "N/A")}
                     </span>
                   </p>
                   <p>
-                    Created:{" "}
+                    {t("pos.order.created", "Created")}:{" "}
                     <span className="font-semibold">
                       {formatDateTime(modalOrder.createdAt)}
                     </span>
                   </p>
                   <p>
-                    Updated:{" "}
+                    {t("pos.order.updated", "Updated")}:{" "}
                     <span className="font-semibold">
                       {formatDateTime(modalOrder.updatedAt)}
                     </span>
                   </p>
                   <p>
-                    Submitted:{" "}
+                    {t("pos.order.submitted", "Submitted")}:{" "}
                     <span className="font-semibold">
                       {formatDateTime(modalOrder.submittedAt)}
                     </span>
                   </p>
                   <p>
-                    Submitted by:{" "}
+                    {t("pos.order.submittedBy", "Submitted by")}:{" "}
                     <span className="font-semibold">
-                      {modalOrder.submittedBy || "N/A"}
+                      {modalOrder.submittedBy || t("common.notAvailable", "N/A")}
                     </span>
                   </p>
                 </div>
@@ -2913,13 +2923,13 @@ function POSOrderManagement({
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                   <FileText size={14} />
-                  Description and notes
+                  {t("pos.order.descriptionAndNotes", "Description and notes")}
                 </h4>
                 <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-                  {modalOrder.description || "No description provided."}
+                  {modalOrder.description || t("pos.order.noDescriptionProvided", "No description provided.")}
                 </p>
                 <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-                  {modalOrder.notes || "No internal notes."}
+                  {modalOrder.notes || t("pos.order.noInternalNotes", "No internal notes.")}
                 </p>
               </div>
             </div>
@@ -2927,12 +2937,12 @@ function POSOrderManagement({
             <div className="mt-5 grid gap-6 xl:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <h4 className="text-sm font-semibold text-slate-900">
-                  Parts items
+                  {t("pos.order.partsItems", "Parts items")}
                 </h4>
                 <div className="card-list-scrollbar mt-3 max-h-[14rem] space-y-2 overflow-y-auto pr-1">
                   {modalParts.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-                      No parts items.
+                      {t("pos.order.noPartsItems", "No parts items.")}
                     </p>
                   ) : (
                     modalParts.map((item) => (
@@ -2944,7 +2954,7 @@ function POSOrderManagement({
                           {item.name}
                         </p>
                         <p className="text-slate-600">
-                          Qty {item.qty} x {formatEuro(item.unitCost)}
+                          {t("pos.order.qtyShort", "Qty")} {item.qty} x {formatEuro(item.unitCost)}
                         </p>
                         <p className="font-semibold text-slate-900">
                           {formatEuro(item.total)}
@@ -2957,12 +2967,12 @@ function POSOrderManagement({
 
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <h4 className="text-sm font-semibold text-slate-900">
-                  Labour items
+                  {t("pos.order.labourItems", "Labour items")}
                 </h4>
                 <div className="card-list-scrollbar mt-3 max-h-[14rem] space-y-2 overflow-y-auto pr-1">
                   {modalLabour.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-                      No labour items.
+                      {t("pos.order.noLabourItems", "No labour items.")}
                     </p>
                   ) : (
                     modalLabour.map((item) => (
@@ -2988,12 +2998,12 @@ function POSOrderManagement({
 
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
               <h4 className="text-sm font-semibold text-slate-900">
-                Attachments
+                  {t("pos.order.attachments", "Attachments")}
               </h4>
               <div className="card-list-scrollbar mt-3 max-h-[10rem] space-y-2 overflow-y-auto pr-1">
                 {modalAttachments.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-                    No attachments added.
+                    {t("pos.order.noAttachmentsAdded", "No attachments added.")}
                   </p>
                 ) : (
                   modalAttachments.map((file) => (

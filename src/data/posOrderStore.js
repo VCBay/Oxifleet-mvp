@@ -1,3 +1,8 @@
+import {
+  getSeedVehicleSnapshot,
+  isLegacySeedVehicleModel,
+} from "./seedVehicleCatalog";
+
 const STORAGE_KEY = "oxifleet:pos-orders";
 
 const readStorage = () => {
@@ -83,6 +88,7 @@ const normalizeTyreSelection = (item = {}) => ({
 });
 
 const normalizeOrder = (order = {}, forcedStatus) => {
+  const seedVehicle = getSeedVehicleSnapshot(order.vehicleId);
   const parts = Array.isArray(order.parts) ? order.parts.map(normalizePartItem) : [];
   const labour = Array.isArray(order.labour)
     ? order.labour.map(normalizeLabourItem)
@@ -111,7 +117,10 @@ const normalizeOrder = (order = {}, forcedStatus) => {
     id: String(order.id || createId("POSO")).trim(),
     status,
     vehicleId: String(order.vehicleId || "").trim(),
-    vehiclePlate: String(order.vehiclePlate || "").trim(),
+    vehiclePlate:
+      String(order.vehiclePlate || "").trim() ||
+      seedVehicle?.plate ||
+      "",
     requestId: String(order.requestId || "").trim(),
     srCode: String(order.srCode || "").trim(),
     driverName: String(order.driverName || "").trim(),
@@ -128,6 +137,10 @@ const normalizeOrder = (order = {}, forcedStatus) => {
       String(order.verifiedOdometerUnit || "km").trim().toLowerCase() === "miles"
         ? "miles"
         : "km",
+    vehicleModel:
+      order.vehicleModel && !isLegacySeedVehicleModel(order.vehicleModel)
+        ? String(order.vehicleModel).trim()
+        : seedVehicle?.model || String(order.vehicleModel || "").trim(),
     serviceType: String(order.serviceType || "General service").trim(),
     problemType: String(order.problemType || "").trim(),
     description: String(order.description || "").trim(),

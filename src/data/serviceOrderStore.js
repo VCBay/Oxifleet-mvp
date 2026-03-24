@@ -1,4 +1,8 @@
 import { updateVehicle } from "./vehicleStore";
+import {
+  getSeedVehicleSnapshot,
+  isLegacySeedVehicleModel,
+} from "./seedVehicleCatalog";
 
 const STORAGE_KEY = "oxifleet:service-orders";
 
@@ -139,6 +143,11 @@ const normalizeRecommendation = (recommendation = null) => {
 const normalizeOrder = (order = {}) => {
   const emergency = Boolean(order.emergency);
   const status = String(order.status || "Pending").trim() || "Pending";
+  const seedVehicle = getSeedVehicleSnapshot(order.vehicleId);
+  const nextVehicleModel =
+    order.vehicleModel && !isLegacySeedVehicleModel(order.vehicleModel)
+      ? String(order.vehicleModel).trim()
+      : seedVehicle?.model || String(order.vehicleModel || "").trim();
   const lifecycle = Array.isArray(order.lifecycle)
     ? order.lifecycle.map(normalizeLifecycleEntry)
     : [
@@ -153,7 +162,7 @@ const normalizeOrder = (order = {}) => {
   return {
     id: String(order.id || createOrderId()).trim(),
     vehicleId: String(order.vehicleId || "N/A").trim(),
-    vehicleModel: String(order.vehicleModel || "Unknown vehicle").trim(),
+    vehicleModel: nextVehicleModel || "Unknown vehicle",
     serviceType: String(order.serviceType || "General service").trim(),
     requestTitle: String(order.requestTitle || "Service request").trim(),
     requestedBy: String(order.requestedBy || "Ops team").trim(),

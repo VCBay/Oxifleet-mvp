@@ -1,3 +1,8 @@
+import {
+  getSeedVehicleSnapshot,
+  isLegacySeedVehicleModel,
+} from "./seedVehicleCatalog";
+
 const STORAGE_KEY = "oxifleet:billing-finance";
 
 const readStorage = () => {
@@ -48,6 +53,11 @@ const normalizeInvoice = (invoice = {}) => {
   const services = Array.isArray(invoice.services)
     ? invoice.services.map(normalizeServiceLine)
     : [];
+  const seedVehicle = getSeedVehicleSnapshot(invoice.vehicleId);
+  const vehicleModel =
+    invoice.vehicleModel && !isLegacySeedVehicleModel(invoice.vehicleModel)
+      ? String(invoice.vehicleModel).trim()
+      : seedVehicle?.model || String(invoice.vehicleModel || "").trim();
 
   const totalAmount =
     invoice.totalAmount !== undefined
@@ -58,7 +68,7 @@ const normalizeInvoice = (invoice = {}) => {
     id: String(invoice.id || createId("INV")).trim(),
     orderId: String(invoice.orderId || "N/A").trim(),
     vehicleId: String(invoice.vehicleId || "N/A").trim(),
-    vehicleModel: String(invoice.vehicleModel || "Unknown vehicle").trim(),
+    vehicleModel: vehicleModel || "Unknown vehicle",
     driverName: String(invoice.driverName || "Unassigned").trim(),
     location: String(invoice.location || "N/A").trim(),
     date: toIsoDate(invoice.date),

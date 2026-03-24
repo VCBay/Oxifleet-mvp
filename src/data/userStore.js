@@ -14,6 +14,13 @@ const users = [
     role: "ops_admin",
   },
   {
+    id: "8aaf",
+    name: "Karl",
+    email: "karl.weber@oxifleet.com",
+    password: "1234567890",
+    role: "ops_admin",
+  },
+  {
     id: "8aaa",
     name: "Manoj Patil",
     email: "manoj@vcbay.co",
@@ -65,7 +72,7 @@ const normalizeEmail = (email) => email?.toLowerCase();
 export const registerUser = ({ name, email, password, role = "ops_admin" }) => {
   const normalizedEmail = normalizeEmail(email);
   const exists = users.some(
-    (user) => normalizeEmail(user.email) === normalizedEmail
+    (user) => normalizeEmail(user.email) === normalizedEmail,
   );
   if (exists) {
     throw new Error("Email already exists");
@@ -87,6 +94,6 @@ export const findUserByCredentials = (email, password) => {
   return users.find(
     (user) =>
       normalizeEmail(user.email) === normalizedEmail &&
-      user.password === password
+      user.password === password,
   );
 };

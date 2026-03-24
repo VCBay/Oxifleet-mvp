@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { useTranslation } from "../i18n/useTranslation";
 
 const getInitials = (name) => {
   const raw = String(name || "").trim();
@@ -92,6 +93,7 @@ function DriverManagement({
   onDriverAccessChange,
   onRemoveDriver,
 }) {
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState("all");
   const [accessFilter, setAccessFilter] = useState("all");
   const [complianceFilter, setComplianceFilter] = useState("all");
@@ -134,46 +136,46 @@ function DriverManagement({
   const driverOverviewCards = [
     {
       key: "total",
-      title: "Total drivers",
+      title: t("fleet.driverManagement.cards.totalDrivers"),
       value: summary.total,
-      helper: "Registered in tenant",
-      status: "Roster synced",
+      helper: t("fleet.driverManagement.cards.registeredInTenant"),
+      status: t("fleet.driverManagement.cards.rosterSynced"),
       tone: "good",
       icon: Users,
     },
     {
       key: "driving",
-      title: "Driving now",
+      title: t("fleet.driverManagement.cards.drivingNow"),
       value: summary.driving,
-      helper: "Currently on route",
-      status: "Live duty",
+      helper: t("fleet.driverManagement.cards.currentlyOnRoute"),
+      status: t("fleet.driverManagement.cards.liveDuty"),
       tone: "good",
       icon: Activity,
     },
     {
       key: "active",
-      title: "Active standby",
+      title: t("fleet.driverManagement.cards.activeStandby"),
       value: summary.active,
-      helper: "Ready for assignments",
-      status: "On standby",
+      helper: t("fleet.driverManagement.cards.readyForAssignments"),
+      status: t("fleet.driverManagement.cards.onStandby"),
       tone: "info",
       icon: BadgeCheck,
     },
     {
       key: "idle",
-      title: "Idle",
+      title: t("fleet.driverManagement.status.idle"),
       value: summary.idle,
-      helper: "No active trip",
-      status: "Monitor queue",
+      helper: t("fleet.driverManagement.cards.noActiveTrip"),
+      status: t("fleet.driverManagement.cards.monitorQueue"),
       tone: "warn",
       icon: CarFront,
     },
     {
       key: "compliance",
-      title: "Avg compliance",
+      title: t("fleet.driverManagement.cards.avgCompliance"),
       value: `${summary.avgCompliance}%`,
-      helper: "Fleet compliance average",
-      status: summary.avgCompliance >= 90 ? "Excellent" : "Watch",
+      helper: t("fleet.driverManagement.cards.fleetComplianceAverage"),
+      status: summary.avgCompliance >= 90 ? t("fleet.driverManagement.cards.excellent") : t("fleet.driverManagement.cards.watch"),
       tone: summary.avgCompliance >= 90 ? "good" : "warn",
       icon: ShieldCheck,
     },
@@ -283,17 +285,16 @@ function DriverManagement({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[16px] font-semibold uppercase tracking-[0.24em] text-white/70">
-              Driver Cockpit
+              {t("fleet.driverManagement.headerTitle")}
             </p>
 
             <p className="mt-2 max-w-3xl text-xs text-white/50 sm:text-sm">
-              Monitor driver activity, compliance, access, assignment and service
-              history from one responsive control surface.
+              {t("fleet.driverManagement.headerDesc")}
             </p>
           </div>
           <Button onClick={onAddDriverClick} type="button" className="h-10 w-full justify-center text-sm sm:w-auto text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">
             <Plus size={15} />
-            Add driver
+            {t("fleet.driverManagement.addDriver")}
           </Button>
         </div>
       </header>
@@ -348,13 +349,13 @@ function DriverManagement({
               onChange={(event) => onSearchQueryChange(event.target.value)}
               placeholder={
                 isMobileView
-                  ? "Search name, ID, email or license"
-                  : "Search by name, ID, email, license or assigned vehicle"
+                  ? t("fleet.driverManagement.searchMobile")
+                  : t("fleet.driverManagement.searchDesktop")
               }
             />
             {searchQuery ? (
               <button
-                aria-label="Clear search"
+                aria-label={t("fleet.driverManagement.clearSearch")}
                 className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                 onClick={() => onSearchQueryChange("")}
                 type="button"
@@ -404,7 +405,7 @@ function DriverManagement({
             </button>
           ))}
           <span className="ml-auto rounded-full px-2.5 py-1 text-[11px] font-semibold text-slate-600 sm:px-3 sm:text-xs">
-            {filteredDrivers.length} matched
+            {t("fleet.driverManagement.matched", { count: filteredDrivers.length })}
           </span>
         </div>
       </section>
@@ -457,7 +458,7 @@ function DriverManagement({
                             {driver.name}
                           </p>
                           <p className={`text-[11px] ${isSelected ? "text-white/70" : "text-slate-500"}`}>
-                            {driver.id} | {assignedVehicle?.id || "Unassigned"}
+                            {driver.id} | {assignedVehicle?.id || t("fleet.driverManagement.unassigned")}
                           </p>
                         </div>
                       </div>
@@ -474,7 +475,7 @@ function DriverManagement({
                     <div className="mt-3">
                       <div className="mb-1 flex items-center justify-between text-[11px]">
                         <span className={isSelected ? "text-white/70" : "text-slate-500"}>
-                          Compliance
+                          {t("fleet.driverManagement.compliance")}
                         </span>
                         <span className="font-semibold">{complianceScore}%</span>
                       </div>
@@ -497,9 +498,9 @@ function DriverManagement({
             ) : (
               <div className="grid h-full min-h-[260px] place-items-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
                 <div>
-                  <p className="text-sm font-semibold text-slate-700">No drivers matched</p>
+                  <p className="text-sm font-semibold text-slate-700">{t("fleet.driverManagement.noDriversMatched")}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Change filters or add a new driver.
+                    {t("fleet.driverManagement.noDriversMatchedDesc")}
                   </p>
                 </div>
               </div>
@@ -521,7 +522,7 @@ function DriverManagement({
               type="button"
             >
               <ArrowLeft size={14} />
-              Back to driver list
+              {t("fleet.driverManagement.backToDriverList")}
             </button>
           ) : null}
           {selectedDriver ? (
@@ -539,7 +540,7 @@ function DriverManagement({
                   </div>
                   <Button onClick={onRemoveDriver(selectedDriver.id)} type="button" variant="destructive">
                     <UserMinus size={14} />
-                    Remove
+                    {t("actions.remove")}
                   </Button>
                 </div>
               </div>
@@ -547,17 +548,17 @@ function DriverManagement({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Assign/unassign vehicle
+                    {t("fleet.driverManagement.assignVehicle")}
                   </p>
                   <Select
                     value={selectedDriver.assignedVehicleId || "unassigned"}
                     onValueChange={onDriverAssignmentChange(selectedDriver.id)}
                   >
                     <SelectTrigger className="mt-2 w-full bg-white">
-                      <SelectValue placeholder="Select vehicle" />
+                      <SelectValue placeholder={t("fleet.driverManagement.selectVehicle")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">{t("fleet.driverManagement.unassigned")}</SelectItem>
                       {assignmentVehicles.map((vehicle) => (
                         <SelectItem key={vehicle.id} value={vehicle.id}>
                           {vehicle.id} - {vehicle.model}
@@ -566,20 +567,20 @@ function DriverManagement({
                     </SelectContent>
                   </Select>
                   <p className="mt-2 text-xs text-slate-500">
-                    Current: {selectedAssignedVehicle ? selectedAssignedVehicle.id : "Unassigned"}
+                    {t("fleet.driverManagement.current")}: {selectedAssignedVehicle ? selectedAssignedVehicle.id : t("fleet.driverManagement.unassigned")}
                   </p>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Driver activity status
+                    {t("fleet.driverManagement.driverActivityStatus")}
                   </p>
                   <Select
                     value={selectedActivity}
                     onValueChange={onDriverActivityChange(selectedDriver.id)}
                   >
                     <SelectTrigger className="mt-2 w-full bg-white">
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder={t("fleet.driverManagement.selectStatus")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Active">Active</SelectItem>
@@ -600,14 +601,14 @@ function DriverManagement({
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Driver access control
+                    {t("fleet.driverManagement.driverAccessControl")}
                   </p>
                   <Select
                     value={selectedDriver.accessLevel || "Standard"}
                     onValueChange={onDriverAccessChange(selectedDriver.id)}
                   >
                     <SelectTrigger className="mt-2 w-full bg-white">
-                      <SelectValue placeholder="Select access level" />
+                      <SelectValue placeholder={t("fleet.driverManagement.selectAccessLevel")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Full">Full</SelectItem>
@@ -620,7 +621,7 @@ function DriverManagement({
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Driver compliance score
+                    {t("fleet.driverManagement.driverComplianceScore")}
                   </p>
                   <span
                     className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getComplianceClassName(
@@ -648,7 +649,7 @@ function DriverManagement({
 
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Driver service history
+                  {t("fleet.driverManagement.driverServiceHistory")}
                 </p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {selectedHistory.length > 0 ? (
@@ -666,7 +667,7 @@ function DriverManagement({
                     ))
                   ) : (
                     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-                      No service history available.
+                      {t("fleet.driverManagement.noServiceHistory")}
                     </div>
                   )}
                 </div>
@@ -675,10 +676,9 @@ function DriverManagement({
           ) : (
             <div className="grid min-h-[520px] place-items-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
               <div>
-                <p className="text-sm font-semibold text-slate-700">No driver selected</p>
+                <p className="text-sm font-semibold text-slate-700">{t("fleet.driverManagement.noDriverSelected")}</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Select a driver from the list to manage assignment, status, access
-                  and service history.
+                  {t("fleet.driverManagement.noDriverSelectedDesc")}
                 </p>
               </div>
             </div>

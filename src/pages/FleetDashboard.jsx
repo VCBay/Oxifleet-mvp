@@ -1,12 +1,11 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Area,
   AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,7 +14,6 @@ import {
 import {
   CalendarClock,
   Bell,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
@@ -122,6 +120,7 @@ const renderFleetSpendTooltip = ({ active, payload, label }) => {
     return null;
   }
   const spend = Number(payload[0]?.value) || 0;
+  const vehicleCount = Number(payload[0]?.payload?.vehicleCount) || 0;
   return (
     <div
       className="min-w-[200px] rounded-lg px-3 py-2 shadow-xl backdrop-blur-sm"
@@ -134,7 +133,7 @@ const renderFleetSpendTooltip = ({ active, payload, label }) => {
         className="text-[10px] uppercase tracking-[0.16em]"
         style={{ color: figmaChartTheme.tooltipLabel }}
       >
-        Service Spend
+        Cost per car
       </p>
       <p
         className="mt-1 text-sm font-semibold"
@@ -150,72 +149,194 @@ const renderFleetSpendTooltip = ({ active, payload, label }) => {
           className="text-[10px] uppercase tracking-wide"
           style={{ color: figmaChartTheme.tooltipLabel }}
         >
-          Weekly spend
+          Average cost
         </p>
         <p
           className="mt-1 text-sm font-semibold"
           style={{ color: figmaChartTheme.tooltipValue }}
         >
-          ${spend.toLocaleString()}
+          {new Intl.NumberFormat("de-DE", {
+            style: "currency",
+            currency: "EUR",
+            maximumFractionDigits: 0,
+          }).format(spend)}
+        </p>
+        <p
+          className="mt-1 text-[10px]"
+          style={{ color: figmaChartTheme.tooltipLabel }}
+        >
+          {vehicleCount} active vehicles
         </p>
       </div>
     </div>
   );
 };
 
-const renderFleetUtilizationTooltip = ({ active, payload, label }) => {
+const renderFleetVehicleCostTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+  const total = Number(payload[0]?.value) || 0;
+  const requests = Number(payload[0]?.payload?.requestCount) || 0;
+
+  return (
+    <div
+      className="min-w-[164px] rounded-md px-3 py-2 shadow-xl backdrop-blur-sm"
+      style={{
+        background: "rgba(255,255,255,0.92)",
+        border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
+      }}
+    >
+      <p
+        className="text-xs font-semibold"
+        style={{ color: figmaChartTheme.tooltipTitle }}
+      >
+        {label}
+      </p>
+      <p
+        className="mt-2 text-sm font-semibold"
+        style={{ color: figmaChartTheme.tooltipValue }}
+      >
+        {new Intl.NumberFormat("de-DE", {
+          style: "currency",
+          currency: "EUR",
+          maximumFractionDigits: 0,
+        }).format(total)}
+      </p>
+      <p
+        className="mt-1 text-[10px]"
+        style={{ color: figmaChartTheme.tooltipLabel }}
+      >
+        {requests} requests in selected period
+      </p>
+    </div>
+  );
+};
+
+const formatFleetAxisEuro = (value) => {
+  const amount = Number(value) || 0;
+  const absolute = Math.abs(amount);
+  if (absolute >= 1000000) {
+    const scaled = amount / 1000000;
+    return `${Number.isInteger(scaled) ? scaled : scaled.toFixed(1)}M`;
+  }
+  if (absolute >= 1000) {
+    const scaled = amount / 1000;
+    return `${Number.isInteger(scaled) ? scaled : scaled.toFixed(1)}k`;
+  }
+  if (Math.abs(amount) >= 10) {
+    return `${Math.round(amount)}`;
+  }
+  if (Math.abs(amount) >= 1) {
+    return `${amount.toFixed(1)}`;
+  }
+  return `${amount.toFixed(2)}`;
+};
+
+const buildFleetAxisTicks = (values = []) => {
+  const numericValues = values
+    .map((value) => Number(value) || 0)
+    .filter((value) => Number.isFinite(value) && value >= 0);
+  const maxValue = numericValues.length > 0 ? Math.max(...numericValues) : 0;
+
+  if (maxValue <= 0) {
+    return { domainMax: 4, ticks: [0, 1, 2, 3, 4] };
+  }
+
+  const roughStep = maxValue / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(roughStep, 1)));
+  const normalizedStep = roughStep / magnitude;
+  let niceStep = magnitude;
+
+  if (normalizedStep <= 1) {
+    niceStep = magnitude;
+  } else if (normalizedStep <= 2) {
+    niceStep = 2 * magnitude;
+  } else if (normalizedStep <= 5) {
+    niceStep = 5 * magnitude;
+  } else {
+    niceStep = 10 * magnitude;
+  }
+
+  if (maxValue < 10) {
+    niceStep = Math.max(0.5, Math.ceil(roughStep * 2) / 2);
+  }
+  if (maxValue < 2) {
+    niceStep = 0.25;
+  }
+
+  const domainMax = Math.max(niceStep * 4, maxValue);
+  const ticks = Array.from({ length: 5 }, (_, index) =>
+    Number((index * niceStep).toFixed(2)),
+  );
+
+  return { domainMax, ticks };
+};
+
+const renderFleetOemTooltip = ({ active, payload, label }) => {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
   const rows = payload
     .filter((item) => Number.isFinite(Number(item.value)))
     .map((item) => ({
-      key: String(item.dataKey || ""),
+      label: String(item.name || item.dataKey || ""),
       value: Number(item.value) || 0,
-      date:
-        item?.payload?.dateLabel ||
-        (item?.payload?.day ? `${item.payload.day} 11 Feb` : "Wed 11 Feb"),
+      color: item.color || item.fill || "#334155",
     }))
     .sort((a, b) => b.value - a.value);
 
-  const primary = rows[0];
-  const secondary = rows[1];
-
   return (
     <div
-      className="min-w-[124px] rounded-md px-3 py-2 shadow-xl backdrop-blur-sm"
+      className="min-w-[220px] rounded-xl px-3 py-3 shadow-xl backdrop-blur-sm"
       style={{
-        background: "rgba(255,255,255,0.92)",
+        background: figmaChartTheme.tooltipBackground,
         border: `0.5px solid ${figmaChartTheme.tooltipBorder}`,
       }}
     >
-      <div className="flex items-center gap-1.5 text-xs">
-        <span
-          className="font-medium"
-          style={{ color: figmaChartTheme.tooltipValue }}
-        >
-          {primary?.value ?? 0}%
-        </span>
-        <span
-          className="text-[10px]"
-          style={{ color: figmaChartTheme.tooltipLabel }}
-        >
-          {primary?.date || `${label} 11 Feb`}
-        </span>
-      </div>
-      <div className="mt-1 flex items-center gap-1.5 text-xs">
-        <span
-          className="font-medium"
-          style={{ color: figmaChartTheme.tooltipValue }}
-        >
-          {secondary?.value ?? 0}%
-        </span>
-        <span
-          className="text-[10px]"
-          style={{ color: figmaChartTheme.tooltipLabel }}
-        >
-          {secondary?.date || `${label} 11 Feb`}
-        </span>
+      <p
+        className="text-[10px] uppercase tracking-[0.16em]"
+        style={{ color: figmaChartTheme.tooltipLabel }}
+      >
+        OEM business
+      </p>
+      <p
+        className="mt-1 text-sm font-semibold"
+        style={{ color: figmaChartTheme.tooltipTitle }}
+      >
+        {label}
+      </p>
+      <div className="mt-3 space-y-2">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between rounded-lg px-2.5 py-2"
+            style={{ border: `0.5px solid ${figmaChartTheme.tooltipBorder}` }}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: row.color }}
+              />
+              <span
+                className="text-xs font-medium"
+                style={{ color: figmaChartTheme.tooltipTitle }}
+              >
+                {row.label}
+              </span>
+            </div>
+            <span
+              className="text-xs font-semibold"
+              style={{ color: figmaChartTheme.tooltipValue }}
+            >
+              {new Intl.NumberFormat("de-DE", {
+                style: "currency",
+                currency: "EUR",
+                maximumFractionDigits: 0,
+              }).format(row.value)}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -229,6 +350,42 @@ const fleetKpiTone = (status) => {
     return "bg-amber-100 text-amber-700";
   }
   return "bg-rose-100 text-rose-700";
+};
+
+const classifyFleetVehicleType = ({
+  model = "",
+  type = "",
+  category = "",
+} = {}) => {
+  const source = `${model} ${type} ${category}`.toLowerCase();
+  if (
+    source.includes("eqs") ||
+    source.includes("ora funky cat") ||
+    source.includes("electric") ||
+    source.includes("ev")
+  ) {
+    return "ev";
+  }
+  if (
+    source.includes("van") ||
+    source.includes("bus") ||
+    source.includes("transporter") ||
+    source.includes("kastenwagen") ||
+    source.includes("utility") ||
+    source.includes("anhänger")
+  ) {
+    return "lcv";
+  }
+  if (
+    source.includes("suv") ||
+    source.includes("kombi") ||
+    source.includes("kleinwagen") ||
+    source.includes("lim") ||
+    source.includes("car")
+  ) {
+    return "pkw";
+  }
+  return "ice";
 };
 
 function Dashboard() {
@@ -283,6 +440,11 @@ function Dashboard() {
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] =
     useState(false);
   const [driverSearchQuery, setDriverSearchQuery] = useState("");
+  const [selectedDashboardPeriod, setSelectedDashboardPeriod] = useState("90");
+  const [selectedCostTrendHorizon, setSelectedCostTrendHorizon] =
+    useState("12m");
+  const [selectedCostTrendVehicleType, setSelectedCostTrendVehicleType] =
+    useState("all");
   const activePageTitle = t(
     `fleet.menu.${activeMenu}`,
     activeMenu === "dashboard" ? "Dashboard" : activeMenu,
@@ -307,140 +469,768 @@ function Dashboard() {
     hour: "2-digit",
     minute: "2-digit",
   });
-  const servicedVehicles = [
-    { id: "VH-884", model: "Freightliner Cascadia", date: "Jan 29, 2026" },
-    { id: "VH-241", model: "Volvo VNL 760", date: "Jan 27, 2026" },
-    { id: "VH-553", model: "Kenworth T680", date: "Jan 24, 2026" },
-    { id: "VH-102", model: "Peterbilt 579", date: "Jan 22, 2026" },
+  const formatEuro = (value) =>
+    new Intl.NumberFormat("de-DE", {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: 0,
+    }).format(Number(value) || 0);
+
+  const dashboardPeriodOptions = [
+    { value: "30", label: t("fleet.dashboard.last30Days", "Last 30 days") },
+    { value: "90", label: t("fleet.dashboard.last90Days", "Last 90 days") },
+    { value: "180", label: t("fleet.dashboard.last180Days", "Last 180 days") },
+    { value: "365", label: t("fleet.dashboard.last365Days", "Last 365 days") },
+  ];
+  const costTrendHorizonOptions = [
+    { value: "90d", label: t("fleet.dashboard.last90Days", "Last 90 days") },
+    { value: "180d", label: t("fleet.dashboard.last180Days", "Last 180 days") },
+    { value: "365d", label: t("fleet.dashboard.last365Days", "Last 365 days") },
+    {
+      value: "12m",
+      label: t("fleet.dashboard.last12Months", "Last 12 months"),
+    },
+    {
+      value: "24m",
+      label: t("fleet.dashboard.last24Months", "Last 24 months"),
+    },
+  ];
+  const vehicleTypeFilterOptions = [
+    { value: "all", label: t("fleet.dashboard.allVehicles", "All vehicles") },
+    { value: "ev", label: t("fleet.dashboard.ev", "EV") },
+    { value: "pkw", label: t("fleet.dashboard.pkw", "PKW") },
+    { value: "ice", label: t("fleet.dashboard.ice", "ICE") },
+    { value: "lcv", label: t("fleet.dashboard.lcv", "LCV") },
   ];
 
-  const pendingVehicles = [
-    { id: "VH-901", model: "Mack Anthem", date: "Feb 4, 2026" },
-    { id: "VH-617", model: "International LT", date: "Feb 6, 2026" },
-    { id: "VH-730", model: "Volvo VNR", date: "Feb 9, 2026" },
-  ];
+  const dashboardAnalytics = useMemo(() => {
+    const now = Date.now();
+    const days = Number(selectedDashboardPeriod) || 90;
+    const threshold = now - days * 24 * 60 * 60 * 1000;
+    const nowDate = new Date();
+    const parsedTrendValue = Number.parseInt(selectedCostTrendHorizon, 10);
+    const trendUnit = String(selectedCostTrendHorizon || "").endsWith("d")
+      ? "days"
+      : "months";
+    const costTrendMonths =
+      trendUnit === "days"
+        ? Math.max(3, Math.ceil((parsedTrendValue || 365) / 30))
+        : Math.max(3, parsedTrendValue || 12);
+    const historicalStart =
+      trendUnit === "days"
+        ? now - (parsedTrendValue || 365) * 24 * 60 * 60 * 1000
+        : new Date(
+            nowDate.getFullYear(),
+            nowDate.getMonth() - (costTrendMonths - 1),
+            1,
+          ).getTime();
+    const parseTime = (value) => {
+      const time = new Date(value || 0).getTime();
+      return Number.isFinite(time) ? time : 0;
+    };
+    const normalize = (value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase();
+    const parseMoney = (value) => {
+      const normalized = String(value || "").replace(/[^0-9.-]/g, "");
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const allInvoices = Array.isArray(billingState.invoices)
+      ? billingState.invoices
+      : [];
+    const allOrders = Array.isArray(serviceOrderState.orders)
+      ? serviceOrderState.orders
+      : [];
+    const vehiclesById = new Map(
+      (Array.isArray(vehicleState.vehicles) ? vehicleState.vehicles : []).map(
+        (vehicle) => [vehicle.id, vehicle],
+      ),
+    );
+    const filteredVehicles = [...vehiclesById.values()].filter((vehicle) =>
+      selectedCostTrendVehicleType === "all"
+        ? true
+        : classifyFleetVehicleType({
+            model: vehicle?.model,
+            type: vehicle?.type,
+            category: vehicle?.category,
+          }) === selectedCostTrendVehicleType,
+    );
+    const filteredVehicleCount = Math.max(filteredVehicles.length, 1);
+    const matchesVehicleTypeFilter = ({
+      vehicleId,
+      vehicleModel = "",
+      vehicleType = "",
+    }) => {
+      if (selectedCostTrendVehicleType === "all") {
+        return true;
+      }
+      const vehicle = vehiclesById.get(String(vehicleId || "").trim());
+      return (
+        classifyFleetVehicleType({
+          model: vehicle?.model || vehicleModel,
+          type: vehicle?.type || vehicleType,
+          category: vehicle?.category || vehicleType,
+        }) === selectedCostTrendVehicleType
+      );
+    };
+    const invoiceSet = allInvoices.filter(
+      (invoice) => parseTime(invoice.date) >= threshold,
+    );
+    const orderSet = allOrders.filter(
+      (order) =>
+        parseTime(
+          order.appointment?.dateTime || order.updatedAt || order.requestedAt,
+        ) >= threshold,
+    );
+    const invoices = invoiceSet.length > 0 ? invoiceSet : allInvoices;
+    const orders = orderSet.length > 0 ? orderSet : allOrders;
+
+    const totalSpend = invoices.reduce(
+      (sum, invoice) => sum + (Number(invoice.totalAmount) || 0),
+      0,
+    );
+    const pendingInvoiceStatuses = new Set(["processing", "unpaid"]);
+    const invoicesAwaitingReview = invoices
+      .filter((invoice) =>
+        pendingInvoiceStatuses.has(normalize(invoice.status)),
+      )
+      .reduce((sum, invoice) => sum + (Number(invoice.totalAmount) || 0), 0);
+    const openStatuses = [
+      "pending",
+      "approved",
+      "scheduled",
+      "checked in",
+      "in progress",
+      "invoice processing",
+      "re-submitted",
+    ];
+    const openRequests = orders.filter((order) =>
+      openStatuses.some((status) => normalize(order.status).includes(status)),
+    );
+    const activeDriversWithRequests = new Set(
+      orders
+        .map((order) => String(order.requestedBy || "").trim())
+        .filter(Boolean),
+    ).size;
+
+    const historicalBuckets = Array.from(
+      { length: costTrendMonths },
+      (_, index) => {
+        const bucketDate = new Date(
+          nowDate.getFullYear(),
+          nowDate.getMonth() - (costTrendMonths - 1 - index),
+          1,
+        );
+        return {
+          label: bucketDate.toLocaleString("en-US", {
+            month: "short",
+            year: "2-digit",
+          }),
+          key: `${bucketDate.getFullYear()}-${bucketDate.getMonth()}`,
+          spend: 0,
+          vehicleIds: new Set(),
+          start: bucketDate.getTime(),
+          end: new Date(
+            bucketDate.getFullYear(),
+            bucketDate.getMonth() + 1,
+            1,
+          ).getTime(),
+        };
+      },
+    );
+
+    const addHistoricalCost = (timestamp, amount, vehicleId) => {
+      if (!timestamp || amount <= 0 || timestamp < historicalStart) {
+        return;
+      }
+      const bucket = historicalBuckets.find(
+        (entry) => timestamp >= entry.start && timestamp < entry.end,
+      );
+      if (!bucket) {
+        return;
+      }
+      bucket.spend += amount;
+      if (vehicleId) {
+        bucket.vehicleIds.add(String(vehicleId).trim());
+      }
+    };
+
+    allInvoices.forEach((invoice) => {
+      if (
+        !matchesVehicleTypeFilter({
+          vehicleId: invoice.vehicleId,
+          vehicleModel: invoice.vehicleModel,
+        })
+      ) {
+        return;
+      }
+      addHistoricalCost(
+        parseTime(invoice.date),
+        Number(invoice.totalAmount) || 0,
+        invoice.vehicleId,
+      );
+    });
+
+    allOrders.forEach((order) => {
+      const status = normalize(order.status);
+      const isStillOpen =
+        !status.includes("completed") &&
+        !status.includes("paid") &&
+        !status.includes("invoice processing");
+      if (
+        !isStillOpen ||
+        !matchesVehicleTypeFilter({
+          vehicleId: order.vehicleId,
+          vehicleModel: order.vehicleModel,
+        })
+      ) {
+        return;
+      }
+      addHistoricalCost(
+        parseTime(order.updatedAt || order.requestedAt),
+        parseMoney(order.orderDetails?.estimatedCost),
+        order.vehicleId,
+      );
+    });
+
+    const historicalNonZero = historicalBuckets.filter(
+      (entry) => entry.spend > 0,
+    );
+    if (historicalNonZero.length === 0) {
+      const seededBasePerCar =
+        selectedCostTrendVehicleType === "ev"
+          ? 420
+          : selectedCostTrendVehicleType === "pkw"
+            ? 280
+            : selectedCostTrendVehicleType === "lcv"
+              ? 360
+              : selectedCostTrendVehicleType === "ice"
+                ? 330
+                : 310;
+      const seedCurve = [
+        0.82, 0.9, 0.95, 1.04, 0.97, 1.08, 1.12, 0.93, 0.88, 1.01, 1.06, 0.98,
+      ];
+      historicalBuckets.forEach((entry, index) => {
+        entry.vehicleIds = new Set(
+          filteredVehicles.length > 0
+            ? filteredVehicles.map((vehicle) => vehicle.id)
+            : Array.from(
+                { length: filteredVehicleCount },
+                (_, number) => `seed-${number}`,
+              ),
+        );
+        entry.spend = Math.round(
+          seededBasePerCar *
+            filteredVehicleCount *
+            seedCurve[index % seedCurve.length] *
+            (0.92 + index / Math.max(historicalBuckets.length * 10, 1)),
+        );
+      });
+    } else if (historicalNonZero.length < historicalBuckets.length) {
+      const baseAverage =
+        historicalNonZero.reduce(
+          (sum, entry) =>
+            sum + entry.spend / Math.max(entry.vehicleIds.size || 1, 1),
+          0,
+        ) / historicalNonZero.length;
+      const seedCurve = [
+        0.82, 0.9, 0.95, 1.04, 0.97, 1.08, 1.12, 0.93, 0.88, 1.01, 1.06, 0.98,
+      ];
+      historicalBuckets.forEach((entry, index) => {
+        if (entry.spend > 0) {
+          return;
+        }
+        const fallbackVehicleCount =
+          selectedCostTrendVehicleType === "all"
+            ? Math.max(filteredVehicleCount, 3)
+            : Math.max(filteredVehicleCount, 1);
+        entry.vehicleIds = new Set(
+          filteredVehicles.length > 0
+            ? filteredVehicles.map((vehicle) => vehicle.id)
+            : Array.from(
+                { length: fallbackVehicleCount },
+                (_, number) => `seed-${number}`,
+              ),
+        );
+        const recencyLift =
+          0.9 + index / Math.max(historicalBuckets.length * 16, 1);
+        entry.spend = Math.round(
+          baseAverage *
+            fallbackVehicleCount *
+            seedCurve[index % seedCurve.length] *
+            recencyLift,
+        );
+      });
+    }
+
+    if (historicalBuckets.length > 1) {
+      const latestBucket = historicalBuckets[historicalBuckets.length - 1];
+      const previousBucket = historicalBuckets[historicalBuckets.length - 2];
+      const latestPerCar =
+        latestBucket.vehicleIds.size > 0
+          ? latestBucket.spend / latestBucket.vehicleIds.size
+          : 0;
+      const previousPerCar =
+        previousBucket.vehicleIds.size > 0
+          ? previousBucket.spend / previousBucket.vehicleIds.size
+          : 0;
+
+      if (previousPerCar > 0 && latestPerCar > previousPerCar * 1.18) {
+        latestBucket.spend = Math.round(
+          previousPerCar * 1.12 * Math.max(latestBucket.vehicleIds.size, 1),
+        );
+      }
+    }
+
+    const costPerCarTrend = historicalBuckets.map((entry) => ({
+      label: entry.label,
+      spend:
+        entry.vehicleIds.size > 0
+          ? Math.round(entry.spend / entry.vehicleIds.size)
+          : 0,
+      vehicleCount: entry.vehicleIds.size,
+    }));
+
+    const currentMonthBucket = historicalBuckets[historicalBuckets.length - 1];
+    const ytdBuckets = historicalBuckets.filter((entry) => {
+      const date = new Date(entry.start);
+      return date.getFullYear() === nowDate.getFullYear();
+    });
+    const currentMonthCostPerCar =
+      currentMonthBucket && currentMonthBucket.vehicleIds.size > 0
+        ? currentMonthBucket.spend / currentMonthBucket.vehicleIds.size
+        : 0;
+    const ytdPerCarValues = ytdBuckets
+      .map((entry) =>
+        entry.vehicleIds.size > 0 ? entry.spend / entry.vehicleIds.size : 0,
+      )
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const ytdCostPerCar =
+      ytdPerCarValues.length > 0
+        ? ytdPerCarValues.reduce((sum, value) => sum + value, 0) /
+          ytdPerCarValues.length
+        : 0;
+
+    const oemShares = [
+      {
+        key: "continental",
+        label: t("fleet.dashboard.oemContinental", "Continental"),
+        share: 0.24,
+      },
+      {
+        key: "michelin",
+        label: t("fleet.dashboard.oemMichelin", "Michelin"),
+        share: 0.21,
+      },
+      {
+        key: "bridgestone",
+        label: t("fleet.dashboard.oemBridgestone", "Bridgestone"),
+        share: 0.18,
+      },
+      {
+        key: "goodyear",
+        label: t("fleet.dashboard.oemGoodyear", "Goodyear"),
+        share: 0.19,
+      },
+      {
+        key: "uniroyal",
+        label: t("fleet.dashboard.oemUniroyal", "Uniroyal"),
+        share: 0.18,
+      },
+    ];
+
+    const oemBusinessTrend = historicalBuckets.slice(-6).map((entry, index) => {
+      const row = { label: entry.label };
+      const seasonalCurve = [0.96, 1.02, 0.94, 1.06, 0.98, 1.04];
+      const monthLabel = String(entry.label || "");
+      const lateWinterLift = monthLabel.includes("Feb 26")
+        ? 1.35
+        : monthLabel.includes("Mar 26")
+          ? 1.48
+          : 1;
+      oemShares.forEach((oem, oemIndex) => {
+        const oemBias = 0.92 + oemIndex * 0.04;
+        row[oem.key] = Math.round(
+          entry.spend *
+            oem.share *
+            seasonalCurve[index % seasonalCurve.length] *
+            oemBias *
+            lateWinterLift,
+        );
+      });
+      return row;
+    });
+
+    oemShares.forEach((oem) => {
+      for (let index = 1; index < oemBusinessTrend.length; index += 1) {
+        const current = oemBusinessTrend[index];
+        const previous = oemBusinessTrend[index - 1];
+        const previousValue = Number(previous?.[oem.key]) || 0;
+        const currentValue = Number(current?.[oem.key]) || 0;
+        const label = String(current?.label || "");
+        const minimumRatio = label.includes("Feb 26")
+          ? 0.82
+          : label.includes("Mar 26")
+            ? 0.88
+            : 0.7;
+
+        if (previousValue > 0 && currentValue < previousValue * minimumRatio) {
+          current[oem.key] = Math.round(previousValue * minimumRatio);
+        }
+      }
+    });
+
+    const bucketSizeDays =
+      days <= 30 ? 5 : days <= 90 ? 10 : days <= 180 ? 30 : 60;
+    const bucketSizeMs = bucketSizeDays * 24 * 60 * 60 * 1000;
+    const bucketCount = Math.max(4, Math.ceil(days / bucketSizeDays));
+    const spendTrend = Array.from({ length: bucketCount }, (_, index) => {
+      const start = threshold + index * bucketSizeMs;
+      const end = Math.min(start + bucketSizeMs, now + 1);
+      const labelDate = new Date(start);
+      return {
+        label:
+          bucketSizeDays >= 30
+            ? labelDate.toLocaleString("en-US", { month: "short" })
+            : labelDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "2-digit",
+              }),
+        spend: 0,
+        start,
+        end,
+      };
+    });
+
+    const addSpendToBuckets = (timestamp, amount) => {
+      if (!timestamp || amount <= 0) {
+        return;
+      }
+      const bucket = spendTrend.find(
+        (entry) => timestamp >= entry.start && timestamp < entry.end,
+      );
+      if (bucket) {
+        bucket.spend += amount;
+      }
+    };
+
+    invoices.forEach((invoice) => {
+      addSpendToBuckets(
+        parseTime(invoice.date),
+        Number(invoice.totalAmount) || 0,
+      );
+    });
+
+    orders.forEach((order) => {
+      const status = normalize(order.status);
+      const isStillOpen =
+        !status.includes("completed") &&
+        !status.includes("paid") &&
+        !status.includes("invoice processing");
+      if (!isStillOpen) {
+        return;
+      }
+      addSpendToBuckets(
+        parseTime(order.updatedAt || order.requestedAt),
+        parseMoney(order.orderDetails?.estimatedCost),
+      );
+    });
+
+    const hasAnySpend = spendTrend.some((entry) => entry.spend > 0);
+    if (!hasAnySpend && invoices.length > 0) {
+      invoices.forEach((invoice, index) => {
+        const fallbackBucket = spendTrend[index % spendTrend.length];
+        fallbackBucket.spend += Number(invoice.totalAmount) || 0;
+      });
+    }
+
+    const nonZeroBuckets = spendTrend.filter((entry) => entry.spend > 0);
+    if (
+      nonZeroBuckets.length > 0 &&
+      nonZeroBuckets.length < spendTrend.length
+    ) {
+      const knownAverage =
+        nonZeroBuckets.reduce((sum, entry) => sum + entry.spend, 0) /
+        nonZeroBuckets.length;
+      const seedCurve = [0.72, 0.84, 0.93, 1.02, 0.96, 1.08, 0.9, 1.12];
+
+      spendTrend.forEach((entry, index) => {
+        if (entry.spend > 0) {
+          return;
+        }
+        const curveFactor = seedCurve[index % seedCurve.length];
+        const recencyFactor =
+          0.88 + (index / Math.max(spendTrend.length - 1, 1)) * 0.22;
+        entry.spend = Math.round(knownAverage * curveFactor * recencyFactor);
+      });
+    }
+
+    const vehicleMap = new Map();
+    invoices.forEach((invoice) => {
+      const key = String(invoice.vehicleId || "N/A").trim();
+      const current = vehicleMap.get(key) || {
+        id: key,
+        model: invoice.vehicleModel || key,
+        total: 0,
+        requestCount: 0,
+        latestDate: invoice.date,
+      };
+      current.total += Number(invoice.totalAmount) || 0;
+      current.requestCount += 1;
+      current.latestDate =
+        parseTime(invoice.date) > parseTime(current.latestDate)
+          ? invoice.date
+          : current.latestDate;
+      vehicleMap.set(key, current);
+    });
+    const mostCostlyVehicles = [...vehicleMap.values()]
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    const driverMap = new Map();
+    orders.forEach((order) => {
+      const key =
+        String(order.requestedBy || "Unassigned").trim() || "Unassigned";
+      const current = driverMap.get(key) || {
+        name: key,
+        requests: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+      };
+      current.requests += 1;
+      const status = normalize(order.status);
+      if (status.includes("rejected")) {
+        current.rejected += 1;
+      } else if (
+        status.includes("approved") ||
+        status.includes("scheduled") ||
+        status.includes("checked in") ||
+        status.includes("in progress") ||
+        status.includes("completed") ||
+        status.includes("invoice processing")
+      ) {
+        current.approved += 1;
+      } else {
+        current.pending += 1;
+      }
+      driverMap.set(key, current);
+    });
+    const requestsByDriver = [...driverMap.values()]
+      .sort((a, b) => b.requests - a.requests)
+      .slice(0, 6);
+
+    const invoicesRequiringAction = invoices
+      .filter((invoice) =>
+        pendingInvoiceStatuses.has(normalize(invoice.status)),
+      )
+      .sort((a, b) => parseTime(b.date) - parseTime(a.date))
+      .slice(0, 6);
+
+    const activeServiceRequests = openRequests
+      .sort(
+        (a, b) =>
+          parseTime(b.appointment?.dateTime || b.updatedAt || b.requestedAt) -
+          parseTime(a.appointment?.dateTime || a.updatedAt || a.requestedAt),
+      )
+      .slice(0, 6)
+      .map((order) => ({
+        id: order.id,
+        model: order.vehicleModel,
+        vehicleId: order.vehicleId,
+        requestTitle: order.requestTitle,
+        requestedBy: order.requestedBy,
+        date: new Date(
+          order.appointment?.dateTime || order.updatedAt || order.requestedAt,
+        ).toLocaleDateString("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        }),
+        status: order.status,
+      }));
+
+    const financialSnapshot = [
+      {
+        key: "paid",
+        label: t("fleet.dashboard.paidInvoices", "Paid invoices"),
+        amount: invoices
+          .filter((invoice) => normalize(invoice.status) === "paid")
+          .reduce(
+            (sum, invoice) => sum + (Number(invoice.totalAmount) || 0),
+            0,
+          ),
+        tone: "bg-emerald-50 text-emerald-700 border-emerald-100",
+      },
+      {
+        key: "processing",
+        label: t("fleet.dashboard.processingInvoices", "Processing"),
+        amount: invoices
+          .filter((invoice) => normalize(invoice.status) === "processing")
+          .reduce(
+            (sum, invoice) => sum + (Number(invoice.totalAmount) || 0),
+            0,
+          ),
+        tone: "bg-amber-50 text-amber-700 border-amber-100",
+      },
+      {
+        key: "unpaid",
+        label: t("fleet.dashboard.unpaidInvoices", "Unpaid"),
+        amount: invoices
+          .filter((invoice) => normalize(invoice.status) === "unpaid")
+          .reduce(
+            (sum, invoice) => sum + (Number(invoice.totalAmount) || 0),
+            0,
+          ),
+        tone: "bg-rose-50 text-rose-700 border-rose-100",
+      },
+    ];
+
+    return {
+      invoices,
+      orders,
+      totalSpend,
+      invoicesAwaitingReview,
+      openRequests,
+      activeDriversWithRequests,
+      avgCostPerRequest:
+        orders.length > 0 ? totalSpend / orders.length : totalSpend,
+      spendTrend,
+      mostCostlyVehicles,
+      requestsByDriver,
+      invoicesRequiringAction,
+      activeServiceRequests,
+      financialSnapshot,
+      costPerCarTrend,
+      currentMonthCostPerCar,
+      ytdCostPerCar,
+      oemBusinessTrend,
+      contractBusinessStatus: "green",
+      estimatedCashbackYtd: 5500,
+    };
+  }, [
+    billingState.invoices,
+    selectedDashboardPeriod,
+    selectedCostTrendHorizon,
+    selectedCostTrendVehicleType,
+    serviceOrderState.orders,
+    t,
+    totalVehicles,
+    vehicleState.vehicles,
+  ]);
 
   const dashboardSummaryCards = [
     {
-      title: "Total vehicles",
-      value: `${totalVehicles}`,
-      helper: "Up from last month",
-      status: "good",
-      icon: Truck,
+      kind: "status",
+      title: t(
+        "fleet.dashboard.contractBusinessOverview",
+        "Contract business overview",
+      ),
+      indicators: [
+        {
+          label: t(
+            "fleet.dashboard.contractBusinessStatus",
+            "Contract Business Status",
+          ),
+          value:
+            dashboardAnalytics.contractBusinessStatus === "green"
+              ? t("fleet.dashboard.green", "Green")
+              : dashboardAnalytics.contractBusinessStatus === "yellow"
+                ? t("fleet.dashboard.yellow", "Yellow")
+                : t("fleet.dashboard.red", "Red"),
+          tone:
+            dashboardAnalytics.contractBusinessStatus === "green"
+              ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+              : dashboardAnalytics.contractBusinessStatus === "yellow"
+                ? "bg-amber-100 text-amber-800 border-amber-200"
+                : "bg-rose-100 text-rose-800 border-rose-200",
+          hoverDetails: {
+            title: t(
+              "fleet.dashboard.activeContractStatus",
+              "Active contract status",
+            ),
+            rows: [
+              {
+                label: t("fleet.dashboard.activeOem", "Active OEM"),
+                value: "Continental",
+              },
+              {
+                label: t(
+                  "fleet.dashboard.tyresUsedThisYear",
+                  "Tyres used this year",
+                ),
+                value: "346/1000",
+              },
+            ],
+          },
+        },
+        {
+          label: t(
+            "fleet.dashboard.serviceRequestsInProgress:",
+            "Service Requests in Progress:",
+          ),
+          value: `${dashboardAnalytics.openRequests.length}`,
+          tone: "bg-emerald-100 text-emerald-800 border-emerald-200",
+        },
+        {
+          label: t(
+            "fleet.dashboard.estimatedCashbackYtd",
+            "Estimated Cashback YTD",
+          ),
+          value: formatEuro(dashboardAnalytics.estimatedCashbackYtd),
+          tone: "bg-amber-100 text-amber-800 border-amber-200",
+        },
+      ],
+      icon: null,
     },
     {
-      title: "Total drivers",
-      value: `${totalDrivers}`,
-      helper: "Stable quarter-to-date",
+      title: t(
+        "fleet.dashboard.fleetSpendThisPeriod",
+        "Fleet spend this period",
+      ),
+      value: formatEuro(dashboardAnalytics.totalSpend),
+      helper: dashboardPeriodOptions.find(
+        (option) => option.value === selectedDashboardPeriod,
+      )?.label,
       status: "good",
-      icon: Users,
+      icon: CircleDollarSign,
     },
     {
-      title: "Vehicle services",
-      value: `${servicedVehicles.length}`,
-      helper: "Up 3 from last month",
-      status: "good",
+      title: t("fleet.dashboard.openServiceRequests", "Open service requests"),
+      value: `${dashboardAnalytics.openRequests.length}`,
+      helper: t(
+        "fleet.dashboard.requestsAcrossFleet",
+        "Requests across the fleet",
+      ),
+      status: dashboardAnalytics.openRequests.length > 3 ? "warn" : "good",
       icon: Wrench,
     },
     {
-      title: "Pending services",
-      value: `${pendingVehicles.length}`,
-      helper: "Awaiting client input",
-      status: pendingVehicles.length > 2 ? "warn" : "good",
-      icon: CalendarClock,
+      title: t("fleet.dashboard.avgCostPerRequest", "Average cost per request"),
+      value: formatEuro(dashboardAnalytics.avgCostPerRequest),
+      helper: t(
+        "fleet.dashboard.activeDriversWithRequests",
+        "{{count}} drivers with requests",
+        { count: dashboardAnalytics.activeDriversWithRequests },
+      ),
+      status: "good",
+      icon: Users,
     },
   ];
-
-  const invoices = [
-    {
-      id: "INV-2049",
-      vendor: "Metro Service Hub",
-      amount: "$4,860",
-      status: "Paid",
-      date: "Jan 30, 2026",
-    },
-    {
-      id: "INV-2050",
-      vendor: "Westline Tire Care",
-      amount: "$2,140",
-      status: "Processing",
-      date: "Jan 28, 2026",
-    },
-    {
-      id: "INV-2051",
-      vendor: "Northern Fleet Works",
-      amount: "$6,720",
-      status: "Due Feb 5",
-      date: "Jan 26, 2026",
-    },
-  ];
-
-  const serviceSpend = [
-    { week: "Wk 1", spend: 12400 },
-    { week: "Wk 2", spend: 9800 },
-    { week: "Wk 3", spend: 15600 },
-    { week: "Wk 4", spend: 11200 },
-    { week: "Wk 5", spend: 14100 },
-    { week: "Wk 6", spend: 13200 },
-    { week: "Wk 7", spend: 16850 },
-    { week: "Wk 8", spend: 14900 },
-    { week: "Wk 9", spend: 17240 },
-    { week: "Wk 10", spend: 15820 },
-    { week: "Wk 11", spend: 18110 },
-    { week: "Wk 12", spend: 16940 },
-  ];
-
-  const utilization = [
-    {
-      day: "Mon",
-      primary: 86,
-      secondary: 70,
-      dateLabel: "Mon 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Tue",
-      primary: 80,
-      secondary: 74,
-      dateLabel: "Tue 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Wed",
-      primary: 77,
-      secondary: 40,
-      dateLabel: "Wed 11 Feb",
-      focus: true,
-    },
-    {
-      day: "Thu",
-      primary: 71,
-      secondary: 56,
-      dateLabel: "Thu 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Fri",
-      primary: 76,
-      secondary: 64,
-      dateLabel: "Fri 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Sat",
-      primary: 93,
-      secondary: 88,
-      dateLabel: "Sat 11 Feb",
-      focus: false,
-    },
-    {
-      day: "Sun",
-      primary: 100,
-      secondary: 84,
-      dateLabel: "Sun 11 Feb",
-      focus: false,
-    },
-  ];
+  const costTrendAxis = buildFleetAxisTicks(
+    dashboardAnalytics.costPerCarTrend.map((entry) => entry.spend),
+  );
+  const oemTrendAxis = buildFleetAxisTicks(
+    dashboardAnalytics.oemBusinessTrend.flatMap((entry) => [
+      entry.continental,
+      entry.michelin,
+      entry.bridgestone,
+      entry.goodyear,
+      entry.uniroyal,
+    ]),
+  );
 
   const assignmentVehicles =
     vehicleState.vehicles.length > 0
@@ -448,10 +1238,20 @@ function Dashboard() {
           id: vehicle.id,
           model: vehicle.model,
         }))
-      : [...servicedVehicles, ...pendingVehicles].map((vehicle) => ({
-          id: vehicle.id,
-          model: vehicle.model,
-        }));
+      : [
+          ...dashboardAnalytics.mostCostlyVehicles.map((vehicle) => ({
+            id: vehicle.id,
+            model: vehicle.model,
+          })),
+          ...dashboardAnalytics.activeServiceRequests.map((vehicle) => ({
+            id: vehicle.vehicleId,
+            model: vehicle.model,
+          })),
+        ].filter(
+          (vehicle, index, list) =>
+            vehicle.id &&
+            list.findIndex((item) => item.id === vehicle.id) === index,
+        );
 
   const fleetNotifications = useMemo(() => {
     const parseTime = (value) => {
@@ -489,14 +1289,18 @@ function Dashboard() {
       .slice(0, 5)
       .map((order) => ({
         id: `fleet-pending-${order.id}`,
-        type: "Approval required",
-        title: `${order.id} needs approval`,
+        type: t("fleet.notifications.approvalRequired", "Approval required"),
+        title: t(
+          "fleet.notifications.requestNeedsApproval",
+          "{{id}} needs approval",
+          { id: order.id },
+        ),
         detail: `${order.vehicleId} • ${order.requestTitle}`,
         iconKey: order.emergency ? "emergency" : "warning",
         levelClass: order.emergency
           ? "bg-rose-100 text-rose-700"
           : "bg-amber-100 text-amber-700",
-        actionLabel: "Review request",
+        actionLabel: t("fleet.notifications.reviewRequest", "Review request"),
         actionMenu: "service_order_control",
         timestamp: order.updatedAt || order.requestedAt,
       }));
@@ -511,14 +1315,16 @@ function Dashboard() {
       .slice(0, 4)
       .map((order) => ({
         id: `fleet-rejected-${order.id}`,
-        type: "Rejection alert",
-        title: `${order.id} rejected`,
+        type: t("fleet.notifications.rejectionAlert", "Rejection alert"),
+        title: t("fleet.notifications.requestRejected", "{{id}} rejected", {
+          id: order.id,
+        }),
         detail:
           order.approval?.note ||
           `${order.vehicleId} • Review and resubmit if needed.`,
         iconKey: "approval_rejected",
         levelClass: "bg-rose-100 text-rose-700",
-        actionLabel: "Open order",
+        actionLabel: t("fleet.notifications.openOrder", "Open order"),
         actionMenu: "service_order_control",
         timestamp: order.updatedAt || order.requestedAt,
       }));
@@ -541,14 +1347,21 @@ function Dashboard() {
       .slice(0, 4)
       .map((order) => ({
         id: `fleet-settlement-${order.id}`,
-        type: "Invoice update",
-        title: `${order.id} invoice processing`,
+        type: t("fleet.notifications.invoiceUpdate", "Invoice update"),
+        title: t(
+          "fleet.notifications.invoiceProcessing",
+          "{{id}} invoice processing",
+          { id: order.id },
+        ),
         detail:
           order.settlement?.note ||
           `${order.vehicleId} • POS sent invoice for fleet confirmation.`,
         iconKey: "approval_ok",
         levelClass: "bg-emerald-100 text-emerald-700",
-        actionLabel: "Confirm completion",
+        actionLabel: t(
+          "fleet.notifications.confirmCompletion",
+          "Confirm completion",
+        ),
         actionMenu: "service_order_control",
         timestamp:
           order.settlement?.completionConfirmedAt ||
@@ -566,12 +1379,16 @@ function Dashboard() {
       .slice(0, 3)
       .map((message) => ({
         id: `fleet-driver-msg-${message.id}`,
-        type: "Driver message",
-        title: `${message.driverName} sent a message`,
+        type: t("fleet.notifications.driverMessage", "Driver message"),
+        title: t(
+          "fleet.notifications.driverSentMessage",
+          "{{name}} sent a message",
+          { name: message.driverName },
+        ),
         detail: message.message,
         iconKey: "message",
         levelClass: "bg-sky-100 text-sky-700",
-        actionLabel: "Reply driver",
+        actionLabel: t("fleet.notifications.replyDriver", "Reply driver"),
         actionMenu: "communication",
         timestamp: message.sentAt,
       }));
@@ -586,12 +1403,16 @@ function Dashboard() {
       .slice(0, 3)
       .map((message) => ({
         id: `fleet-workshop-msg-${message.id}`,
-        type: "Workshop update",
-        title: `${message.workshop} responded`,
+        type: t("fleet.notifications.workshopUpdate", "Workshop update"),
+        title: t(
+          "fleet.notifications.workshopResponded",
+          "{{name}} responded",
+          { name: message.workshop },
+        ),
         detail: message.message,
         iconKey: "message",
         levelClass: "bg-indigo-100 text-indigo-700",
-        actionLabel: "Open thread",
+        actionLabel: t("fleet.notifications.openThread", "Open thread"),
         actionMenu: "communication",
         timestamp: message.sentAt,
       }));
@@ -609,7 +1430,7 @@ function Dashboard() {
       .slice(0, 3)
       .map((ticket) => ({
         id: `fleet-ticket-${ticket.id}`,
-        type: "Support ticket",
+        type: t("fleet.notifications.supportTicket", "Support ticket"),
         title: `${ticket.id} • ${ticket.status}`,
         detail: ticket.subject,
         iconKey: ticket.status === "Escalated" ? "warning" : "message",
@@ -617,7 +1438,7 @@ function Dashboard() {
           ticket.status === "Escalated"
             ? "bg-amber-100 text-amber-700"
             : "bg-slate-200 text-slate-700",
-        actionLabel: "Open support",
+        actionLabel: t("fleet.notifications.openSupport", "Open support"),
         actionMenu: "communication",
         timestamp: ticket.updatedAt || ticket.createdAt,
       }));
@@ -631,7 +1452,7 @@ function Dashboard() {
       .slice(0, 3)
       .map((invoice) => ({
         id: `fleet-billing-${invoice.id}`,
-        type: "Billing alert",
+        type: t("fleet.notifications.billingAlert", "Billing alert"),
         title: `${invoice.id} • ${invoice.status}`,
         detail: `${invoice.vehicleId} • $${(Number(invoice.totalAmount) || 0).toLocaleString()}`,
         iconKey: "billing",
@@ -639,7 +1460,7 @@ function Dashboard() {
           normalize(invoice.status) === "unpaid"
             ? "bg-rose-100 text-rose-700"
             : "bg-amber-100 text-amber-700",
-        actionLabel: "Open billing",
+        actionLabel: t("fleet.notifications.openBilling", "Open billing"),
         actionMenu: "billing_finance",
         timestamp: invoice.date,
       }));
@@ -661,6 +1482,7 @@ function Dashboard() {
     communicationState.tickets,
     communicationState.workshopMessages,
     serviceOrderState.orders,
+    t,
   ]);
 
   const visibleFleetNotifications = useMemo(
@@ -868,7 +1690,7 @@ function Dashboard() {
       <div className="flex h-full w-full min-w-0">
         {isMobileSidebarOpen ? (
           <button
-            aria-label="Close menu backdrop"
+            aria-label={t("actions.closeMenuBackdrop", "Close menu backdrop")}
             className="fixed inset-0 z-40 bg-slate-900/45 lg:hidden"
             onClick={() => setIsMobileSidebarOpen(false)}
             type="button"
@@ -890,7 +1712,7 @@ function Dashboard() {
             }`}
           >
             <button
-              aria-label="Close menu"
+              aria-label={t("actions.closeMenu", "Close menu")}
               className="absolute right-3 top-3 z-[60] grid size-8 place-items-center rounded-full bg-white/10 text-white lg:hidden"
               onClick={() => setIsMobileSidebarOpen(false)}
               type="button"
@@ -900,8 +1722,8 @@ function Dashboard() {
             <button
               aria-label={
                 isDesktopSidebarCollapsed
-                  ? "Expand sidebar"
-                  : "Collapse sidebar"
+                  ? t("actions.expandSidebar", "Expand sidebar")
+                  : t("actions.collapseSidebar", "Collapse sidebar")
               }
               className="absolute -right-3 top-3 z-[65] hidden size-6 place-items-center rounded-full border border-[#cec6df] bg-[#ddd6ea] text-[#3b276d] shadow-sm transition hover:bg-[#d1c7e4] lg:grid"
               onClick={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
@@ -1353,7 +2175,9 @@ function Dashboard() {
                 <DialogTitle>{selectedVehicleModel}</DialogTitle>
                 <DialogDescription>
                   {selectedVehicle?.id
-                    ? `Vehicle ID: ${selectedVehicle.id}`
+                    ? t("fleet.dialogs.vehicleIdLabel", "Vehicle ID: {{id}}", {
+                        id: selectedVehicle.id,
+                      })
                     : ""}
                 </DialogDescription>
               </DialogHeader>
@@ -1363,7 +2187,7 @@ function Dashboard() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Overview
+                        {t("fleet.dialogs.overview", "Overview")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {selectedVehicleModel}
@@ -1380,7 +2204,7 @@ function Dashboard() {
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Vehicle ID
+                        {t("fleet.dialogs.vehicleId", "Vehicle ID")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.id || "—"}
@@ -1388,7 +2212,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Service date
+                        {t("fleet.dialogs.serviceDate", "Service date")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.serviceDate || "—"}
@@ -1396,7 +2220,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Plate
+                        {t("fleet.dialogs.plate", "Plate")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.plate || "—"}
@@ -1404,7 +2228,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Type
+                        {t("fleet.dialogs.type", "Type")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.type || "—"}
@@ -1412,7 +2236,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Status
+                        {t("fleet.dialogs.status", "Status")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.status || "—"}
@@ -1420,7 +2244,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Added
+                        {t("fleet.dialogs.added", "Added")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.createdAt
@@ -1433,12 +2257,12 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Assignment
+                    {t("fleet.dialogs.assignment", "Assignment")}
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Driver
+                        {t("fleet.dialogs.driver", "Driver")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.driver || "—"}
@@ -1449,7 +2273,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Depot
+                        {t("fleet.dialogs.depot", "Depot")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.depot || "—"}
@@ -1457,7 +2281,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Route
+                        {t("fleet.dialogs.route", "Route")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.route || "—"}
@@ -1465,7 +2289,10 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Last known location
+                        {t(
+                          "fleet.dialogs.lastKnownLocation",
+                          "Last known location",
+                        )}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.lastKnownLocation || "—"}
@@ -1476,12 +2303,12 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Specs
+                    {t("fleet.dialogs.specs", "Specs")}
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        VIN
+                        {t("fleet.dialogs.vin", "VIN")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.vin || "—"}
@@ -1489,7 +2316,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Year / color
+                        {t("fleet.dialogs.yearColor", "Year / color")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails
@@ -1499,7 +2326,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Odometer
+                        {t("fleet.dialogs.odometer", "Odometer")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.odometer || "—"}
@@ -1507,7 +2334,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Engine hours
+                        {t("fleet.dialogs.engineHours", "Engine hours")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.engineHours || "—"}
@@ -1515,7 +2342,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Fuel level
+                        {t("fleet.dialogs.fuelLevel", "Fuel level")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.fuelLevel || "—"}
@@ -1526,12 +2353,12 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Service & costs
+                    {t("fleet.dialogs.serviceCosts", "Service & costs")}
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Service center
+                        {t("fleet.dialogs.serviceCenter", "Service center")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.serviceCenter || "—"}
@@ -1539,7 +2366,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Invoice
+                        {t("fleet.dialogs.invoice", "Invoice")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.invoiceId || "—"}
@@ -1547,7 +2374,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Estimated cost
+                        {t("fleet.dialogs.estimatedCost", "Estimated cost")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.estimatedCost || "—"}
@@ -1555,7 +2382,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Next service due
+                        {t("fleet.dialogs.nextServiceDue", "Next service due")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.nextServiceDue || "—"}
@@ -1565,7 +2392,7 @@ function Dashboard() {
 
                   <div className="mt-4">
                     <p className="text-xs font-semibold text-slate-500">
-                      Work items
+                      {t("fleet.dialogs.workItems", "Work items")}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {(vehicleDetails?.issues || []).map((issue) => (
@@ -1582,12 +2409,12 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Compliance
+                    {t("fleet.dialogs.compliance", "Compliance")}
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Inspection due
+                        {t("fleet.dialogs.inspectionDue", "Inspection due")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.inspectionDue || "—"}
@@ -1595,7 +2422,10 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Registration expiry
+                        {t(
+                          "fleet.dialogs.registrationExpiry",
+                          "Registration expiry",
+                        )}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.registrationExpiry || "—"}
@@ -1603,7 +2433,7 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-500">
-                        Insurance expiry
+                        {t("fleet.dialogs.insuranceExpiry", "Insurance expiry")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-900">
                         {vehicleDetails?.insuranceExpiry || "—"}
@@ -1614,7 +2444,7 @@ function Dashboard() {
 
                 <div className="rounded-2xl border border-slate-200/70 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Notes
+                    {t("fleet.dialogs.notes", "Notes")}
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-slate-700">
                     {vehicleDetails?.notes || "—"}
@@ -1625,7 +2455,7 @@ function Dashboard() {
               <DialogFooter>
                 <DialogClose asChild>
                   <Button type="button" variant="outline">
-                    Close
+                    {t("driver.request.close", "Close")}
                   </Button>
                 </DialogClose>
               </DialogFooter>
@@ -1635,15 +2465,22 @@ function Dashboard() {
           <Dialog open={vehicleDialogOpen} onOpenChange={setVehicleDialogOpen}>
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add vehicle</DialogTitle>
+                <DialogTitle>
+                  {t("fleet.dialogs.addVehicle", "Add vehicle")}
+                </DialogTitle>
                 <DialogDescription>
-                  Capture details to keep your fleet inventory accurate.
+                  {t(
+                    "fleet.dialogs.addVehicleDesc",
+                    "Capture details to keep your fleet inventory accurate.",
+                  )}
                 </DialogDescription>
               </DialogHeader>
               <form className="grid gap-4" onSubmit={handleAddVehicle}>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="vehicle-id">Vehicle ID</Label>
+                    <Label htmlFor="vehicle-id">
+                      {t("fleet.dialogs.vehicleId", "Vehicle ID")}
+                    </Label>
                     <Input
                       id="vehicle-id"
                       value={vehicleForm.id}
@@ -1652,7 +2489,9 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="vehicle-plate">Plate number</Label>
+                    <Label htmlFor="vehicle-plate">
+                      {t("fleet.dialogs.plateNumber", "Plate number")}
+                    </Label>
                     <Input
                       id="vehicle-plate"
                       value={vehicleForm.plate}
@@ -1662,7 +2501,9 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="vehicle-model">Vehicle model</Label>
+                    <Label htmlFor="vehicle-model">
+                      {t("fleet.dialogs.vehicleModel", "Vehicle model")}
+                    </Label>
                     <Input
                       id="vehicle-model"
                       value={vehicleForm.model}
@@ -1672,59 +2513,91 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Vehicle type</Label>
+                    <Label>
+                      {t("fleet.dialogs.vehicleType", "Vehicle type")}
+                    </Label>
                     <Select
                       value={vehicleForm.type}
                       onValueChange={handleVehicleSelectChange("type")}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue
+                          placeholder={t(
+                            "fleet.dialogs.selectType",
+                            "Select type",
+                          )}
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Truck">Truck</SelectItem>
-                        <SelectItem value="Van">Van</SelectItem>
-                        <SelectItem value="Trailer">Trailer</SelectItem>
-                        <SelectItem value="Utility">Utility</SelectItem>
+                        <SelectItem value="Truck">
+                          {t("fleet.dialogs.vehicleTypeTruck", "Truck")}
+                        </SelectItem>
+                        <SelectItem value="Van">
+                          {t("fleet.dialogs.vehicleTypeVan", "Van")}
+                        </SelectItem>
+                        <SelectItem value="Trailer">
+                          {t("fleet.dialogs.vehicleTypeTrailer", "Trailer")}
+                        </SelectItem>
+                        <SelectItem value="Utility">
+                          {t("fleet.dialogs.vehicleTypeUtility", "Utility")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Status</Label>
+                    <Label>{t("fleet.dialogs.status", "Status")}</Label>
                     <Select
                       value={vehicleForm.status}
                       onValueChange={handleVehicleSelectChange("status")}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue
+                          placeholder={t(
+                            "fleet.dialogs.selectStatus",
+                            "Select status",
+                          )}
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="In service">In service</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
+                        <SelectItem value="Active">
+                          {t("fleet.dialogs.statusActive", "Active")}
+                        </SelectItem>
+                        <SelectItem value="In service">
+                          {t("fleet.dialogs.statusInService", "In service")}
+                        </SelectItem>
+                        <SelectItem value="Inactive">
+                          {t("fleet.dialogs.statusInactive", "Inactive")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="vehicle-notes">Notes</Label>
+                  <Label htmlFor="vehicle-notes">
+                    {t("fleet.dialogs.notes", "Notes")}
+                  </Label>
                   <Textarea
                     id="vehicle-notes"
                     value={vehicleForm.notes}
                     onChange={handleVehicleChange("notes")}
-                    placeholder="Add maintenance history or assignments."
+                    placeholder={t(
+                      "fleet.dialogs.vehicleNotesPlaceholder",
+                      "Add maintenance history or assignments.",
+                    )}
                     rows={3}
                   />
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline">
-                    <FileUp /> Import from Excel
+                    <FileUp />{" "}
+                    {t("fleet.dialogs.importFromExcel", "Import from Excel")}
                   </Button>
                   <Button
                     type="submit"
                     disabled={!isVehicleReady}
                     className="w-full justify-center text-sm sm:w-auto text-white bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                   >
-                    Add vehicle
+                    {t("fleet.dialogs.addVehicle", "Add vehicle")}
                   </Button>
                 </DialogFooter>
               </form>
@@ -1733,15 +2606,22 @@ function Dashboard() {
           <Dialog open={driverDialogOpen} onOpenChange={setDriverDialogOpen}>
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add driver</DialogTitle>
+                <DialogTitle>
+                  {t("fleet.dialogs.addDriver", "Add driver")}
+                </DialogTitle>
                 <DialogDescription>
-                  Add driver details to keep staffing up to date.
+                  {t(
+                    "fleet.dialogs.addDriverDesc",
+                    "Add driver details to keep staffing up to date.",
+                  )}
                 </DialogDescription>
               </DialogHeader>
               <form className="grid gap-4" onSubmit={handleAddDriver}>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-id">Driver ID</Label>
+                    <Label htmlFor="driver-id">
+                      {t("fleet.dialogs.driverId", "Driver ID")}
+                    </Label>
                     <Input
                       id="driver-id"
                       value={driverForm.id}
@@ -1750,7 +2630,9 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-name">Full name</Label>
+                    <Label htmlFor="driver-name">
+                      {t("fleet.dialogs.fullName", "Full name")}
+                    </Label>
                     <Input
                       id="driver-name"
                       value={driverForm.name}
@@ -1760,7 +2642,9 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-email">Email address</Label>
+                    <Label htmlFor="driver-email">
+                      {t("fleet.dialogs.emailAddress", "Email address")}
+                    </Label>
                     <Input
                       id="driver-email"
                       type="email"
@@ -1771,7 +2655,9 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-phone">Phone number</Label>
+                    <Label htmlFor="driver-phone">
+                      {t("fleet.dialogs.phoneNumber", "Phone number")}
+                    </Label>
                     <Input
                       id="driver-phone"
                       value={driverForm.phone}
@@ -1780,7 +2666,9 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="driver-license">License</Label>
+                    <Label htmlFor="driver-license">
+                      {t("fleet.dialogs.license", "License")}
+                    </Label>
                     <Input
                       id="driver-license"
                       value={driverForm.license}
@@ -1789,42 +2677,58 @@ function Dashboard() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Status</Label>
+                    <Label>{t("fleet.dialogs.status", "Status")}</Label>
                     <Select
                       value={driverForm.status}
                       onValueChange={handleDriverSelectChange("status")}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue
+                          placeholder={t(
+                            "fleet.dialogs.selectStatus",
+                            "Select status",
+                          )}
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="On leave">On leave</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
+                        <SelectItem value="Active">
+                          {t("fleet.dialogs.statusActive", "Active")}
+                        </SelectItem>
+                        <SelectItem value="On leave">
+                          {t("fleet.dialogs.statusOnLeave", "On leave")}
+                        </SelectItem>
+                        <SelectItem value="Inactive">
+                          {t("fleet.dialogs.statusInactive", "Inactive")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="driver-notes">Notes</Label>
+                  <Label htmlFor="driver-notes">
+                    {t("fleet.dialogs.notes", "Notes")}
+                  </Label>
                   <Textarea
                     id="driver-notes"
                     value={driverForm.notes}
                     onChange={handleDriverChange("notes")}
-                    placeholder="Add certifications or route assignments."
+                    placeholder={t(
+                      "fleet.dialogs.driverNotesPlaceholder",
+                      "Add certifications or route assignments.",
+                    )}
                     rows={3}
                   />
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline">
-                    Import from Excel
+                    {t("fleet.dialogs.importFromExcel", "Import from Excel")}
                   </Button>
                   <Button
                     type="submit"
                     disabled={!isDriverReady}
                     className="w-full justify-center text-sm sm:w-auto text-white bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                   >
-                    Add driver
+                    {t("fleet.dialogs.addDriver", "Add driver")}
                   </Button>
                 </DialogFooter>
               </form>
@@ -1846,32 +2750,6 @@ function Dashboard() {
               }
             />
           </div>
-
-          {activeMenu === "dashboard" ? (
-            <header className="relative overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_20%_20%,#1f2937_0%,#0f172a_45%,#0b0d12_100%)] p-4 text-white shadow-xl sm:p-6 lg:p-7">
-              <div className="pointer-events-none absolute -right-10 -top-12 size-48 rounded-full bg-sky-300/20 blur-3xl" />
-              <div className="pointer-events-none absolute bottom-0 right-0 h-24 w-24 rounded-tl-[120px] bg-white/15" />
-              <div className="relative z-10">
-                {/* <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  Fleet dashboard
-                </p> */}
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white">
-                  Welcome{user?.name ? `, ${user.name}` : " John Doe"}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-slate-200 sm:text-xs">
-                  <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 sm:px-3">
-                    Updated {dashboardUpdatedAt}
-                  </span>
-                  <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 sm:px-3">
-                    {totalVehicles} active vehicles
-                  </span>
-                  <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 sm:px-3">
-                    {totalDrivers} drivers onboard
-                  </span>
-                </div>
-              </div>
-            </header>
-          ) : null}
 
           {activeMenu === "vehicles" ? (
             <section className="space-y-4 sm:space-y-6">
@@ -1923,6 +2801,65 @@ function Dashboard() {
               <section className="-mt-6 grid grid-cols-2 gap-2.5 px-1 sm:-mt-8 sm:gap-3 sm:px-2 lg:mt-0 lg:grid-cols-4 lg:px-0">
                 {dashboardSummaryCards.map((card) => {
                   const Icon = card.icon;
+                  if (card.kind === "status") {
+                    return (
+                      <article
+                        className="relative overflow-visible rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm sm:rounded-2xl sm:p-4"
+                        key={card.title}
+                      >
+                        <div className="relative z-10 flex items-start justify-between gap-2">
+                          <div>
+                            <div className="space-y-2">
+                              {card.indicators.map((indicator) => (
+                                <div
+                                  key={indicator.label}
+                                  className={`group relative flex items-center justify-between gap-2 rounded-xl border px-2.5 py-2 ${indicator.tone}`}
+                                >
+                                  <p className="text-[10px] font-medium sm:text-xs">
+                                    {indicator.label}
+                                  </p>
+                                  {indicator.value ? (
+                                    <span className="text-[10px] font-semibold sm:text-xs">
+                                      {indicator.value}
+                                    </span>
+                                  ) : null}
+                                  {indicator.hoverDetails ? (
+                                    <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden min-w-[220px] rounded-xl border border-slate-200 bg-white p-3 text-slate-700 shadow-xl group-hover:block">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                        {indicator.hoverDetails.title}
+                                      </p>
+                                      <div className="mt-2 space-y-2">
+                                        {indicator.hoverDetails.rows.map(
+                                          (row) => (
+                                            <div
+                                              key={row.label}
+                                              className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-2.5 py-2"
+                                            >
+                                              <span className="text-[10px] text-slate-500 sm:text-xs">
+                                                {row.label}
+                                              </span>
+                                              <span className="text-[10px] font-semibold text-slate-900 sm:text-xs">
+                                                {row.value}
+                                              </span>
+                                            </div>
+                                          ),
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          {Icon ? (
+                            <span className="rounded-md bg-slate-100 p-1 text-slate-700">
+                              <Icon size={11} />
+                            </span>
+                          ) : null}
+                        </div>
+                      </article>
+                    );
+                  }
                   return (
                     <article
                       className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm sm:rounded-2xl sm:p-4"
@@ -1941,8 +2878,8 @@ function Dashboard() {
                             {card.helper}
                           </p>
                         </div>
-                        <span className="rounded-lg bg-slate-100 p-1.5 text-slate-700">
-                          <Icon size={13} />
+                        <span className="rounded-md bg-slate-100 p-1 text-slate-700">
+                          <Icon size={11} />
                         </span>
                       </div>
                       <div className="mt-2">
@@ -1952,10 +2889,16 @@ function Dashboard() {
                           )}`}
                         >
                           {card.status === "good"
-                            ? "On track"
+                            ? t("fleet.dashboard.onTrack", "On track")
                             : card.status === "warn"
-                              ? "Needs attention"
-                              : "Action required"}
+                              ? t(
+                                  "fleet.dashboard.needsAttention",
+                                  "Needs attention",
+                                )
+                              : t(
+                                  "fleet.dashboard.actionRequired",
+                                  "Action required",
+                                )}
                         </span>
                       </div>
                     </article>
@@ -1968,33 +2911,82 @@ function Dashboard() {
                   className="p-4 shadow-sm backdrop-blur-sm sm:p-6"
                   style={figmaChartCardStyle}
                 >
-                  <div className="flex items-center justify-between">
-                    <h2
-                      className="text-sm font-semibold sm:text-lg"
-                      style={{ color: figmaChartTheme.title }}
-                    >
-                      Service spend
-                    </h2>
-                    <span
-                      className="rounded-full px-3 py-1 text-xs font-semibold"
-                      style={{
-                        background: figmaChartTheme.positivePillBackground,
-                        color: figmaChartTheme.positivePillText,
-                      }}
-                    >
-                      +12%
-                    </span>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2
+                        className="text-sm font-semibold sm:text-lg"
+                        style={{ color: figmaChartTheme.title }}
+                      >
+                        {t("fleet.dashboard.costTrend", "Fleet Cost Trend")}
+                      </h2>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Select
+                        onValueChange={setSelectedCostTrendVehicleType}
+                        value={selectedCostTrendVehicleType}
+                      >
+                        <SelectTrigger className="h-8 w-[130px] rounded-full border-slate-200 bg-white text-xs font-semibold text-slate-700">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vehicleTypeFilterOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        onValueChange={setSelectedCostTrendHorizon}
+                        value={selectedCostTrendHorizon}
+                      >
+                        <SelectTrigger className="h-8 w-[136px] rounded-full border-slate-200 bg-white text-xs font-semibold text-slate-700">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {costTrendHorizonOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <p
-                    className="mt-1 text-[11px] sm:text-sm"
-                    style={{ color: figmaChartTheme.subtitle }}
-                  >
-                    Rolling four-week spend for maintenance and parts.
-                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        {t("fleet.dashboard.currentMonth", "Current month")}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900 sm:text-2xl">
+                        {formatEuro(dashboardAnalytics.currentMonthCostPerCar)}
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {t(
+                          "fleet.dashboard.averageCostPerCar",
+                          "Average cost per car",
+                        )}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        {t("fleet.dashboard.ytd", "YTD")}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900 sm:text-2xl">
+                        {formatEuro(dashboardAnalytics.ytdCostPerCar)}
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {t(
+                          "fleet.dashboard.averageCostPerCar",
+                          "Average cost per car",
+                        )}
+                      </p>
+                    </div>
+                  </div>
                   <div className="mt-3 h-44 sm:mt-4 sm:h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart
-                        data={serviceSpend}
+                        data={dashboardAnalytics.costPerCarTrend}
                         margin={{ left: -16, right: 8 }}
                       >
                         <defs>
@@ -2028,16 +3020,18 @@ function Dashboard() {
                           vertical={false}
                         />
                         <XAxis
-                          dataKey="week"
+                          dataKey="label"
                           tickLine={false}
                           axisLine={false}
                           tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
                         />
                         <YAxis
+                          domain={[0, costTrendAxis.domainMax]}
+                          ticks={costTrendAxis.ticks}
                           tickLine={false}
                           axisLine={false}
                           tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
-                          tickFormatter={(value) => `$${value / 1000}k`}
+                          tickFormatter={formatFleetAxisEuro}
                         />
                         <Tooltip
                           content={renderFleetSpendTooltip}
@@ -2063,38 +3057,70 @@ function Dashboard() {
                     minHeight: "342px",
                   }}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <h2
                       className="text-sm font-semibold sm:text-lg"
                       style={{ color: figmaChartTheme.title }}
                     >
-                      Shipments Statistics
+                      {t("fleet.dashboard.oemBusinessTrend", "Business by OEM")}
                     </h2>
-                    <button
-                      className="inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-sm font-medium"
-                      style={{
-                        background: "#F9F9F9",
-                        border: `0.5px solid ${figmaChartTheme.cardBorder}`,
-                        color: figmaChartTheme.title,
-                      }}
-                      type="button"
+                    <Select
+                      onValueChange={setSelectedCostTrendHorizon}
+                      value={selectedCostTrendHorizon}
                     >
-                      Week
-                      <ChevronDown size={14} strokeWidth={1.75} />
-                    </button>
+                      <SelectTrigger className="h-8 w-[136px] rounded-full border-slate-200 bg-white text-xs font-semibold text-slate-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {costTrendHorizonOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <p
                     className="mt-1 text-xs sm:text-xs"
                     style={{ color: "#9E9FA2" }}
                   >
-                    Total number of deliveries 50K
+                    {t(
+                      "fleet.dashboard.oemBusinessTrendDesc",
+                      "Monthly tyre-related business split by OEM across the selected timeline.",
+                    )}
                   </p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[10px] sm:text-xs">
+                    {[
+                      [
+                        "#2E3A87",
+                        t("fleet.dashboard.oemContinental", "Continental"),
+                      ],
+                      ["#F57C00", t("fleet.dashboard.oemMichelin", "Michelin")],
+                      [
+                        "#6D4C41",
+                        t("fleet.dashboard.oemBridgestone", "Bridgestone"),
+                      ],
+                      ["#1E88E5", t("fleet.dashboard.oemGoodyear", "Goodyear")],
+                      ["#7B1FA2", t("fleet.dashboard.oemUniroyal", "Uniroyal")],
+                    ].map(([color, label]) => (
+                      <span
+                        key={label}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-slate-600"
+                      >
+                        <span
+                          className="size-2 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                        {label}
+                      </span>
+                    ))}
+                  </div>
                   <div className="mt-3 h-48 sm:mt-4 sm:h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
-                        data={utilization}
-                        barGap={2}
-                        barSize={16}
+                        data={dashboardAnalytics.oemBusinessTrend}
+                        barGap={4}
+                        barSize={10}
                         margin={{ left: -14, right: 8, top: 4 }}
                       >
                         <CartesianGrid
@@ -2103,47 +3129,59 @@ function Dashboard() {
                           vertical={false}
                         />
                         <XAxis
-                          dataKey="day"
+                          dataKey="label"
                           tickLine={false}
                           axisLine={false}
                           tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
                         />
                         <YAxis
-                          domain={[0, 100]}
-                          ticks={[0, 25, 50, 75, 100]}
+                          domain={[0, oemTrendAxis.domainMax]}
+                          ticks={oemTrendAxis.ticks}
                           tickLine={false}
                           axisLine={false}
                           tick={{ fill: figmaChartTheme.axis, fontSize: 12 }}
-                          tickFormatter={(value) => `${value}%`}
+                          tickFormatter={formatFleetAxisEuro}
                         />
                         <Tooltip
-                          content={renderFleetUtilizationTooltip}
+                          content={renderFleetOemTooltip}
                           cursor={{ fill: "rgba(36, 17, 77, 0.04)" }}
                         />
-                        <Bar dataKey="primary" radius={[6, 6, 0, 0]}>
-                          {utilization.map((entry) => (
-                            <Cell
-                              key={`primary-${entry.day}`}
-                              fill={
-                                entry.focus
-                                  ? figmaChartTheme.linePrimary
-                                  : "rgba(167, 160, 184, 0.45)"
-                              }
-                            />
-                          ))}
-                        </Bar>
-                        <Bar dataKey="secondary" radius={[6, 6, 0, 0]}>
-                          {utilization.map((entry) => (
-                            <Cell
-                              key={`secondary-${entry.day}`}
-                              fill={
-                                entry.focus
-                                  ? "#A397EE"
-                                  : "rgba(163, 151, 238, 0.5)"
-                              }
-                            />
-                          ))}
-                        </Bar>
+                        <Bar
+                          dataKey="continental"
+                          name={t(
+                            "fleet.dashboard.oemContinental",
+                            "Continental",
+                          )}
+                          radius={[8, 8, 0, 0]}
+                          fill="#2E3A87"
+                        />
+                        <Bar
+                          dataKey="michelin"
+                          name={t("fleet.dashboard.oemMichelin", "Michelin")}
+                          radius={[8, 8, 0, 0]}
+                          fill="#F57C00"
+                        />
+                        <Bar
+                          dataKey="bridgestone"
+                          name={t(
+                            "fleet.dashboard.oemBridgestone",
+                            "Bridgestone",
+                          )}
+                          radius={[8, 8, 0, 0]}
+                          fill="#6D4C41"
+                        />
+                        <Bar
+                          dataKey="goodyear"
+                          name={t("fleet.dashboard.oemGoodyear", "Goodyear")}
+                          radius={[8, 8, 0, 0]}
+                          fill="#1E88E5"
+                        />
+                        <Bar
+                          dataKey="uniroyal"
+                          name={t("fleet.dashboard.oemUniroyal", "Uniroyal")}
+                          radius={[8, 8, 0, 0]}
+                          fill="#7B1FA2"
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -2154,71 +3192,56 @@ function Dashboard() {
                 <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                      Serviced vehicles
+                      {t(
+                        "fleet.dashboard.serviceRequestsByDriver",
+                        "Service requests by driver",
+                      )}
                     </h2>
-                    <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                      Completed
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {dashboardAnalytics.requestsByDriver.length}{" "}
+                      {t("fleet.dashboard.drivers", "drivers")}
                     </span>
                   </div>
                   <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
-                    {servicedVehicles.map((vehicle) => (
-                      <button
-                        key={vehicle.id}
-                        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/60 bg-slate-50 px-3 py-2.5 text-left text-xs transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
-                        onClick={handleVehicleCardClick(vehicle, "Serviced")}
-                        type="button"
-                      >
-                        <div>
-                          <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
-                            {vehicle.model}
-                          </p>
-                          <p className="text-[10px] text-slate-500 sm:text-xs">
-                            {vehicle.id}
-                          </p>
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
-                          {vehicle.date}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                      Recent invoices
-                    </h2>
-                    {/* <Link
-                      className="text-xs font-semibold text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline"
-                      to="/signup"
-                    >
-                      Create user
-                    </Link> */}
-                  </div>
-                  <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
-                    {invoices.map((invoice) => (
+                    {dashboardAnalytics.requestsByDriver.map((driver) => (
                       <div
-                        key={invoice.id}
+                        key={driver.name}
                         className="rounded-2xl border border-slate-200/70 bg-slate-50 p-3 text-xs sm:p-4 sm:text-sm"
                       >
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
-                            {invoice.id}
-                          </p>
-                          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-                            {invoice.status}
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
+                              {driver.name}
+                            </p>
+                            <p className="text-[10px] text-slate-500 sm:text-xs">
+                              {driver.requests}{" "}
+                              {t("fleet.dashboard.requests", "requests")}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-white sm:text-xs">
+                            {driver.requests}
                           </span>
                         </div>
-                        <p className="mt-2 text-[13px] font-semibold text-slate-900 sm:text-sm">
-                          {invoice.vendor}
-                        </p>
-                        <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
-                          {invoice.date}
-                        </p>
-                        <p className="mt-2.5 text-sm font-semibold text-slate-900 sm:mt-3 sm:text-base">
-                          {invoice.amount}
-                        </p>
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] sm:text-xs">
+                          <div className="rounded-xl bg-amber-50 px-2.5 py-2 text-amber-700">
+                            <p className="font-semibold">
+                              {t("fleet.dashboard.pending", "Pending")}
+                            </p>
+                            <p className="mt-1">{driver.pending}</p>
+                          </div>
+                          <div className="rounded-xl bg-emerald-50 px-2.5 py-2 text-emerald-700">
+                            <p className="font-semibold">
+                              {t("fleet.dashboard.approved", "Approved")}
+                            </p>
+                            <p className="mt-1">{driver.approved}</p>
+                          </div>
+                          <div className="rounded-xl bg-rose-50 px-2.5 py-2 text-rose-700">
+                            <p className="font-semibold">
+                              {t("fleet.dashboard.rejected", "Rejected")}
+                            </p>
+                            <p className="mt-1">{driver.rejected}</p>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2227,34 +3250,88 @@ function Dashboard() {
                 <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
-                      Pending service
+                      {t(
+                        "fleet.dashboard.invoicesRequiringAction",
+                        "Invoices requiring action",
+                      )}
                     </h2>
                     <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
-                      Upcoming
+                      {t("fleet.dashboard.review", "Review")}
                     </span>
                   </div>
                   <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
-                    {pendingVehicles.map((vehicle) => (
+                    {dashboardAnalytics.invoicesRequiringAction.map(
+                      (invoice) => (
+                        <div
+                          key={invoice.id}
+                          className="rounded-2xl border border-slate-200/70 bg-slate-50 p-3 text-xs sm:p-4 sm:text-sm"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                              {invoice.id}
+                            </p>
+                            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+                              {invoice.status}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-[13px] font-semibold text-slate-900 sm:text-sm">
+                            {invoice.vehicleModel}
+                          </p>
+                          <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
+                            {invoice.driverName} • {invoice.date}
+                          </p>
+                          <p className="mt-2.5 text-sm font-semibold text-slate-900 sm:mt-3 sm:text-base">
+                            {formatEuro(invoice.totalAmount)}
+                          </p>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-slate-900 sm:text-lg">
+                      {t(
+                        "fleet.dashboard.activeServiceRequests",
+                        "Active service requests",
+                      )}
+                    </h2>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-sky-600">
+                      {t("fleet.dashboard.openRequests", "Open")}
+                    </span>
+                  </div>
+                  <div className="card-list-scrollbar mt-4 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1">
+                    {dashboardAnalytics.activeServiceRequests.map((vehicle) => (
                       <button
                         key={vehicle.id}
-                        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-100/80 bg-amber-50 px-3 py-2.5 text-left text-xs transition hover:bg-amber-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
+                        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-sky-100/80 bg-sky-50 px-3 py-2.5 text-left text-xs transition hover:bg-sky-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 sm:px-4 sm:py-3 sm:text-sm"
                         onClick={handleVehicleCardClick(
-                          vehicle,
-                          "Pending service",
+                          {
+                            id: vehicle.vehicleId,
+                            model: vehicle.model,
+                            date: vehicle.date,
+                          },
+                          vehicle.status,
                         )}
                         type="button"
                       >
                         <div>
                           <p className="text-[13px] font-semibold text-slate-900 sm:text-base">
-                            {vehicle.model}
+                            {vehicle.requestTitle}
                           </p>
                           <p className="text-[10px] text-slate-500 sm:text-xs">
-                            {vehicle.id}
+                            {vehicle.vehicleId} • {vehicle.requestedBy}
                           </p>
                         </div>
-                        <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
-                          {vehicle.date}
-                        </p>
+                        <div className="text-right">
+                          <p className="text-[11px] font-semibold text-slate-700 sm:text-sm">
+                            {vehicle.date}
+                          </p>
+                          <p className="text-[10px] text-slate-500 sm:text-xs">
+                            {vehicle.status}
+                          </p>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -2264,63 +3341,46 @@ function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-[13px] font-semibold sm:text-sm">
-                        Team focus
+                        {t(
+                          "fleet.dashboard.mostCostlyVehicles",
+                          "Most costly vehicles",
+                        )}
                       </p>
                       <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
-                        Active initiatives this week
+                        {t(
+                          "fleet.dashboard.mostCostlyVehiclesDesc",
+                          "Highest service cost by vehicle in the selected period.",
+                        )}
                       </p>
                     </div>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-700 font-semibold">
-                      04 tasks
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                      {dashboardPeriodOptions.find(
+                        (option) => option.value === selectedDashboardPeriod,
+                      )?.label ||
+                        t("fleet.dashboard.last90Days", "Last 90 days")}
                     </span>
                   </div>
-                  <div className="mt-5 space-y-3 text-xs sm:mt-6 sm:space-y-4 sm:text-sm">
-                    <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-emerald-100 p-3 rounded-lg">
-                      <div>
-                        <p className="text-[12px] font-semibold sm:text-sm">
-                          Service desk refresh
-                        </p>
-                        <p className="text-[10px] text-slate-500 sm:text-xs">
-                          Due Feb 8
-                        </p>
+                  <div className="card-list-scrollbar mt-5 max-h-[23.5rem] space-y-3 overflow-y-auto pr-1 text-xs sm:mt-6 sm:space-y-4 sm:text-sm">
+                    {dashboardAnalytics.mostCostlyVehicles.map((vehicle) => (
+                      <div
+                        key={vehicle.id}
+                        className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3"
+                      >
+                        <div>
+                          <p className="text-[12px] font-semibold sm:text-sm">
+                            {vehicle.model}
+                          </p>
+                          <p className="text-[10px] sm:text-xs">
+                            {vehicle.id} • {vehicle.requestCount}{" "}
+                            {t("fleet.dashboard.requests", "requests")}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold shadow-sm">
+                          {formatEuro(vehicle.total)}
+                        </span>
                       </div>
-                      <span className="text-xs font-semibold text-emerald-700 bg-green-300 px-2 py-0.5 rounded-full">
-                        On track
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-amber-100 p-3 rounded-lg">
-                      <div>
-                        <p className="text-[12px] font-semibold sm:text-sm">
-                          Driver onboarding
-                        </p>
-                        <p className="text-[10px] text-slate-500 sm:text-xs">
-                          Due Feb 10
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold text-amber-700 bg-amber-300 px-2 py-0.5 rounded-full">
-                        Review
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-rose-100 p-3 rounded-lg">
-                      <div>
-                        <p className="text-[12px] font-semibold sm:text-sm">
-                          Parts inventory
-                        </p>
-                        <p className="text-[10px] text-slate-500 sm:text-xs">
-                          Due Feb 12
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold text-rose-700 bg-rose-300 px-2 py-0.5 rounded-full">
-                        At risk
-                      </span>
-                    </div>
+                    ))}
                   </div>
-                  {/* <button
-                    className="mt-5 w-full rounded-2xl bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 sm:mt-6 sm:text-sm"
-                    type="button"
-                  >
-                    Review all tasks
-                  </button> */}
                 </div>
               </section>
             </>

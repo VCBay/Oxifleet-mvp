@@ -6,6 +6,7 @@ import {
   Truck,
   Wrench,
 } from "lucide-react";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
 
@@ -23,6 +24,7 @@ function DriverOverviewSection({
   formatDateTime,
   licenseReminder,
 }) {
+  const { t } = useTranslation();
   const pendingRequests = driverServiceRequests.filter((request) => {
     const status = normalize(request.status);
     return !status.includes("completed") && !status.includes("rejected");
@@ -35,11 +37,13 @@ function DriverOverviewSection({
 
   const summaryCards = [
     {
-      title: "Next service due",
+      title: t("driver.overview.nextServiceDue", "Next service due"),
       value:
         analytics.daysToNextService < 0
-          ? "Overdue"
-          : `${analytics.daysToNextService} days`,
+          ? t("driver.overview.overdue", "Overdue")
+          : t("driver.overview.daysCount", "{{count}} days", {
+              count: analytics.daysToNextService,
+            }),
       helper: `${nextService.serviceType} on ${formatDate(nextService.date)}`,
       tone:
         analytics.daysToNextService <= 10
@@ -48,9 +52,9 @@ function DriverOverviewSection({
       icon: CalendarClock,
     },
     {
-      title: "Pending requests",
+      title: t("driver.overview.pendingRequests", "Pending requests"),
       value: pendingRequests.length,
-      helper: "Approvals, booking, or in progress",
+      helper: t("driver.overview.pendingRequestsHelper", "Approvals, booking, or in progress"),
       tone:
         pendingRequests.length > 0
           ? "bg-sky-100 text-sky-700"
@@ -58,24 +62,26 @@ function DriverOverviewSection({
       icon: ClipboardList,
     },
     {
-      title: "License check",
+      title: t("driver.overview.licenseCheck", "License check"),
       value:
         licenseReminder.daysRemaining === null
-          ? "Missing"
+          ? t("driver.overview.missing", "Missing")
           : licenseReminder.daysRemaining < 0
-          ? "Expired"
-          : `${licenseReminder.daysRemaining} days`,
+          ? t("driver.overview.expired", "Expired")
+          : t("driver.overview.daysCount", "{{count}} days", {
+              count: licenseReminder.daysRemaining,
+            }),
       helper: licenseReminder.note,
       tone: licenseReminder.tone,
       icon: ShieldCheck,
     },
     {
-      title: "Documents due",
+      title: t("driver.overview.documentsDue", "Documents due"),
       value:
         licenseReminder.status === "Expired" || licenseReminder.status === "Due soon"
           ? 1
           : 0,
-      helper: "License reminder only",
+      helper: t("driver.overview.documentsDueHelper", "License reminder only"),
       tone:
         licenseReminder.status === "Expired" || licenseReminder.status === "Due soon"
           ? "bg-amber-100 text-amber-700"
@@ -91,17 +97,17 @@ function DriverOverviewSection({
         <div className="pointer-events-none absolute bottom-0 right-0 h-24 w-24 rounded-tl-[120px] bg-white/15" />
         <div className="relative z-10">
           <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
-            Driver operations overview
+            {t("driver.overview.driverOperationsOverview", "Driver operations overview")}
           </h2>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-200">
             <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
-              Vehicle {vehicle.id}
+              {t("driver.overview.vehicle", "Vehicle")} {vehicle.id}
             </span>
             <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
-              Type {vehicle.type || "N/A"}
+              {t("driver.overview.type", "Type")} {vehicle.type || t("common.notAvailable", "N/A")}
             </span>
             <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
-              Warranty {warranty.status}
+              {t("driver.overview.warranty", "Warranty")} {warranty.status}
             </span>
           </div>
         </div>
@@ -136,7 +142,9 @@ function DriverOverviewSection({
                 <span
                   className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${card.tone}`}
                 >
-                  {card.title === "License check" ? licenseReminder.status : "Operational"}
+                  {card.title === t("driver.overview.licenseCheck", "License check")
+                    ? licenseReminder.status
+                    : t("driver.overview.operational", "Operational")}
                 </span>
               </div>
             </article>
@@ -150,12 +158,12 @@ function DriverOverviewSection({
             <span className="inline-flex size-7 items-center justify-center rounded-full bg-slate-100 text-slate-700">
               <CalendarClock size={16} />
             </span>
-            Upcoming service and bookings
+            {t("driver.overview.upcomingServiceAndBookings", "Upcoming service and bookings")}
           </h2>
           <div className="mt-4 space-y-3">
             <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                Next service
+                {t("driver.overview.nextService", "Next service")}
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-900">
                 {nextService.serviceType}
@@ -166,7 +174,7 @@ function DriverOverviewSection({
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                Next active request
+                {t("driver.overview.nextActiveRequest", "Next active request")}
               </p>
               {nextBooking ? (
                 <>
@@ -175,13 +183,13 @@ function DriverOverviewSection({
                   </p>
                   <p className="mt-1 text-xs text-slate-600">
                     {nextBooking.appointment?.dateTime
-                      ? `Appointment ${formatDateTime(nextBooking.appointment.dateTime)}`
-                      : `Status ${nextBooking.status}`}
+                      ? `${t("driver.tracking.appointment", "Appointment")} ${formatDateTime(nextBooking.appointment.dateTime)}`
+                      : `${t("driver.overview.status", "Status")} ${nextBooking.status}`}
                   </p>
                 </>
               ) : (
                 <p className="mt-1 text-xs text-slate-600">
-                  No active booking or request in progress.
+                  {t("driver.overview.noActiveBookingOrRequest", "No active booking or request in progress.")}
                 </p>
               )}
             </div>
@@ -193,23 +201,23 @@ function DriverOverviewSection({
             <span className="inline-flex size-7 items-center justify-center rounded-full bg-slate-100 text-slate-700">
               <Truck size={16} />
             </span>
-            Assigned vehicle status
+            {t("driver.overview.assignedVehicleStatus", "Assigned vehicle status")}
           </h2>
           <div className="mt-4 grid gap-3 text-xs min-[460px]:grid-cols-2 sm:text-sm">
             <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
-              <p className="text-[11px] text-slate-500">Vehicle</p>
+              <p className="text-[11px] text-slate-500">{t("driver.overview.vehicle", "Vehicle")}</p>
               <p className="mt-1 font-semibold text-slate-900">
                 {vehicle.id} - {vehicle.model}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
-              <p className="text-[11px] text-slate-500">Plate / Type</p>
+              <p className="text-[11px] text-slate-500">{t("driver.overview.plateType", "Plate / Type")}</p>
               <p className="mt-1 font-semibold text-slate-900">
-                {vehicle.plate || "N/A"} | {vehicle.type || "N/A"}
+                {vehicle.plate || t("common.notAvailable", "N/A")} | {vehicle.type || t("common.notAvailable", "N/A")}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
-              <p className="text-[11px] text-slate-500">Service eligibility</p>
+              <p className="text-[11px] text-slate-500">{t("driver.overview.serviceEligibility", "Service eligibility")}</p>
               <span
                 className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${eligibilityClass(
                   serviceEligibility.status,
@@ -219,12 +227,12 @@ function DriverOverviewSection({
               </span>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
-              <p className="text-[11px] text-slate-500">Warranty</p>
+              <p className="text-[11px] text-slate-500">{t("driver.overview.warranty", "Warranty")}</p>
               <p className="mt-1 font-semibold text-slate-900">
                 {warranty.status}
               </p>
               <p className="mt-1 text-xs text-slate-600">
-                Expires {formatDate(warranty.expiryDate)}
+                {t("driver.overview.expires", "Expires")} {formatDate(warranty.expiryDate)}
               </p>
             </div>
           </div>
@@ -237,12 +245,12 @@ function DriverOverviewSection({
             <span className="inline-flex size-7 items-center justify-center rounded-full bg-slate-100 text-slate-700">
               <ClipboardList size={16} />
             </span>
-            Recent request activity
+            {t("driver.overview.recentRequestActivity", "Recent request activity")}
           </h2>
           <div className="mt-4 space-y-3">
             {recentRequests.length === 0 ? (
               <p className="text-xs text-slate-500 sm:text-sm">
-                No recent service requests yet.
+                {t("driver.overview.noRecentRequests", "No recent service requests yet.")}
               </p>
             ) : (
               recentRequests.map((request) => (
@@ -275,13 +283,13 @@ function DriverOverviewSection({
             <span className="inline-flex size-7 items-center justify-center rounded-full bg-slate-100 text-slate-700">
               <Wrench size={16} />
             </span>
-            Reminders and compliance
+            {t("driver.overview.remindersAndCompliance", "Reminders and compliance")}
           </h2>
           <div className="mt-4 space-y-3">
             <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-slate-900">
-                  License check reminder
+                  {t("driver.overview.licenseCheckReminder", "License check reminder")}
                 </p>
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${licenseReminder.tone}`}>
                   {licenseReminder.status}
@@ -293,10 +301,10 @@ function DriverOverviewSection({
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
               <p className="text-sm font-semibold text-slate-900">
-                Seasonal tyre change reminder
+                {t("driver.overview.seasonalTyreChangeReminder", "Seasonal tyre change reminder")}
               </p>
               <p className="mt-2 text-xs text-slate-700">
-                Reminder date:{" "}
+                {t("driver.overview.reminderDate", "Reminder date")}:{" "}
                 <span className="font-semibold">
                   {formatDate(seasonalReminder.dueDate)}
                 </span>
@@ -307,14 +315,14 @@ function DriverOverviewSection({
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
               <p className="text-sm font-semibold text-slate-900">
-                Policy and warranty context
+                {t("driver.overview.policyAndWarrantyContext", "Policy and warranty context")}
               </p>
               <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
                 <span className="rounded-full bg-sky-100 px-2.5 py-1 font-semibold text-sky-700">
-                  Policies mapped {matchingPolicies.length}
+                  {t("driver.overview.policiesMapped", "Policies mapped")} {matchingPolicies.length}
                 </span>
                 <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-700">
-                  Warranty {warranty.status}
+                  {t("driver.overview.warranty", "Warranty")} {warranty.status}
                 </span>
               </div>
             </div>
