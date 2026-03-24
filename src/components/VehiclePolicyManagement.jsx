@@ -33,13 +33,11 @@ const SERVICE_TYPE_OPTIONS = [
 ];
 
 const TYRE_BRAND_OPTIONS = [
-  "Michelin",
+  "Hankook",
+  "Nokian",
+  "Falken",
+  "Dunlop",
   "Bridgestone",
-  "Goodyear",
-  "Continental",
-  "Pirelli",
-  "Uniroyal",
-  "Nokian Tyres",
 ];
 
 const TYRE_CATEGORY_OPTIONS = [
@@ -51,12 +49,11 @@ const TYRE_CATEGORY_OPTIONS = [
 ];
 
 const OEM_OPTIONS = [
-  "Continental",
-  "Michelin",
+  "Hankook",
+  "Nokian",
+  "Falken",
+  "Dunlop",
   "Bridgestone",
-  "Goodyear",
-  "Uniroyal",
-  "Nokian Tyres",
 ];
 
 const toCurrencyEuro = (value) => {
@@ -185,13 +182,11 @@ const translatePolicyServiceType = (t, value) => {
 
 const translateTyreBrand = (t, value) => {
   const labels = {
-    Michelin: t("fleet.policyManagement.brandMichelin", "Michelin"),
+    Hankook: t("fleet.policyManagement.brandHankook", "Hankook"),
+    Nokian: t("fleet.policyManagement.brandNokian", "Nokian"),
+    Falken: t("fleet.policyManagement.brandFalken", "Falken"),
+    Dunlop: t("fleet.policyManagement.brandDunlop", "Dunlop"),
     Bridgestone: t("fleet.policyManagement.brandBridgestone", "Bridgestone"),
-    Goodyear: t("fleet.policyManagement.brandGoodyear", "Goodyear"),
-    Continental: t("fleet.policyManagement.brandContinental", "Continental"),
-    Pirelli: t("fleet.policyManagement.brandPirelli", "Pirelli"),
-    Uniroyal: t("fleet.policyManagement.brandUniroyal", "Uniroyal"),
-    "Nokian Tyres": t("fleet.policyManagement.brandNokianTyres", "Nokian Tyres"),
   };
   return labels[value] || value;
 };
