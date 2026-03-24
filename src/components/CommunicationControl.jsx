@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Textarea } from "./ui/textarea";
 import { getDriverState, subscribeDrivers } from "../data/driverStore";
 import { getServiceOrderState, subscribeServiceOrders } from "../data/serviceOrderStore";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   createSupportTicket,
   escalateSupportTicket,
@@ -65,7 +66,69 @@ const statusClass = (status) => {
   return "bg-amber-100 text-amber-700";
 };
 
+const translateCommunicationStatus = (t, value) => {
+  const labels = {
+    Open: t("fleet.communication.statusOpen", "Open"),
+    Resolved: t("fleet.communication.statusResolved", "Resolved"),
+    Escalated: t("fleet.communication.statusEscalated", "Escalated"),
+  };
+  return labels[value] || value;
+};
+
+const translateCommunicationChannel = (t, value) => {
+  const labels = {
+    "In-app": t("fleet.communication.channelInApp", "In-app"),
+    SMS: t("fleet.communication.channelSms", "SMS"),
+    Email: t("fleet.communication.channelEmail", "Email"),
+    Portal: t("fleet.communication.channelPortal", "Portal"),
+    Call: t("fleet.communication.channelCall", "Call"),
+  };
+  return labels[value] || value;
+};
+
+const translateCommunicationUrgency = (t, value) => {
+  const labels = {
+    Normal: t("fleet.communication.urgencyNormal", "Normal"),
+    High: t("fleet.communication.urgencyHigh", "High"),
+    Emergency: t("fleet.communication.urgencyEmergency", "Emergency"),
+  };
+  return labels[value] || value;
+};
+
+const translateCommunicationPriority = (t, value) => {
+  const labels = {
+    Low: t("fleet.communication.priorityLow", "Low"),
+    Medium: t("fleet.communication.priorityMedium", "Medium"),
+    High: t("fleet.communication.priorityHigh", "High"),
+    Critical: t("fleet.communication.priorityCritical", "Critical"),
+  };
+  return labels[value] || value;
+};
+
+const translateCommunicationCategory = (t, value) => {
+  const labels = {
+    "Driver support": t("fleet.communication.categoryDriverSupport", "Driver support"),
+    "Workshop coordination": t(
+      "fleet.communication.categoryWorkshopCoordination",
+      "Workshop coordination",
+    ),
+    Billing: t("fleet.communication.categoryBilling", "Billing"),
+    Technical: t("fleet.communication.categoryTechnical", "Technical"),
+  };
+  return labels[value] || value;
+};
+
+const translateCommunicationActor = (t, value) => {
+  const labels = {
+    "Ops Control": t("fleet.communication.actorOpsControl", "Ops Control"),
+    "Service Desk": t("fleet.communication.actorServiceDesk", "Service Desk"),
+    "Support Team": t("fleet.communication.actorSupportTeam", "Support Team"),
+  };
+  return labels[value] || value;
+};
+
 function CommunicationControl() {
+  const { t } = useTranslation();
   const driverState = useSyncExternalStore(
     subscribeDrivers,
     getDriverState,
@@ -118,15 +181,18 @@ function CommunicationControl() {
         const latest = messages[messages.length - 1];
         return {
           id,
-          title: latest?.driverName || latest?.driverId || "Unknown driver",
-          ref: latest?.driverId || "N/A",
+          title:
+            latest?.driverName ||
+            latest?.driverId ||
+            t("fleet.communication.unknownDriver", "Unknown driver"),
+          ref: latest?.driverId || t("fleet.communication.notAvailable", "N/A"),
           latestMessage: latest?.message || "",
           latestAt: latest?.sentAt || "",
           messages,
         };
       })
       .sort((a, b) => parseTime(b.latestAt) - parseTime(a.latestAt));
-  }, [communicationState.driverMessages]);
+  }, [communicationState.driverMessages, t]);
 
   const workshopThreads = useMemo(() => {
     const map = new Map();
@@ -143,15 +209,20 @@ function CommunicationControl() {
         const latest = messages[messages.length - 1];
         return {
           id,
-          title: latest?.workshop || "Unknown workshop",
-          ref: `${latest?.urgency || "Normal"} priority`,
+          title:
+            latest?.workshop ||
+            t("fleet.communication.unknownWorkshop", "Unknown workshop"),
+          ref: `${translateCommunicationUrgency(
+            t,
+            latest?.urgency || "Normal",
+          )} ${t("fleet.communication.prioritySuffix", "priority")}`,
           latestMessage: latest?.message || "",
           latestAt: latest?.sentAt || "",
           messages,
         };
       })
       .sort((a, b) => parseTime(b.latestAt) - parseTime(a.latestAt));
-  }, [communicationState.workshopMessages]);
+  }, [communicationState.workshopMessages, t]);
 
   const tickets = useMemo(
     () => [...communicationState.tickets].sort((a, b) => parseTime(b.updatedAt) - parseTime(a.updatedAt)),
@@ -259,7 +330,12 @@ function CommunicationControl() {
     });
     setActiveDriverThreadId(threadId);
     setDriverDraft("");
-    setNotice(`Message sent to ${driver?.name || selectedDriverTargetId}.`);
+    setNotice(
+      t("fleet.communication.noticeMessageSentTo", {
+        defaultValue: "Message sent to {{target}}.",
+        target: driver?.name || selectedDriverTargetId,
+      }),
+    );
   };
 
   const sendWorkshop = () => {
@@ -279,7 +355,12 @@ function CommunicationControl() {
     });
     setActiveWorkshopThreadId(threadId);
     setWorkshopDraft("");
-    setNotice(`Message sent to ${selectedWorkshopTarget}.`);
+    setNotice(
+      t("fleet.communication.noticeMessageSentTo", {
+        defaultValue: "Message sent to {{target}}.",
+        target: selectedWorkshopTarget,
+      }),
+    );
   };
 
   const createTicket = () => {
@@ -300,7 +381,12 @@ function CommunicationControl() {
     setActiveTab("support");
     setActiveTicketId(created.id);
     setTicketForm((prev) => ({ ...prev, subject: "", relatedRef: "", description: "" }));
-    setNotice(`Ticket ${created.id} created.`);
+    setNotice(
+      t("fleet.communication.noticeTicketCreated", {
+        defaultValue: "Ticket {{id}} created.",
+        id: created.id,
+      }),
+    );
   };
 
   const escalate = () => {
@@ -309,7 +395,12 @@ function CommunicationControl() {
     }
     const updated = escalateSupportTicket(activeTicket.id, note);
     if (updated) {
-      setNotice(`${updated.id} escalated.`);
+      setNotice(
+        t("fleet.communication.noticeTicketEscalated", {
+          defaultValue: "{{id}} escalated.",
+          id: updated.id,
+        }),
+      );
     }
     setNote("");
   };
@@ -320,7 +411,12 @@ function CommunicationControl() {
     }
     const updated = resolveSupportTicket(activeTicket.id, note);
     if (updated) {
-      setNotice(`${updated.id} resolved.`);
+      setNotice(
+        t("fleet.communication.noticeTicketResolved", {
+          defaultValue: "{{id}} resolved.",
+          id: updated.id,
+        }),
+      );
     }
     setNote("");
   };
@@ -331,7 +427,12 @@ function CommunicationControl() {
     }
     const updated = reopenSupportTicket(activeTicket.id);
     if (updated) {
-      setNotice(`${updated.id} reopened.`);
+      setNotice(
+        t("fleet.communication.noticeTicketReopened", {
+          defaultValue: "{{id}} reopened.",
+          id: updated.id,
+        }),
+      );
     }
     setNote("");
   };
@@ -351,10 +452,13 @@ function CommunicationControl() {
           // className="border-b border-slate-200 px-5 py-4"
         >
           <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
-            Communication Hub
+            {t("fleet.communication.hubTitle", "Communication Hub")}
           </h2>
           <p className="text-xs text-white/50">
-            Chat-style view while keeping existing message and ticket flow.
+            {t(
+              "fleet.communication.hubDesc",
+              "Chat-style view while keeping existing message and ticket flow.",
+            )}
           </p>
         </header>
 
@@ -370,11 +474,11 @@ function CommunicationControl() {
                   className="h-9 rounded-full border-slate-200 bg-slate-50 pl-9 pr-9"
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
-                  placeholder="Search"
+                  placeholder={t("fleet.communication.search", "Search")}
                 />
                 {searchText ? (
                   <button
-                    aria-label="Clear search"
+                    aria-label={t("fleet.communication.clearSearch", "Clear search")}
                     className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                     onClick={() => setSearchText("")}
                     type="button"
@@ -385,9 +489,9 @@ function CommunicationControl() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  ["driver", "Drivers"],
-                  ["workshop", "Workshop"],
-                  ["support", "Support"],
+                  ["driver", t("fleet.communication.tabDrivers", "Drivers")],
+                  ["workshop", t("fleet.communication.tabWorkshop", "Workshop")],
+                  ["support", t("fleet.communication.tabSupport", "Support")],
                 ].map(([key, label]) => (
                   <button
                     key={key}
@@ -408,7 +512,7 @@ function CommunicationControl() {
             <div className="card-list-scrollbar max-h-[590px] space-y-1 overflow-y-auto p-2 pr-1">
               {listRows.length === 0 ? (
                 <div className="m-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-500">
-                  No items found.
+                  {t("fleet.communication.noItemsFound", "No items found.")}
                 </div>
               ) : null}
 
@@ -489,7 +593,7 @@ function CommunicationControl() {
                             row.status,
                           )}`}
                         >
-                          {row.status}
+                        {translateCommunicationStatus(t, row.status)}
                         </span>
                       </div>
                       <p className="mt-1 line-clamp-1 text-xs text-slate-600">
@@ -510,7 +614,8 @@ function CommunicationControl() {
                       <UserRound size={16} />
                     </span>
                     <p className="text-sm font-semibold text-slate-800">
-                      {activeDriverThread?.title || "Select driver"}
+                      {activeDriverThread?.title ||
+                        t("fleet.communication.selectDriver", "Select driver")}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -519,10 +624,10 @@ function CommunicationControl() {
                       onValueChange={setDriverTargetId}
                     >
                       <SelectTrigger className="w-[180px] bg-slate-50">
-                        <SelectValue placeholder="Driver" />
+                        <SelectValue placeholder={t("fleet.communication.driver", "Driver")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={NONE}>Select driver</SelectItem>
+                        <SelectItem value={NONE}>{t("fleet.communication.selectDriver", "Select driver")}</SelectItem>
                         {selectedDriverTargetId !== NONE &&
                         !hasSelectedDriverOption ? (
                           <SelectItem value={selectedDriverTargetId}>
@@ -541,12 +646,12 @@ function CommunicationControl() {
                       onValueChange={setDriverChannel}
                     >
                       <SelectTrigger className="w-[120px] bg-slate-50">
-                        <SelectValue placeholder="Channel" />
+                        <SelectValue placeholder={t("fleet.communication.channel", "Channel")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="In-app">In-app</SelectItem>
-                        <SelectItem value="SMS">SMS</SelectItem>
-                        <SelectItem value="Email">Email</SelectItem>
+                        <SelectItem value="In-app">{translateCommunicationChannel(t, "In-app")}</SelectItem>
+                        <SelectItem value="SMS">{translateCommunicationChannel(t, "SMS")}</SelectItem>
+                        <SelectItem value="Email">{translateCommunicationChannel(t, "Email")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -573,7 +678,7 @@ function CommunicationControl() {
                               mine ? "text-slate-300" : "text-slate-500"
                             }`}
                           >
-                            {message.sentBy}
+                            {translateCommunicationActor(t, message.sentBy)}
                           </p>
                           <p className="mt-1">{message.message}</p>
                           <p
@@ -595,12 +700,12 @@ function CommunicationControl() {
                       rows={1}
                       value={driverDraft}
                       onChange={(event) => setDriverDraft(event.target.value)}
-                      placeholder="Type message"
+                      placeholder={t("fleet.communication.typeMessage", "Type message")}
                       className="min-h-[44px] resize-none bg-slate-50"
                     />
                     <Button onClick={sendDriver} type="button">
                       <Send className="mr-2" size={14} />
-                      Send
+                      {t("fleet.communication.send", "Send")}
                     </Button>
                   </div>
                 </div>
@@ -615,7 +720,8 @@ function CommunicationControl() {
                       <Wrench size={16} />
                     </span>
                     <p className="text-sm font-semibold text-slate-800">
-                      {activeWorkshopThread?.title || "Select workshop"}
+                      {activeWorkshopThread?.title ||
+                        t("fleet.communication.selectWorkshop", "Select workshop")}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -624,10 +730,10 @@ function CommunicationControl() {
                       onValueChange={setWorkshopTarget}
                     >
                       <SelectTrigger className="w-[210px] bg-slate-50">
-                        <SelectValue placeholder="Workshop" />
+                        <SelectValue placeholder={t("fleet.communication.workshop", "Workshop")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={NONE}>Select workshop</SelectItem>
+                        <SelectItem value={NONE}>{t("fleet.communication.selectWorkshop", "Select workshop")}</SelectItem>
                         {selectedWorkshopTarget !== NONE &&
                         !hasSelectedWorkshopOption ? (
                           <SelectItem value={selectedWorkshopTarget}>
@@ -646,12 +752,12 @@ function CommunicationControl() {
                       onValueChange={setWorkshopChannel}
                     >
                       <SelectTrigger className="w-[110px] bg-slate-50">
-                        <SelectValue placeholder="Channel" />
+                        <SelectValue placeholder={t("fleet.communication.channel", "Channel")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Email">Email</SelectItem>
-                        <SelectItem value="Portal">Portal</SelectItem>
-                        <SelectItem value="Call">Call</SelectItem>
+                        <SelectItem value="Email">{translateCommunicationChannel(t, "Email")}</SelectItem>
+                        <SelectItem value="Portal">{translateCommunicationChannel(t, "Portal")}</SelectItem>
+                        <SelectItem value="Call">{translateCommunicationChannel(t, "Call")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Select
@@ -659,12 +765,12 @@ function CommunicationControl() {
                       onValueChange={setWorkshopUrgency}
                     >
                       <SelectTrigger className="w-[120px] bg-slate-50">
-                        <SelectValue placeholder="Urgency" />
+                        <SelectValue placeholder={t("fleet.communication.urgency", "Urgency")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Normal">Normal</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                        <SelectItem value="Emergency">Emergency</SelectItem>
+                        <SelectItem value="Normal">{translateCommunicationUrgency(t, "Normal")}</SelectItem>
+                        <SelectItem value="High">{translateCommunicationUrgency(t, "High")}</SelectItem>
+                        <SelectItem value="Emergency">{translateCommunicationUrgency(t, "Emergency")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -692,13 +798,13 @@ function CommunicationControl() {
                               mine ? "text-slate-300" : "text-slate-500"
                             }`}
                           >
-                            {message.sentBy}
+                            {translateCommunicationActor(t, message.sentBy)}
                           </p>
                           <p className="mt-1">{message.message}</p>
                           <p
                             className={`mt-1 text-[10px] ${mine ? "text-slate-300" : "text-slate-500"}`}
                           >
-                            {message.channel} | {message.urgency}
+                            {translateCommunicationChannel(t, message.channel)} | {translateCommunicationUrgency(t, message.urgency)}
                           </p>
                           <p
                             className={`text-right text-[10px] ${
@@ -719,7 +825,7 @@ function CommunicationControl() {
                       rows={1}
                       value={workshopDraft}
                       onChange={(event) => setWorkshopDraft(event.target.value)}
-                      placeholder="Type workshop message"
+                      placeholder={t("fleet.communication.typeWorkshopMessage", "Type workshop message")}
                       className="min-h-[44px] resize-none bg-slate-50"
                     />
                     <Button
@@ -728,7 +834,7 @@ function CommunicationControl() {
                       variant="outline"
                     >
                       <Send className="mr-2" size={14} />
-                      Send
+                      {t("fleet.communication.send", "Send")}
                     </Button>
                   </div>
                 </div>
@@ -743,14 +849,21 @@ function CommunicationControl() {
                       <h3 className="text-base font-semibold text-slate-900">
                         {activeTicket
                           ? `${activeTicket.id} - ${activeTicket.subject}`
-                          : "Select ticket"}
+                          : t("fleet.communication.selectTicket", "Select ticket")}
                       </h3>
                       <p className="mt-1 text-xs text-slate-500">
                         {activeTicket
-                          ? `${activeTicket.category} | ${activeTicket.priority} | Ref: ${
-                              activeTicket.relatedRef || "NA"
+                          ? `${translateCommunicationCategory(
+                              t,
+                              activeTicket.category,
+                            )} | ${translateCommunicationPriority(
+                              t,
+                              activeTicket.priority,
+                            )} | ${t("fleet.communication.refLabel", "Ref")}: ${
+                              activeTicket.relatedRef ||
+                              t("fleet.communication.notAvailableShort", "NA")
                             }`
-                          : "Choose from the left list"}
+                          : t("fleet.communication.chooseFromLeftList", "Choose from the left list")}
                       </p>
                     </div>
                     {activeTicket ? (
@@ -759,7 +872,7 @@ function CommunicationControl() {
                           activeTicket.status,
                         )}`}
                       >
-                        {activeTicket.status}
+                        {translateCommunicationStatus(t, activeTicket.status)}
                       </span>
                     ) : null}
                   </div>
@@ -769,19 +882,19 @@ function CommunicationControl() {
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                         <p>{activeTicket.description}</p>
                         <p className="mt-2 text-xs text-slate-500">
-                          Created by {activeTicket.createdBy} | Assigned to{" "}
-                          {activeTicket.assignee}
+                          {t("fleet.communication.createdBy", "Created by")} {translateCommunicationActor(t, activeTicket.createdBy)} | {t("fleet.communication.assignedTo", "Assigned to")}{" "}
+                          {translateCommunicationActor(t, activeTicket.assignee)}
                         </p>
                         <p className="text-xs text-slate-500">
-                          Updated {formatDateTime(activeTicket.updatedAt)} |
-                          Escalation L{activeTicket.escalationLevel}
+                          {t("fleet.communication.updated", "Updated")} {formatDateTime(activeTicket.updatedAt)} |
+                          {" "}{t("fleet.communication.escalationLevel", "Escalation L")}{activeTicket.escalationLevel}
                         </p>
                       </div>
                       <Textarea
                         rows={3}
                         value={note}
                         onChange={(event) => setNote(event.target.value)}
-                        placeholder="Escalation or resolution note"
+                        placeholder={t("fleet.communication.escalationResolutionNote", "Escalation or resolution note")}
                       />
                       <div className="flex flex-wrap gap-2">
                         <Button
@@ -790,7 +903,7 @@ function CommunicationControl() {
                           variant="destructive"
                         >
                           <AlertTriangle className="mr-2" size={14} />
-                          Escalate
+                          {t("fleet.communication.escalate", "Escalate")}
                         </Button>
                         <Button
                           onClick={resolve}
@@ -798,14 +911,14 @@ function CommunicationControl() {
                           variant="outline"
                         >
                           <CheckCircle2 className="mr-2" size={14} />
-                          Resolve
+                          {t("fleet.communication.resolve", "Resolve")}
                         </Button>
                         <Button
                           onClick={reopen}
                           type="button"
                           variant="secondary"
                         >
-                          Reopen
+                          {t("fleet.communication.reopen", "Reopen")}
                         </Button>
                       </div>
                     </div>
@@ -814,7 +927,7 @@ function CommunicationControl() {
 
                 <article className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm">
                   <h3 className="text-base font-semibold text-slate-900">
-                    Create support ticket
+                    {t("fleet.communication.createSupportTicket", "Create support ticket")}
                   </h3>
                   <div className="mt-3 space-y-3">
                     <Input
@@ -825,7 +938,7 @@ function CommunicationControl() {
                           subject: event.target.value,
                         }))
                       }
-                      placeholder="Ticket subject"
+                      placeholder={t("fleet.communication.ticketSubject", "Ticket subject")}
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <Select
@@ -838,17 +951,17 @@ function CommunicationControl() {
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Category" />
+                          <SelectValue placeholder={t("fleet.communication.category", "Category")} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Driver support">
-                            Driver support
+                            {translateCommunicationCategory(t, "Driver support")}
                           </SelectItem>
                           <SelectItem value="Workshop coordination">
-                            Workshop coordination
+                            {translateCommunicationCategory(t, "Workshop coordination")}
                           </SelectItem>
-                          <SelectItem value="Billing">Billing</SelectItem>
-                          <SelectItem value="Technical">Technical</SelectItem>
+                          <SelectItem value="Billing">{translateCommunicationCategory(t, "Billing")}</SelectItem>
+                          <SelectItem value="Technical">{translateCommunicationCategory(t, "Technical")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Select
@@ -861,13 +974,13 @@ function CommunicationControl() {
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Priority" />
+                          <SelectValue placeholder={t("fleet.communication.priority", "Priority")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Low">Low</SelectItem>
-                          <SelectItem value="Medium">Medium</SelectItem>
-                          <SelectItem value="High">High</SelectItem>
-                          <SelectItem value="Critical">Critical</SelectItem>
+                          <SelectItem value="Low">{translateCommunicationPriority(t, "Low")}</SelectItem>
+                          <SelectItem value="Medium">{translateCommunicationPriority(t, "Medium")}</SelectItem>
+                          <SelectItem value="High">{translateCommunicationPriority(t, "High")}</SelectItem>
+                          <SelectItem value="Critical">{translateCommunicationPriority(t, "Critical")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -879,7 +992,7 @@ function CommunicationControl() {
                           relatedRef: event.target.value,
                         }))
                       }
-                      placeholder="Related reference"
+                      placeholder={t("fleet.communication.relatedReference", "Related reference")}
                     />
                     <Input
                       value={ticketForm.assignee}
@@ -889,7 +1002,7 @@ function CommunicationControl() {
                           assignee: event.target.value,
                         }))
                       }
-                      placeholder="Assignee"
+                      placeholder={t("fleet.communication.assignee", "Assignee")}
                     />
                     <Textarea
                       rows={4}
@@ -900,7 +1013,7 @@ function CommunicationControl() {
                           description: event.target.value,
                         }))
                       }
-                      placeholder="Issue description"
+                      placeholder={t("fleet.communication.issueDescription", "Issue description")}
                     />
                     <Button
                       className="w-full"
@@ -908,7 +1021,7 @@ function CommunicationControl() {
                       type="button"
                     >
                       <LifeBuoy className="mr-2" size={14} />
-                      Create ticket
+                      {t("fleet.communication.createTicket", "Create ticket")}
                     </Button>
                   </div>
                 </article>
@@ -926,7 +1039,7 @@ function CommunicationControl() {
             onClick={() => setNotice("")}
             className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
           >
-            Dismiss
+            {t("fleet.communication.dismiss", "Dismiss")}
           </button>
         </div>
       ) : null}

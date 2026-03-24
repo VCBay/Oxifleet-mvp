@@ -33,6 +33,7 @@ import {
   subscribeReporting,
   toggleReportSchedule,
 } from "../data/reportingStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -52,9 +53,9 @@ const parseCost = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const firstWord = (value) => {
+const firstWord = (value, fallback = "Unknown") => {
   const [word] = String(value || "").trim().split(/\s+/);
-  return word || "Unknown";
+  return word || fallback;
 };
 
 const parseDateValue = (value) => {
@@ -117,7 +118,43 @@ const reportTypes = [
   "Workshop performance report",
 ];
 
+const translateReportType = (t, value) => {
+  const labels = {
+    "Service spending report": t(
+      "fleet.reportingAnalytics.reportTypeServiceSpending",
+      "Service spending report",
+    ),
+    "Vehicle maintenance report": t(
+      "fleet.reportingAnalytics.reportTypeVehicleMaintenance",
+      "Vehicle maintenance report",
+    ),
+    "Policy compliance report": t(
+      "fleet.reportingAnalytics.reportTypePolicyCompliance",
+      "Policy compliance report",
+    ),
+    "Manufacturer brand share report": t(
+      "fleet.reportingAnalytics.reportTypeManufacturerBrandShare",
+      "Manufacturer brand share report",
+    ),
+    "Workshop performance report": t(
+      "fleet.reportingAnalytics.reportTypeWorkshopPerformance",
+      "Workshop performance report",
+    ),
+  };
+  return labels[value] || value;
+};
+
+const translateFrequency = (t, value) => {
+  const labels = {
+    Daily: t("fleet.reportingAnalytics.daily", "Daily"),
+    Weekly: t("fleet.reportingAnalytics.weekly", "Weekly"),
+    Monthly: t("fleet.reportingAnalytics.monthly", "Monthly"),
+  };
+  return labels[value] || value;
+};
+
 function ReportingAnalyticsControl() {
+  const { t } = useTranslation();
   const vehicleState = useSyncExternalStore(
     subscribeVehicles,
     getVehicleState,
@@ -170,11 +207,11 @@ function ReportingAnalyticsControl() {
     );
     const byService = toArrayTotals(
       filteredInvoices.flatMap((invoice) => invoice.services || []),
-      (serviceLine) => serviceLine.name || "Service",
+      (serviceLine) => serviceLine.name || t("fleet.reportingAnalytics.service", "Service"),
       (serviceLine) => serviceLine.cost || 0
     ).slice(0, 6);
     return { total, byService };
-  }, [filteredInvoices]);
+  }, [filteredInvoices, t]);
 
   const maintenanceReport = useMemo(() => {
     const entries = vehicleState.vehicles.flatMap((vehicle) =>
@@ -275,14 +312,14 @@ function ReportingAnalyticsControl() {
     const total = vehicleState.vehicles.length || 1;
     const grouped = toArrayTotals(
       vehicleState.vehicles,
-      (vehicle) => firstWord(vehicle.model),
+      (vehicle) => firstWord(vehicle.model, t("fleet.reportingAnalytics.unknown", "Unknown")),
       () => 1
     );
     return grouped.map((item) => ({
       ...item,
       share: Math.round((item.value / total) * 100),
     }));
-  }, [vehicleState.vehicles]);
+  }, [vehicleState.vehicles, t]);
 
   const workshopPerformance = useMemo(() => {
     const orders = serviceOrderState.orders.filter((order) =>
@@ -290,7 +327,7 @@ function ReportingAnalyticsControl() {
     );
     const map = new Map();
     orders.forEach((order) => {
-      const vendor = order.orderDetails?.vendor || "Unassigned";
+      const vendor = order.orderDetails?.vendor || t("fleet.reportingAnalytics.unassigned", "Unassigned");
       const requested = parseDateValue(order.requestedAt);
       const lastLifecycle = (order.lifecycle || []).reduce((latest, entry) => {
         const current = parseDateValue(entry.time);
@@ -334,7 +371,7 @@ function ReportingAnalyticsControl() {
             : 0,
       }))
       .sort((a, b) => b.totalOrders - a.totalOrders);
-  }, [serviceOrderState.orders, startDate, endDate]);
+  }, [serviceOrderState.orders, startDate, endDate, t]);
 
   const handleAddSchedule = () => {
     if (!scheduleForm.name.trim()) {
@@ -380,7 +417,7 @@ function ReportingAnalyticsControl() {
 
   const downloadFile = (content, filename, mimeType) => {
     if (typeof window === "undefined" || typeof document === "undefined") {
-      setDownloadMessage("Download is available in browser runtime only.");
+      setDownloadMessage(t("fleet.reportingAnalytics.browserOnlyDownload", "Download is available in browser runtime only."));
       return;
     }
     const blob = new Blob([content], { type: mimeType });
@@ -400,7 +437,7 @@ function ReportingAnalyticsControl() {
       `reporting-analytics-${todayIso()}.json`,
       "application/json"
     );
-    setDownloadMessage("JSON report downloaded.");
+    setDownloadMessage(t("fleet.reportingAnalytics.jsonReportDownloaded", "JSON report downloaded."));
   };
 
   const handleDownloadCsvReport = () => {
@@ -426,7 +463,7 @@ function ReportingAnalyticsControl() {
       `reporting-invoices-${todayIso()}.csv`,
       "text/csv"
     );
-    setDownloadMessage("CSV report downloaded.");
+    setDownloadMessage(t("fleet.reportingAnalytics.csvReportDownloaded", "CSV report downloaded."));
   };
 
   return (
@@ -438,11 +475,13 @@ function ReportingAnalyticsControl() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
-              Reporting & Analytics
+              {t("fleet.reportingAnalytics.headerTitle", "Reporting & Analytics")}
             </h2>
             <p className="mt-1 text-sm text-white/50">
-              Service spending, maintenance, compliance, brand share, workshop
-              performance, scheduling, and downloadable analytics.
+              {t(
+                "fleet.reportingAnalytics.headerDesc",
+                "Service spending, maintenance, compliance, brand share, workshop performance, scheduling, and downloadable analytics.",
+              )}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -452,7 +491,7 @@ function ReportingAnalyticsControl() {
               variant="outline"
               className="bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] text-white rounded-lg px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
             >
-              Last 7 days
+              {t("fleet.reportingAnalytics.last7Days", "Last 7 days")}
             </Button>
             <Button
               onClick={() => setStartDate(minusDaysIso(30))}
@@ -460,7 +499,7 @@ function ReportingAnalyticsControl() {
               variant="outline"
               className="bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] text-white rounded-lg px-3 py-2"
             >
-              Last 30 days
+              {t("fleet.reportingAnalytics.last30Days", "Last 30 days")}
             </Button>
           </div>
         </div>
@@ -502,16 +541,16 @@ function ReportingAnalyticsControl() {
       <div className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">
-            Service spending reports
+            {t("fleet.reportingAnalytics.serviceSpendingReports", "Service spending reports")}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            Total spend in selected range:{" "}
+            {t("fleet.reportingAnalytics.totalSpendInRange", "Total spend in selected range:")}{" "}
             {formatCurrency(serviceSpending.total)}
           </p>
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {serviceSpending.byService.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No service spending data in this range.
+                {t("fleet.reportingAnalytics.noServiceSpendingData", "No service spending data in this range.")}
               </p>
             ) : (
               serviceSpending.byService.map((entry) => (
@@ -531,17 +570,17 @@ function ReportingAnalyticsControl() {
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">
-            Vehicle maintenance reports
+            {t("fleet.reportingAnalytics.vehicleMaintenanceReports", "Vehicle maintenance reports")}
           </h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Maintenance events</p>
+              <p className="text-slate-500">{t("fleet.reportingAnalytics.maintenanceEvents", "Maintenance events")}</p>
               <p className="mt-1 text-lg font-semibold text-slate-900">
                 {maintenanceReport.totalEvents}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Estimated maintenance cost</p>
+              <p className="text-slate-500">{t("fleet.reportingAnalytics.estimatedMaintenanceCost", "Estimated maintenance cost")}</p>
               <p className="mt-1 text-lg font-semibold text-slate-900">
                 {formatCurrency(maintenanceReport.totalCost)}
               </p>
@@ -566,42 +605,42 @@ function ReportingAnalyticsControl() {
       <div className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">
-            Policy compliance reports
+            {t("fleet.reportingAnalytics.policyComplianceReports", "Policy compliance reports")}
           </h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Active policies</p>
+              <p className="text-slate-500">{t("fleet.reportingAnalytics.activePolicies", "Active policies")}</p>
               <p className="mt-1 text-lg font-semibold text-slate-900">
                 {policyCompliance.activePolicies}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Vehicle coverage</p>
+              <p className="text-slate-500">{t("fleet.reportingAnalytics.vehicleCoverage", "Vehicle coverage")}</p>
               <p className="mt-1 text-lg font-semibold text-slate-900">
                 {policyCompliance.coverageRate}%
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="text-slate-500">Compliant orders</p>
+              <p className="text-slate-500">{t("fleet.reportingAnalytics.compliantOrders", "Compliant orders")}</p>
               <p className="mt-1 text-lg font-semibold text-slate-900">
                 {policyCompliance.compliant}
               </p>
             </div>
           </div>
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-            Non-compliant: {policyCompliance.nonCompliant} | Unscoped orders:{" "}
+            {t("fleet.reportingAnalytics.nonCompliant", "Non-compliant")}: {policyCompliance.nonCompliant} | {t("fleet.reportingAnalytics.unscopedOrders", "Unscoped orders")}:{" "}
             {policyCompliance.unscoped}
           </div>
         </div>
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">
-            Manufacturer brand share report
+            {t("fleet.reportingAnalytics.manufacturerBrandShareReport", "Manufacturer brand share report")}
           </h3>
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {manufacturerShare.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                No vehicle brand data available.
+                {t("fleet.reportingAnalytics.noVehicleBrandData", "No vehicle brand data available.")}
               </p>
             ) : (
               manufacturerShare.map((entry) => (
@@ -615,7 +654,7 @@ function ReportingAnalyticsControl() {
                       {entry.share}%
                     </p>
                   </div>
-                  <p className="mt-1 text-slate-600">{entry.value} vehicles</p>
+                  <p className="mt-1 text-slate-600">{t("fleet.reportingAnalytics.vehiclesCount", { defaultValue: "{{count}} vehicles", count: entry.value })}</p>
                 </div>
               ))
             )}
@@ -625,12 +664,12 @@ function ReportingAnalyticsControl() {
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-900">
-          Workshop performance report
+          {t("fleet.reportingAnalytics.workshopPerformanceReport", "Workshop performance report")}
         </h3>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {workshopPerformance.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-              No workshop orders in this range.
+              {t("fleet.reportingAnalytics.noWorkshopOrders", "No workshop orders in this range.")}
             </p>
           ) : (
             workshopPerformance.map((item) => (
@@ -640,13 +679,13 @@ function ReportingAnalyticsControl() {
               >
                 <p className="font-semibold text-slate-800">{item.vendor}</p>
                 <p className="mt-1 text-slate-600">
-                  Orders: {item.totalOrders}
+                  {t("fleet.reportingAnalytics.orders", "Orders")}: {item.totalOrders}
                 </p>
                 <p className="mt-1 text-slate-600">
-                  Completed: {item.completedOrders}
+                  {t("fleet.reportingAnalytics.completed", "Completed")}: {item.completedOrders}
                 </p>
                 <p className="mt-1 text-slate-600">
-                  Avg turnaround: {item.avgTurnaroundHours}h
+                  {t("fleet.reportingAnalytics.avgTurnaround", "Avg turnaround")}: {item.avgTurnaroundHours}h
                 </p>
               </div>
             ))
@@ -657,7 +696,7 @@ function ReportingAnalyticsControl() {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">
-            Scheduled recurring reports
+            {t("fleet.reportingAnalytics.scheduledRecurringReports", "Scheduled recurring reports")}
           </h3>
           <div className="card-list-scrollbar mt-4 max-h-[23rem] space-y-2 overflow-y-auto pr-1">
             {reportingState.schedules.map((schedule) => (
@@ -671,7 +710,7 @@ function ReportingAnalyticsControl() {
                       {schedule.name}
                     </p>
                     <p className="text-slate-600">
-                      {schedule.reportType} | {schedule.frequency} at{" "}
+                      {translateReportType(t, schedule.reportType)} | {translateFrequency(t, schedule.frequency)} {t("fleet.reportingAnalytics.at", "at")}{" "}
                       {schedule.runAt}
                     </p>
                   </div>
@@ -682,7 +721,7 @@ function ReportingAnalyticsControl() {
                       type="button"
                       variant="outline"
                     >
-                      {schedule.active ? "Pause" : "Resume"}
+                      {schedule.active ? t("fleet.reportingAnalytics.pause", "Pause") : t("fleet.reportingAnalytics.resume", "Resume")}
                     </Button>
                     <Button
                       onClick={() => removeReportSchedule(schedule.id)}
@@ -690,15 +729,15 @@ function ReportingAnalyticsControl() {
                       type="button"
                       variant="destructive"
                     >
-                      Remove
+                      {t("fleet.reportingAnalytics.remove", "Remove")}
                     </Button>
                   </div>
                 </div>
                 <p className="mt-2 text-slate-600">
-                  Recipients:{" "}
+                  {t("fleet.reportingAnalytics.recipients", "Recipients")}:{" "}
                   {schedule.recipients.length > 0
                     ? schedule.recipients.join(", ")
-                    : "None"}
+                    : t("fleet.reportingAnalytics.none", "None")}
                 </p>
               </div>
             ))}
@@ -712,7 +751,7 @@ function ReportingAnalyticsControl() {
                   name: event.target.value,
                 }))
               }
-              placeholder="Schedule name"
+              placeholder={t("fleet.reportingAnalytics.scheduleName", "Schedule name")}
               value={scheduleForm.name}
             />
             <Select
@@ -722,12 +761,12 @@ function ReportingAnalyticsControl() {
               value={scheduleForm.reportType}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Report type" />
+                <SelectValue placeholder={t("fleet.reportingAnalytics.reportType", "Report type")} />
               </SelectTrigger>
               <SelectContent>
                 {reportTypes.map((type) => (
                   <SelectItem key={type} value={type}>
-                    {type}
+                    {translateReportType(t, type)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -740,12 +779,12 @@ function ReportingAnalyticsControl() {
                 value={scheduleForm.frequency}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Frequency" />
+                <SelectValue placeholder={t("fleet.reportingAnalytics.frequency", "Frequency")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Daily">Daily</SelectItem>
-                  <SelectItem value="Weekly">Weekly</SelectItem>
-                  <SelectItem value="Monthly">Monthly</SelectItem>
+                  <SelectItem value="Daily">{t("fleet.reportingAnalytics.daily", "Daily")}</SelectItem>
+                  <SelectItem value="Weekly">{t("fleet.reportingAnalytics.weekly", "Weekly")}</SelectItem>
+                  <SelectItem value="Monthly">{t("fleet.reportingAnalytics.monthly", "Monthly")}</SelectItem>
                 </SelectContent>
               </Select>
               <Input
@@ -766,23 +805,25 @@ function ReportingAnalyticsControl() {
                   recipients: event.target.value,
                 }))
               }
-              placeholder="Recipients (comma separated emails)"
+              placeholder={t("fleet.reportingAnalytics.recipientsPlaceholder", "Recipients (comma separated emails)")}
               rows={2}
               value={scheduleForm.recipients}
             />
             <Button onClick={handleAddSchedule} type="button" variant="outline">
-              Add recurring schedule
+              {t("fleet.reportingAnalytics.addRecurringSchedule", "Add recurring schedule")}
             </Button>
           </div>
         </div>
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">
-            Downloadable reports
+            {t("fleet.reportingAnalytics.downloadableReports", "Downloadable reports")}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            Download full analytics pack (JSON) or invoice slice (CSV) for the
-            selected custom date range.
+            {t(
+              "fleet.reportingAnalytics.downloadableReportsDesc",
+              "Download full analytics pack (JSON) or invoice slice (CSV) for the selected custom date range.",
+            )}
           </p>
 
           <div className="mt-4 grid gap-3">
@@ -791,14 +832,14 @@ function ReportingAnalyticsControl() {
               type="button"
               className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
             >
-              Download report pack (JSON)
+              {t("fleet.reportingAnalytics.downloadReportPackJson", "Download report pack (JSON)")}
             </Button>
             <Button
               onClick={handleDownloadCsvReport}
               type="button"
               variant="outline"
             >
-              Download invoice report (CSV)
+              {t("fleet.reportingAnalytics.downloadInvoiceReportCsv", "Download invoice report (CSV)")}
             </Button>
             {downloadMessage ? (
               <p className="text-sm text-slate-600">{downloadMessage}</p>

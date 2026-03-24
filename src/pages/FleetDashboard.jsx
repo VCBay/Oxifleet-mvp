@@ -586,6 +586,15 @@ function Dashboard() {
     );
     const invoices = invoiceSet.length > 0 ? invoiceSet : allInvoices;
     const orders = orderSet.length > 0 ? orderSet : allOrders;
+    const activeVehicles = filteredVehicles.filter((vehicle) => {
+      const status = normalize(vehicle?.status);
+      return (
+        !status.includes("retired") &&
+        !status.includes("inactive") &&
+        !status.includes("out of service")
+      );
+    });
+    const activeVehicleCount = Math.max(activeVehicles.length, 1);
 
     const totalSpend = invoices.reduce(
       (sum, invoice) => sum + (Number(invoice.totalAmount) || 0),
@@ -614,6 +623,65 @@ function Dashboard() {
         .map((order) => String(order.requestedBy || "").trim())
         .filter(Boolean),
     ).size;
+    const currentYear = nowDate.getFullYear();
+    const isCurrentYear = (value) => {
+      const parsed = new Date(value || 0);
+      return (
+        Number.isFinite(parsed.getTime()) && parsed.getFullYear() === currentYear
+      );
+    };
+    const isTyreRelated = (...values) =>
+      values.some((value) => {
+        const normalizedValue = normalize(value);
+        return (
+          normalizedValue.includes("tyre") ||
+          normalizedValue.includes("tire") ||
+          normalizedValue.includes("reifen")
+        );
+      });
+    const activeOemCounts = activeVehicles.reduce((counts, vehicle) => {
+      const brand = String(vehicle?.tyreSpecs?.brand || "").trim();
+      if (!brand) {
+        return counts;
+      }
+      counts.set(brand, (counts.get(brand) || 0) + 1);
+      return counts;
+    }, new Map());
+    const activeOem = [...activeOemCounts.entries()].sort(
+      (left, right) => right[1] - left[1],
+    )[0]?.[0] || t("fleet.dashboard.oemContinental", "Continental");
+    const tyresUsedThisYear = allInvoices.reduce((sum, invoice) => {
+      if (!isCurrentYear(invoice.date)) {
+        return sum;
+      }
+      const tyreServiceCount = Array.isArray(invoice.services)
+        ? invoice.services.filter((service) =>
+            isTyreRelated(service?.name, service?.description),
+          ).length
+        : 0;
+      return sum + tyreServiceCount;
+    }, 0);
+    const tyreRelatedSpendYtd = allInvoices.reduce((sum, invoice) => {
+      if (!isCurrentYear(invoice.date)) {
+        return sum;
+      }
+      const hasTyreService = Array.isArray(invoice.services)
+        ? invoice.services.some((service) =>
+            isTyreRelated(service?.name, service?.description),
+          )
+        : false;
+      return hasTyreService ? sum + (Number(invoice.totalAmount) || 0) : sum;
+    }, 0);
+    const openRequestRatio = openRequests.length / activeVehicleCount;
+    const reviewRatio =
+      totalSpend > 0 ? invoicesAwaitingReview / totalSpend : 0;
+    const contractBusinessStatus =
+      openRequestRatio >= 0.35 || reviewRatio >= 0.45
+        ? "red"
+        : openRequestRatio >= 0.18 || reviewRatio >= 0.25
+          ? "yellow"
+          : "green";
+    const estimatedCashbackYtd = 8760;
 
     const historicalBuckets = Array.from(
       { length: costTrendMonths },
@@ -815,29 +883,29 @@ function Dashboard() {
 
     const oemShares = [
       {
-        key: "continental",
-        label: t("fleet.dashboard.oemContinental", "Continental"),
-        share: 0.24,
+        key: "hankook",
+        label: t("fleet.dashboard.oemHankook", "Hankook"),
+        share: 0.22,
       },
       {
-        key: "michelin",
-        label: t("fleet.dashboard.oemMichelin", "Michelin"),
-        share: 0.21,
+        key: "nokian",
+        label: t("fleet.dashboard.oemNokian", "Nokian Tyres"),
+        share: 0.18,
       },
       {
         key: "bridgestone",
         label: t("fleet.dashboard.oemBridgestone", "Bridgestone"),
-        share: 0.18,
+        share: 0.24,
       },
       {
-        key: "goodyear",
-        label: t("fleet.dashboard.oemGoodyear", "Goodyear"),
-        share: 0.19,
+        key: "falken",
+        label: t("fleet.dashboard.oemFalken", "Falken"),
+        share: 0.16,
       },
       {
-        key: "uniroyal",
-        label: t("fleet.dashboard.oemUniroyal", "Uniroyal"),
-        share: 0.18,
+        key: "dunlop",
+        label: t("fleet.dashboard.oemDunlop", "Dunlop"),
+        share: 0.2,
       },
     ];
 
@@ -1107,8 +1175,10 @@ function Dashboard() {
       currentMonthCostPerCar,
       ytdCostPerCar,
       oemBusinessTrend,
-      contractBusinessStatus: "green",
-      estimatedCashbackYtd: 5500,
+      contractBusinessStatus,
+      activeOem,
+      tyresUsedThisYear,
+      estimatedCashbackYtd,
     };
   }, [
     billingState.invoices,
@@ -1146,6 +1216,8 @@ function Dashboard() {
               : dashboardAnalytics.contractBusinessStatus === "yellow"
                 ? "bg-amber-100 text-amber-800 border-amber-200"
                 : "bg-rose-100 text-rose-800 border-rose-200",
+          signalStatus: "green",
+          hideValue: true,
           hoverDetails: {
             title: t(
               "fleet.dashboard.activeContractStatus",
@@ -1154,14 +1226,14 @@ function Dashboard() {
             rows: [
               {
                 label: t("fleet.dashboard.activeOem", "Active OEM"),
-                value: "Continental",
+                value: "Nokian Tyres",
               },
               {
                 label: t(
                   "fleet.dashboard.tyresUsedThisYear",
                   "Tyres used this year",
                 ),
-                value: "346/1000",
+                value: "345/1000",
               },
             ],
           },
@@ -1173,6 +1245,7 @@ function Dashboard() {
           ),
           value: `${dashboardAnalytics.openRequests.length}`,
           tone: "bg-emerald-100 text-emerald-800 border-emerald-200",
+          signalStatus: "green",
         },
         {
           label: t(
@@ -1181,6 +1254,7 @@ function Dashboard() {
           ),
           value: formatEuro(dashboardAnalytics.estimatedCashbackYtd),
           tone: "bg-amber-100 text-amber-800 border-amber-200",
+          signalStatus: "yellow",
         },
       ],
       icon: null,
@@ -1224,11 +1298,11 @@ function Dashboard() {
   );
   const oemTrendAxis = buildFleetAxisTicks(
     dashboardAnalytics.oemBusinessTrend.flatMap((entry) => [
-      entry.continental,
-      entry.michelin,
+      entry.hankook,
+      entry.nokian,
       entry.bridgestone,
-      entry.goodyear,
-      entry.uniroyal,
+      entry.falken,
+      entry.dunlop,
     ]),
   );
 
@@ -2808,19 +2882,48 @@ function Dashboard() {
                         key={card.title}
                       >
                         <div className="relative z-10 flex items-start justify-between gap-2">
-                          <div>
-                            <div className="space-y-2">
+                          <div className="w-full">
+                            <div className="w-full space-y-2">
                               {card.indicators.map((indicator) => (
                                 <div
                                   key={indicator.label}
-                                  className={`group relative flex items-center justify-between gap-2 rounded-xl border px-2.5 py-2 ${indicator.tone}`}
+                                  className="group relative flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-slate-700"
                                 >
-                                  <p className="text-[10px] font-medium sm:text-xs">
-                                    {indicator.label}
-                                  </p>
-                                  {indicator.value ? (
-                                    <span className="text-[10px] font-semibold sm:text-xs">
-                                      {indicator.value}
+                                  <div className="min-w-0 flex-1">
+                                    {indicator.value && !indicator.hideValue ? (
+                                      <p className="text-[10px] sm:text-xs">
+                                        <span className="font-medium text-slate-500">
+                                          {indicator.label}
+                                        </span>{" "}
+                                        <span className="font-semibold text-slate-900">
+                                          {indicator.value}
+                                        </span>
+                                      </p>
+                                    ) : (
+                                      <p className="text-[10px] font-medium text-slate-500 sm:text-xs">
+                                        {indicator.label}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {indicator.signalStatus ? (
+                                    <span className="flex size-7 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
+                                      <span
+                                        className="block size-3 rounded-full"
+                                        style={{
+                                          backgroundColor:
+                                            indicator.signalStatus === "red"
+                                              ? "#EF4444"
+                                              : indicator.signalStatus === "yellow"
+                                                ? "#F59E0B"
+                                                : "#10B981",
+                                          boxShadow:
+                                            indicator.signalStatus === "red"
+                                              ? "0 0 10px rgba(239,68,68,0.45)"
+                                              : indicator.signalStatus === "yellow"
+                                                ? "0 0 10px rgba(245,158,11,0.45)"
+                                                : "0 0 10px rgba(16,185,129,0.45)",
+                                        }}
+                                      />
                                     </span>
                                   ) : null}
                                   {indicator.hoverDetails ? (
@@ -3093,15 +3196,15 @@ function Dashboard() {
                     {[
                       [
                         "#2E3A87",
-                        t("fleet.dashboard.oemContinental", "Continental"),
+                        t("fleet.dashboard.oemHankook", "Hankook"),
                       ],
-                      ["#F57C00", t("fleet.dashboard.oemMichelin", "Michelin")],
+                      ["#F57C00", t("fleet.dashboard.oemNokian", "Nokian Tyres")],
                       [
                         "#6D4C41",
                         t("fleet.dashboard.oemBridgestone", "Bridgestone"),
                       ],
-                      ["#1E88E5", t("fleet.dashboard.oemGoodyear", "Goodyear")],
-                      ["#7B1FA2", t("fleet.dashboard.oemUniroyal", "Uniroyal")],
+                      ["#1E88E5", t("fleet.dashboard.oemFalken", "Falken")],
+                      ["#7B1FA2", t("fleet.dashboard.oemDunlop", "Dunlop")],
                     ].map(([color, label]) => (
                       <span
                         key={label}
@@ -3147,17 +3250,17 @@ function Dashboard() {
                           cursor={{ fill: "rgba(36, 17, 77, 0.04)" }}
                         />
                         <Bar
-                          dataKey="continental"
+                          dataKey="hankook"
                           name={t(
-                            "fleet.dashboard.oemContinental",
-                            "Continental",
+                            "fleet.dashboard.oemHankook",
+                            "Hankook",
                           )}
                           radius={[8, 8, 0, 0]}
                           fill="#2E3A87"
                         />
                         <Bar
-                          dataKey="michelin"
-                          name={t("fleet.dashboard.oemMichelin", "Michelin")}
+                          dataKey="nokian"
+                          name={t("fleet.dashboard.oemNokian", "Nokian Tyres")}
                           radius={[8, 8, 0, 0]}
                           fill="#F57C00"
                         />
@@ -3171,14 +3274,14 @@ function Dashboard() {
                           fill="#6D4C41"
                         />
                         <Bar
-                          dataKey="goodyear"
-                          name={t("fleet.dashboard.oemGoodyear", "Goodyear")}
+                          dataKey="falken"
+                          name={t("fleet.dashboard.oemFalken", "Falken")}
                           radius={[8, 8, 0, 0]}
                           fill="#1E88E5"
                         />
                         <Bar
-                          dataKey="uniroyal"
-                          name={t("fleet.dashboard.oemUniroyal", "Uniroyal")}
+                          dataKey="dunlop"
+                          name={t("fleet.dashboard.oemDunlop", "Dunlop")}
                           radius={[8, 8, 0, 0]}
                           fill="#7B1FA2"
                         />

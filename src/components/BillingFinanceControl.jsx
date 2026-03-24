@@ -27,6 +27,7 @@ import {
   subscribeBillingFinance,
   updateBillingProfile,
 } from "../data/billingFinanceStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -117,6 +118,7 @@ const billingOverviewToneClass = (tone) => {
 };
 
 function BillingFinanceControl() {
+  const { t } = useTranslation();
   const billingState = useSyncExternalStore(
     subscribeBillingFinance,
     getBillingFinanceState,
@@ -208,46 +210,55 @@ function BillingFinanceControl() {
   const overviewCards = [
     {
       key: "total",
-      title: "Total spend",
+      title: t("fleet.billingFinance.totalSpend", "Total spend"),
       value: formatCurrency(totals.totalSpend),
-      helper: `${consolidatedInvoices.length} consolidated invoices`,
-      status: "Ledger synced",
+      helper: t("fleet.billingFinance.consolidatedInvoicesCount", {
+        defaultValue: "{{count}} consolidated invoices",
+        count: consolidatedInvoices.length,
+      }),
+      status: t("fleet.billingFinance.ledgerSynced", "Ledger synced"),
       tone: "good",
       icon: CircleDollarSign,
     },
     {
       key: "paid",
-      title: "Paid",
+      title: t("fleet.billingFinance.paid", "Paid"),
       value: formatCurrency(totals.paid),
-      helper: "Cleared invoices",
-      status: "Settled",
+      helper: t("fleet.billingFinance.clearedInvoices", "Cleared invoices"),
+      status: t("fleet.billingFinance.settled", "Settled"),
       tone: "good",
       icon: BadgeCheck,
     },
     {
       key: "unpaid",
-      title: "Unpaid",
+      title: t("fleet.billingFinance.unpaid", "Unpaid"),
       value: formatCurrency(totals.unpaid),
-      helper: "Pending settlement",
-      status: totals.unpaid > 0 ? "Follow up" : "No due amount",
+      helper: t("fleet.billingFinance.pendingSettlement", "Pending settlement"),
+      status: totals.unpaid > 0
+        ? t("fleet.billingFinance.followUp", "Follow up")
+        : t("fleet.billingFinance.noDueAmount", "No due amount"),
       tone: totals.unpaid > 0 ? "danger" : "good",
       icon: Receipt,
     },
     {
       key: "processing",
-      title: "Processing",
+      title: t("fleet.billingFinance.processing", "Processing"),
       value: formatCurrency(totals.processing),
-      helper: "Under verification",
-      status: totals.processing > 0 ? "In progress" : "Up to date",
+      helper: t("fleet.billingFinance.underVerification", "Under verification"),
+      status: totals.processing > 0
+        ? t("fleet.billingFinance.inProgress", "In progress")
+        : t("fleet.billingFinance.upToDate", "Up to date"),
       tone: totals.processing > 0 ? "warn" : "info",
       icon: Clock3,
     },
     {
       key: "methods",
-      title: "Payment methods",
+      title: t("fleet.billingFinance.paymentMethods", "Payment methods"),
       value: `${billingState.paymentMethods.length}`,
-      helper: "Configured methods",
-      status: billingState.paymentMethods.length > 0 ? "Ready to pay" : "Add method",
+      helper: t("fleet.billingFinance.configuredMethods", "Configured methods"),
+      status: billingState.paymentMethods.length > 0
+        ? t("fleet.billingFinance.readyToPay", "Ready to pay")
+        : t("fleet.billingFinance.addMethod", "Add method"),
       tone: billingState.paymentMethods.length > 0 ? "info" : "warn",
       icon: CreditCard,
     },
@@ -267,20 +278,20 @@ function BillingFinanceControl() {
     () =>
       toArrayTotals(
         consolidatedInvoices,
-        (invoice) => invoice.driverName || "Unassigned",
+        (invoice) => invoice.driverName || t("fleet.billingFinance.unassigned", "Unassigned"),
         (invoice) => invoice.totalAmount
       ).slice(0, 5),
-    [consolidatedInvoices]
+    [consolidatedInvoices, t]
   );
 
   const spendByLocation = useMemo(
     () =>
       toArrayTotals(
         consolidatedInvoices,
-        (invoice) => invoice.location || "Unknown",
+        (invoice) => invoice.location || t("fleet.billingFinance.unknown", "Unknown"),
         (invoice) => invoice.totalAmount
       ).slice(0, 5),
-    [consolidatedInvoices]
+    [consolidatedInvoices, t]
   );
 
   const handleInvoiceStatusChange = (invoiceId) => (value) => {
@@ -332,11 +343,11 @@ function BillingFinanceControl() {
       anchor.click();
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
-      setExportMessage("Accounting export downloaded.");
+      setExportMessage(t("fleet.billingFinance.accountingExportDownloaded", "Accounting export downloaded."));
       return;
     }
 
-    setExportMessage("Export is available in browser runtime only.");
+    setExportMessage(t("fleet.billingFinance.browserOnlyExport", "Export is available in browser runtime only."));
   };
 
   const handleDownloadInvoice = (invoice) => {
@@ -362,11 +373,13 @@ function BillingFinanceControl() {
         // className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm"
       >
         <h2 className="font-semibold uppercase tracking-[0.24em] text-white/70">
-          Billing & Finance
+          {t("fleet.billingFinance.headerTitle", "Billing & Finance")}
         </h2>
         <p className="mt-1 text-sm text-white/50">
-          Consolidated invoices, credit notes, status tracking, spend analytics,
-          payment methods, billing/tax details, and accounting export.
+          {t(
+            "fleet.billingFinance.headerDesc",
+            "Consolidated invoices, credit notes, status tracking, spend analytics, payment methods, billing/tax details, and accounting export.",
+          )}
         </p>
       </div>
 
@@ -413,19 +426,19 @@ function BillingFinanceControl() {
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              Consolidated invoices
+              {t("fleet.billingFinance.consolidatedInvoices", "Consolidated invoices")}
             </h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="relative">
                 <Input
                   className="pr-10"
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search by invoice, order, vehicle, driver, location"
+                  placeholder={t("fleet.billingFinance.searchInvoices", "Search by invoice, order, vehicle, driver, location")}
                   value={searchQuery}
                 />
                 {searchQuery ? (
                   <button
-                    aria-label="Clear search"
+                    aria-label={t("fleet.billingFinance.clearSearch", "Clear search")}
                     className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                     onClick={() => setSearchQuery("")}
                     type="button"
@@ -436,13 +449,13 @@ function BillingFinanceControl() {
               </div>
               <Select onValueChange={setStatusFilter} value={statusFilter}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Status filter" />
+                  <SelectValue placeholder={t("fleet.billingFinance.statusFilter", "Status filter")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="Paid">Paid</SelectItem>
-                  <SelectItem value="Unpaid">Unpaid</SelectItem>
-                  <SelectItem value="Processing">Processing</SelectItem>
+                  <SelectItem value="all">{t("fleet.billingFinance.allStatuses", "All statuses")}</SelectItem>
+                  <SelectItem value="Paid">{t("fleet.billingFinance.paid", "Paid")}</SelectItem>
+                  <SelectItem value="Unpaid">{t("fleet.billingFinance.unpaid", "Unpaid")}</SelectItem>
+                  <SelectItem value="Processing">{t("fleet.billingFinance.processing", "Processing")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -450,7 +463,7 @@ function BillingFinanceControl() {
             <div className="card-list-scrollbar mt-4 max-h-[24rem] space-y-3 overflow-y-auto pr-1">
               {filteredInvoices.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                  No invoices found.
+                  {t("fleet.billingFinance.noInvoicesFound", "No invoices found.")}
                 </div>
               ) : (
                 filteredInvoices.map((invoice) => {
@@ -480,7 +493,7 @@ function BillingFinanceControl() {
                                 : statusClassName(invoice.status)
                             }`}
                           >
-                            {invoice.status}
+                            {t(`fleet.billingFinance.status${invoice.status}`, invoice.status)}
                           </span>
                         </div>
                         <p className="mt-1 text-xs opacity-80">
@@ -506,7 +519,7 @@ function BillingFinanceControl() {
                           // }}
                           
                         >
-                          Download invoice
+                          {t("fleet.billingFinance.downloadInvoice", "Download invoice")}
                         </Button>
                       </div>
                     </div>
@@ -518,12 +531,12 @@ function BillingFinanceControl() {
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              Credit note visibility
+              {t("fleet.billingFinance.creditNoteVisibility", "Credit note visibility")}
             </h3>
             <div className="card-list-scrollbar mt-4 max-h-[20rem] space-y-2 overflow-y-auto pr-1">
               {billingState.creditNotes.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
-                  No credit notes available.
+                  {t("fleet.billingFinance.noCreditNotesAvailable", "No credit notes available.")}
                 </p>
               ) : (
                 billingState.creditNotes.map((note) => (
@@ -553,31 +566,31 @@ function BillingFinanceControl() {
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              Cost breakdown per service
+              {t("fleet.billingFinance.costBreakdownPerService", "Cost breakdown per service")}
             </h3>
             {selectedInvoice ? (
               <div className="mt-4 grid gap-4 text-sm">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs text-slate-500">Invoice</p>
+                    <p className="text-xs text-slate-500">{t("fleet.billingFinance.invoice", "Invoice")}</p>
                     <p className="font-semibold text-slate-900">
                       {selectedInvoice.id}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Order</p>
+                    <p className="text-xs text-slate-500">{t("fleet.billingFinance.order", "Order")}</p>
                     <p className="font-semibold text-slate-900">
                       {selectedInvoice.orderId}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Date</p>
+                    <p className="text-xs text-slate-500">{t("fleet.billingFinance.date", "Date")}</p>
                     <p className="font-semibold text-slate-900">
                       {selectedInvoice.date}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Status</p>
+                    <p className="text-xs text-slate-500">{t("fleet.billingFinance.status", "Status")}</p>
                     <Select
                       onValueChange={handleInvoiceStatusChange(selectedId)}
                       value={selectedInvoice.status}
@@ -586,9 +599,9 @@ function BillingFinanceControl() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Paid">Paid</SelectItem>
-                        <SelectItem value="Unpaid">Unpaid</SelectItem>
-                        <SelectItem value="Processing">Processing</SelectItem>
+                        <SelectItem value="Paid">{t("fleet.billingFinance.paid", "Paid")}</SelectItem>
+                        <SelectItem value="Unpaid">{t("fleet.billingFinance.unpaid", "Unpaid")}</SelectItem>
+                        <SelectItem value="Processing">{t("fleet.billingFinance.processing", "Processing")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -600,7 +613,7 @@ function BillingFinanceControl() {
                     type="button"
                     variant="outline"
                   >
-                    Download invoice
+                    {t("fleet.billingFinance.downloadInvoice", "Download invoice")}
                   </Button>
                 </div>
                 <div className="card-list-scrollbar max-h-[18rem] space-y-2 overflow-y-auto pr-1">
@@ -618,7 +631,7 @@ function BillingFinanceControl() {
                     </div>
                   ))}
                   <div className="flex items-center justify-between rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs">
-                    <p className="font-semibold text-slate-900">Total</p>
+                    <p className="font-semibold text-slate-900">{t("fleet.billingFinance.total", "Total")}</p>
                     <p className="font-semibold text-slate-900">
                       {formatCurrency(selectedInvoice.totalAmount)}
                     </p>
@@ -627,19 +640,19 @@ function BillingFinanceControl() {
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-500">
-                Select an invoice to view cost breakdown.
+                {t("fleet.billingFinance.selectInvoiceForBreakdown", "Select an invoice to view cost breakdown.")}
               </p>
             )}
           </div>
 
           <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900">
-              Spend by vehicle / driver / location
+              {t("fleet.billingFinance.spendByVehicleDriverLocation", "Spend by vehicle / driver / location")}
             </h3>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Vehicle
+                  {t("fleet.billingFinance.vehicle", "Vehicle")}
                 </p>
                 <div className="card-list-scrollbar mt-2 max-h-[16.5rem] space-y-2 overflow-y-auto pr-1">
                   {spendByVehicle.map((item) => (
@@ -657,7 +670,7 @@ function BillingFinanceControl() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Driver
+                  {t("fleet.billingFinance.driver", "Driver")}
                 </p>
                 <div className="card-list-scrollbar mt-2 max-h-[16.5rem] space-y-2 overflow-y-auto pr-1">
                   {spendByDriver.map((item) => (
@@ -675,7 +688,7 @@ function BillingFinanceControl() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Location
+                  {t("fleet.billingFinance.location", "Location")}
                 </p>
                 <div className="card-list-scrollbar mt-2 max-h-[16.5rem] space-y-2 overflow-y-auto pr-1">
                   {spendByLocation.map((item) => (
@@ -699,7 +712,7 @@ function BillingFinanceControl() {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">
-            Payment methods management
+            {t("fleet.billingFinance.paymentMethodsManagement", "Payment methods management")}
           </h3>
           <div className="card-list-scrollbar mt-4 max-h-[22rem] space-y-3 overflow-y-auto pr-1">
             {billingState.paymentMethods.map((method) => (
@@ -713,14 +726,14 @@ function BillingFinanceControl() {
                       {method.label} ({method.type})
                     </p>
                     <p className="text-slate-600">
-                      {method.holderName || "No holder"}{" "}
+                      {method.holderName || t("fleet.billingFinance.noHolder", "No holder")}{" "}
                       {method.last4 ? `| ****${method.last4}` : ""}
                     </p>
                   </div>
                   <div className="flex gap-2">
                     {method.isDefault ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">
-                        Default
+                        {t("fleet.billingFinance.default", "Default")}
                       </span>
                     ) : (
                       <Button
@@ -729,7 +742,7 @@ function BillingFinanceControl() {
                         type="button"
                         variant="outline"
                       >
-                        Set default
+                        {t("fleet.billingFinance.setDefault", "Set default")}
                       </Button>
                     )}
                     <Button
@@ -738,7 +751,7 @@ function BillingFinanceControl() {
                       type="button"
                       variant="destructive"
                     >
-                      Remove
+                      {t("fleet.billingFinance.remove", "Remove")}
                     </Button>
                   </div>
                 </div>
@@ -754,13 +767,13 @@ function BillingFinanceControl() {
               value={paymentForm.type}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Payment type" />
+                <SelectValue placeholder={t("fleet.billingFinance.paymentType", "Payment type")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Card">Card</SelectItem>
-                <SelectItem value="Bank transfer">Bank transfer</SelectItem>
-                <SelectItem value="ACH">ACH</SelectItem>
-                <SelectItem value="Wallet">Wallet</SelectItem>
+                <SelectItem value="Card">{t("fleet.billingFinance.methodCard", "Card")}</SelectItem>
+                <SelectItem value="Bank transfer">{t("fleet.billingFinance.methodBankTransfer", "Bank transfer")}</SelectItem>
+                <SelectItem value="ACH">{t("fleet.billingFinance.methodAch", "ACH")}</SelectItem>
+                <SelectItem value="Wallet">{t("fleet.billingFinance.methodWallet", "Wallet")}</SelectItem>
               </SelectContent>
             </Select>
             <Input
@@ -770,7 +783,7 @@ function BillingFinanceControl() {
                   label: event.target.value,
                 }))
               }
-              placeholder="Label (e.g. Corporate Mastercard)"
+              placeholder={t("fleet.billingFinance.paymentLabelPlaceholder", "Label (e.g. Corporate Mastercard)")}
               value={paymentForm.label}
             />
             <Input
@@ -780,7 +793,7 @@ function BillingFinanceControl() {
                   holderName: event.target.value,
                 }))
               }
-              placeholder="Holder name"
+              placeholder={t("fleet.billingFinance.holderName", "Holder name")}
               value={paymentForm.holderName}
             />
             <Input
@@ -791,7 +804,7 @@ function BillingFinanceControl() {
                   last4: event.target.value,
                 }))
               }
-              placeholder="Last 4 digits"
+              placeholder={t("fleet.billingFinance.last4Digits", "Last 4 digits")}
               value={paymentForm.last4}
             />
             <Button
@@ -799,14 +812,14 @@ function BillingFinanceControl() {
               type="button"
               variant="outline"
             >
-              Add payment method
+              {t("fleet.billingFinance.addPaymentMethod", "Add payment method")}
             </Button>
           </div>
         </div>
 
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">
-            Billing address & tax info
+            {t("fleet.billingFinance.billingAddressTaxInfo", "Billing address & tax info")}
           </h3>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Input
@@ -816,7 +829,7 @@ function BillingFinanceControl() {
                   companyName: event.target.value,
                 }))
               }
-              placeholder="Company name"
+              placeholder={t("fleet.billingFinance.companyName", "Company name")}
               value={billingDraft.companyName}
             />
             <Input
@@ -826,7 +839,7 @@ function BillingFinanceControl() {
                   billingEmail: event.target.value,
                 }))
               }
-              placeholder="Billing email"
+              placeholder={t("fleet.billingFinance.billingEmail", "Billing email")}
               value={billingDraft.billingEmail}
             />
             <Input
@@ -836,7 +849,7 @@ function BillingFinanceControl() {
                   addressLine1: event.target.value,
                 }))
               }
-              placeholder="Address line 1"
+              placeholder={t("fleet.billingFinance.addressLine1", "Address line 1")}
               value={billingDraft.addressLine1}
             />
             <Input
@@ -846,7 +859,7 @@ function BillingFinanceControl() {
                   addressLine2: event.target.value,
                 }))
               }
-              placeholder="Address line 2"
+              placeholder={t("fleet.billingFinance.addressLine2", "Address line 2")}
               value={billingDraft.addressLine2}
             />
             <Input
@@ -856,7 +869,7 @@ function BillingFinanceControl() {
                   city: event.target.value,
                 }))
               }
-              placeholder="City"
+              placeholder={t("fleet.billingFinance.city", "City")}
               value={billingDraft.city}
             />
             <Input
@@ -866,7 +879,7 @@ function BillingFinanceControl() {
                   state: event.target.value,
                 }))
               }
-              placeholder="State"
+              placeholder={t("fleet.billingFinance.state", "State")}
               value={billingDraft.state}
             />
             <Input
@@ -876,7 +889,7 @@ function BillingFinanceControl() {
                   postalCode: event.target.value,
                 }))
               }
-              placeholder="Postal code"
+              placeholder={t("fleet.billingFinance.postalCode", "Postal code")}
               value={billingDraft.postalCode}
             />
             <Input
@@ -886,7 +899,7 @@ function BillingFinanceControl() {
                   country: event.target.value,
                 }))
               }
-              placeholder="Country"
+              placeholder={t("fleet.billingFinance.country", "Country")}
               value={billingDraft.country}
             />
             <Input
@@ -896,7 +909,7 @@ function BillingFinanceControl() {
                   taxId: event.target.value,
                 }))
               }
-              placeholder="Tax ID"
+              placeholder={t("fleet.billingFinance.taxId", "Tax ID")}
               value={billingDraft.taxId}
             />
             <Input
@@ -906,7 +919,7 @@ function BillingFinanceControl() {
                   vatNumber: event.target.value,
                 }))
               }
-              placeholder="VAT/GST number"
+              placeholder={t("fleet.billingFinance.vatGstNumber", "VAT/GST number")}
               value={billingDraft.vatNumber}
             />
           </div>
@@ -917,14 +930,14 @@ function BillingFinanceControl() {
               type="button"
               className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
             >
-              Save billing profile
+              {t("fleet.billingFinance.saveBillingProfile", "Save billing profile")}
             </Button>
             <Button
               onClick={handleExportAccountingData}
               type="button"
               variant="outline"
             >
-              Export accounting data
+              {t("fleet.billingFinance.exportAccountingData", "Export accounting data")}
             </Button>
             {exportMessage ? (
               <p className="text-sm text-slate-600">{exportMessage}</p>

@@ -87,22 +87,24 @@ const normalizePolicyStatusLabel = (t, status) => {
   return status;
 };
 
-const toScopeLabel = (policy) => {
+const toScopeLabel = (t, policy) => {
   const scope = policy.appliesTo || {};
   const parts = [];
   if (scope.fleet) {
-    parts.push(`Fleet: ${scope.fleet}`);
+    parts.push(`${t("fleet.policyManagement.scopeFleet", "Fleet")}: ${scope.fleet}`);
   }
   if (scope.vehicleGroup) {
-    parts.push(`Group: ${scope.vehicleGroup}`);
+    parts.push(`${t("fleet.policyManagement.scopeGroup", "Group")}: ${scope.vehicleGroup}`);
   }
   if (scope.vehicleClass) {
-    parts.push(`Class: ${scope.vehicleClass}`);
+    parts.push(`${t("fleet.policyManagement.scopeClass", "Class")}: ${scope.vehicleClass}`);
   }
   if (scope.vehicleId) {
-    parts.push(`Vehicle: ${scope.vehicleId}`);
+    parts.push(`${t("fleet.policyManagement.scopeVehicle", "Vehicle")}: ${scope.vehicleId}`);
   }
-  return parts.length > 0 ? parts.join(" | ") : "Unscoped";
+  return parts.length > 0
+    ? parts.join(" | ")
+    : t("fleet.policyManagement.unscoped", "Unscoped");
 };
 
 const listDifference = (current, previous) =>
@@ -125,7 +127,7 @@ const getPolicyChanges = (current, previous) => {
   if (current.approvalThreshold !== previous.approvalThreshold) {
     changes.push("approval threshold");
   }
-  if (toScopeLabel(current) !== toScopeLabel(previous)) {
+  if (JSON.stringify(current.appliesTo || {}) !== JSON.stringify(previous.appliesTo || {})) {
     changes.push("scope");
   }
   if (listDifference(current.allowedServiceTypes, previous.allowedServiceTypes).length > 0) {
@@ -153,6 +155,100 @@ const statusClassName = (status) => {
     return "bg-slate-200 text-slate-700";
   }
   return "bg-slate-100 text-slate-700";
+};
+
+const translatePolicyServiceType = (t, value) => {
+  const labels = {
+    "Oil change": t("fleet.policyManagement.serviceTypeOilChange", "Oil change"),
+    "Brake service": t("fleet.policyManagement.serviceTypeBrakeService", "Brake service"),
+    "Tyre rotation": t("fleet.policyManagement.serviceTypeTyreRotation", "Tyre rotation"),
+    "Engine diagnostics": t(
+      "fleet.policyManagement.serviceTypeEngineDiagnostics",
+      "Engine diagnostics",
+    ),
+    "Battery / electrical": t(
+      "fleet.policyManagement.serviceTypeBatteryElectrical",
+      "Battery / electrical",
+    ),
+    Alignment: t("fleet.policyManagement.serviceTypeAlignment", "Alignment"),
+    "General service": t(
+      "fleet.policyManagement.serviceTypeGeneralService",
+      "General service",
+    ),
+    "Emergency breakdown": t(
+      "fleet.policyManagement.serviceTypeEmergencyBreakdown",
+      "Emergency breakdown",
+    ),
+  };
+  return labels[value] || value;
+};
+
+const translateTyreBrand = (t, value) => {
+  const labels = {
+    Michelin: t("fleet.policyManagement.brandMichelin", "Michelin"),
+    Bridgestone: t("fleet.policyManagement.brandBridgestone", "Bridgestone"),
+    Goodyear: t("fleet.policyManagement.brandGoodyear", "Goodyear"),
+    Continental: t("fleet.policyManagement.brandContinental", "Continental"),
+    Pirelli: t("fleet.policyManagement.brandPirelli", "Pirelli"),
+    Uniroyal: t("fleet.policyManagement.brandUniroyal", "Uniroyal"),
+    "Nokian Tyres": t("fleet.policyManagement.brandNokianTyres", "Nokian Tyres"),
+  };
+  return labels[value] || value;
+};
+
+const translateTyreCategory = (t, value) => {
+  const labels = {
+    Summer: t("fleet.policyManagement.categorySummer", "Summer"),
+    Winter: t("fleet.policyManagement.categoryWinter", "Winter"),
+    "All-season": t("fleet.policyManagement.categoryAllSeason", "All-season"),
+    Highway: t("fleet.policyManagement.categoryHighway", "Highway"),
+    Performance: t("fleet.policyManagement.categoryPerformance", "Performance"),
+  };
+  return labels[value] || value;
+};
+
+const translateNetworkMode = (t, value) => {
+  const labels = {
+    "point-s-only": t("fleet.policyManagement.networkPointSOnly", "Point S only"),
+    "preferred-network": t(
+      "fleet.policyManagement.networkPreferredNetwork",
+      "Preferred network",
+    ),
+    "any-approved-provider": t(
+      "fleet.policyManagement.networkAnyApprovedProvider",
+      "Any approved provider",
+    ),
+    "preferred-oem-and-point-s": t(
+      "fleet.policyManagement.networkPreferredOemAndPointS",
+      "Preferred OEM and Point S",
+    ),
+    "approved-network-only": t(
+      "fleet.policyManagement.networkApprovedOnly",
+      "Approved network only",
+    ),
+    "open-network": t("fleet.policyManagement.networkOpen", "Open network"),
+  };
+  return labels[value] || value;
+};
+
+const translatePolicyChange = (t, value) => {
+  const labels = {
+    status: t("fleet.policyManagement.changeStatus", "Status"),
+    "service limit": t("fleet.policyManagement.changeServiceLimit", "Service limit"),
+    "tyre limit": t("fleet.policyManagement.changeTyreLimit", "Tyre limit"),
+    "approval threshold": t(
+      "fleet.policyManagement.changeApprovalThreshold",
+      "Approval threshold",
+    ),
+    scope: t("fleet.policyManagement.changeScope", "Scope"),
+    "service types": t("fleet.policyManagement.changeServiceTypes", "Service types"),
+    "tyre brands": t("fleet.policyManagement.changeTyreBrands", "Tyre brands"),
+    "tyre categories": t(
+      "fleet.policyManagement.changeTyreCategories",
+      "Tyre categories",
+    ),
+  };
+  return labels[value] || value;
 };
 
 function VehiclePolicyManagement({ vehicles }) {
@@ -268,7 +364,7 @@ function VehiclePolicyManagement({ vehicles }) {
       if (!policySearch.trim()) {
         return true;
       }
-      const scopeLabel = toScopeLabel(policy);
+      const scopeLabel = toScopeLabel(t, policy);
       const blob = [
         policy.name,
         policy.policyCode,
@@ -282,7 +378,7 @@ function VehiclePolicyManagement({ vehicles }) {
         .toLowerCase();
       return blob.includes(policySearch.trim().toLowerCase());
     });
-  }, [latestPoliciesByCode, policySearch, statusFilter]);
+  }, [latestPoliciesByCode, policySearch, statusFilter, t]);
 
   const classWisePolicies = useMemo(() => {
     const map = new Map();
@@ -643,9 +739,9 @@ function VehiclePolicyManagement({ vehicles }) {
                   <SelectValue placeholder={t("fleet.policyManagement.status")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Draft">Draft</SelectItem>
-                  <SelectItem value="Retired">Retired</SelectItem>
+                  <SelectItem value="Active">{normalizePolicyStatusLabel(t, "Active")}</SelectItem>
+                  <SelectItem value="Draft">{normalizePolicyStatusLabel(t, "Draft")}</SelectItem>
+                  <SelectItem value="Retired">{normalizePolicyStatusLabel(t, "Retired")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -729,7 +825,7 @@ function VehiclePolicyManagement({ vehicles }) {
                       onClick={() => toggleMultiSelectValue("allowedServiceTypes", option)}
                       type="button"
                     >
-                      {option}
+                      {translatePolicyServiceType(t, option)}
                     </button>
                   );
                 })}
@@ -751,7 +847,7 @@ function VehiclePolicyManagement({ vehicles }) {
                       onClick={() => toggleMultiSelectValue("allowedTyreBrands", option)}
                       type="button"
                     >
-                      {option}
+                      {translateTyreBrand(t, option)}
                     </button>
                   );
                 })}
@@ -773,7 +869,7 @@ function VehiclePolicyManagement({ vehicles }) {
                       onClick={() => toggleMultiSelectValue("allowedTyreCategories", option)}
                       type="button"
                     >
-                      {option}
+                      {translateTyreCategory(t, option)}
                     </button>
                   );
                 })}
@@ -913,9 +1009,9 @@ function VehiclePolicyManagement({ vehicles }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="point-s-only">Point S only</SelectItem>
-                      <SelectItem value="preferred-network">Preferred network</SelectItem>
-                      <SelectItem value="any-approved-provider">Any approved provider</SelectItem>
+                      <SelectItem value="point-s-only">{translateNetworkMode(t, "point-s-only")}</SelectItem>
+                      <SelectItem value="preferred-network">{translateNetworkMode(t, "preferred-network")}</SelectItem>
+                      <SelectItem value="any-approved-provider">{translateNetworkMode(t, "any-approved-provider")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1031,10 +1127,10 @@ function VehiclePolicyManagement({ vehicles }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="point-s-only">Point S only</SelectItem>
-                      <SelectItem value="preferred-oem-and-point-s">Preferred OEM and Point S</SelectItem>
-                      <SelectItem value="approved-network-only">Approved network only</SelectItem>
-                      <SelectItem value="open-network">Open network</SelectItem>
+                      <SelectItem value="point-s-only">{translateNetworkMode(t, "point-s-only")}</SelectItem>
+                      <SelectItem value="preferred-oem-and-point-s">{translateNetworkMode(t, "preferred-oem-and-point-s")}</SelectItem>
+                      <SelectItem value="approved-network-only">{translateNetworkMode(t, "approved-network-only")}</SelectItem>
+                      <SelectItem value="open-network">{translateNetworkMode(t, "open-network")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1063,7 +1159,7 @@ function VehiclePolicyManagement({ vehicles }) {
                               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                           }`}
                         >
-                          {option}
+                          {translateTyreBrand(t, option)}
                         </button>
                       );
                     })}
@@ -1197,7 +1293,7 @@ function VehiclePolicyManagement({ vehicles }) {
                       <p className="font-semibold text-slate-900">
                         {policy.name} · {policy.policyCode} · v{policy.version}
                       </p>
-                      <p className="text-xs text-slate-500">{toScopeLabel(policy)}</p>
+                      <p className="text-xs text-slate-500">{toScopeLabel(t, policy)}</p>
                     </div>
                     <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                       {t("fleet.policyManagement.currentActiveVersion", "Current active version")}
@@ -1209,12 +1305,12 @@ function VehiclePolicyManagement({ vehicles }) {
                     <p>{t("fleet.policyManagement.approvalThreshold", "Approval threshold")}: {policy.approvalThreshold === null ? "-" : `${policy.approvalThreshold}%`}</p>
                     <p>{t("fleet.policyManagement.affectedVehicles", "Affected vehicles")}: {impactedCount}</p>
                     <p>{t("fleet.policyManagement.emergencyBreakdownRule", "Emergency breakdown rule")}: {policy.emergencyBreakdownRule?.enabled ? normalizePolicyStatusLabel(t, "Active") : t("fleet.policyManagement.disabled", "Disabled")}</p>
-                    <p>{t("fleet.policyManagement.networkMode", "Network mode")}: {policy.serviceNetworkRule?.networkMode || "-"}</p>
+                    <p>{t("fleet.policyManagement.networkMode", "Network mode")}: {policy.serviceNetworkRule?.networkMode ? translateNetworkMode(t, policy.serviceNetworkRule.networkMode) : "-"}</p>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     {policy.allowedTyreBrands.slice(0, 4).map((brand) => (
                       <span key={brand} className="rounded-full bg-white px-2.5 py-1 text-slate-700">
-                        {brand}
+                        {translateTyreBrand(t, brand)}
                       </span>
                     ))}
                   </div>
@@ -1258,9 +1354,9 @@ function VehiclePolicyManagement({ vehicles }) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("fleet.policyManagement.allStatuses")}</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Draft">Draft</SelectItem>
-                <SelectItem value="Retired">Retired</SelectItem>
+                <SelectItem value="Active">{normalizePolicyStatusLabel(t, "Active")}</SelectItem>
+                <SelectItem value="Draft">{normalizePolicyStatusLabel(t, "Draft")}</SelectItem>
+                <SelectItem value="Retired">{normalizePolicyStatusLabel(t, "Retired")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1282,7 +1378,7 @@ function VehiclePolicyManagement({ vehicles }) {
                         {policy.name} (v{policy.version})
                       </p>
                       <p className="text-xs text-slate-500">
-                        {policy.policyCode} | {toScopeLabel(policy)}
+                        {policy.policyCode} | {toScopeLabel(t, policy)}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1325,9 +1421,9 @@ function VehiclePolicyManagement({ vehicles }) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Draft">Draft</SelectItem>
-                        <SelectItem value="Retired">Retired</SelectItem>
+                        <SelectItem value="Active">{normalizePolicyStatusLabel(t, "Active")}</SelectItem>
+                        <SelectItem value="Draft">{normalizePolicyStatusLabel(t, "Draft")}</SelectItem>
+                        <SelectItem value="Retired">{normalizePolicyStatusLabel(t, "Retired")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1411,7 +1507,7 @@ function VehiclePolicyManagement({ vehicles }) {
                       {policy.policyCode} | {policy.name} | v{policy.version}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Effective {policy.effectiveFrom || "-"} | {toScopeLabel(policy)}
+                      {t("fleet.policyManagement.effective", "Effective")} {policy.effectiveFrom || "-"} | {toScopeLabel(t, policy)}
                     </p>
                   </div>
                   <span
@@ -1427,14 +1523,20 @@ function VehiclePolicyManagement({ vehicles }) {
                   <p>
                     {t("fleet.policyManagement.allowedServiceTypes", "Allowed service types")}:{" "}
                     {policy.allowedServiceTypes.length > 0
-                      ? policy.allowedServiceTypes.join(", ")
+                      ? policy.allowedServiceTypes
+                          .map((entry) => translatePolicyServiceType(t, entry))
+                          .join(", ")
                       : "-"}
                   </p>
                   <p>
                     {t("fleet.policyManagement.allowedTyreBrandsCategories", "Allowed tyre brands/categories")}:{" "}
                     {[...policy.allowedTyreBrands, ...policy.allowedTyreCategories].length >
                     0
-                      ? `${policy.allowedTyreBrands.join(", ")} | ${policy.allowedTyreCategories.join(", ")}`
+                      ? `${policy.allowedTyreBrands
+                          .map((entry) => translateTyreBrand(t, entry))
+                          .join(", ")} | ${policy.allowedTyreCategories
+                          .map((entry) => translateTyreCategory(t, entry))
+                          .join(", ")}`
                       : "-"}
                   </p>
                   <p>
@@ -1455,7 +1557,9 @@ function VehiclePolicyManagement({ vehicles }) {
                   </p>
                   <p>
                     {t("fleet.policyManagement.serviceNetworkRule", "Service network rule")}:{" "}
-                    {policy.serviceNetworkRule?.networkMode || "-"} |{" "}
+                    {policy.serviceNetworkRule?.networkMode
+                      ? translateNetworkMode(t, policy.serviceNetworkRule.networkMode)
+                      : "-"} |{" "}
                     {policy.serviceNetworkRule?.outOfNetworkApprovalRequired
                       ? t("fleet.policyManagement.outOfNetworkApprovalRequired", "Out-of-network approval required")
                       : t("fleet.policyManagement.openNetworkAllowed", "Open network allowed")}
@@ -1473,7 +1577,7 @@ function VehiclePolicyManagement({ vehicles }) {
                           key={change}
                           className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
                         >
-                          {change}
+                          {translatePolicyChange(t, change)}
                         </span>
                       ))}
                     </div>
@@ -1496,7 +1600,9 @@ function VehiclePolicyManagement({ vehicles }) {
                     <p>
                       {t("fleet.policyManagement.preferredOems", "Preferred OEMs")}:{" "}
                       {policy.serviceNetworkRule?.preferredOEMs?.length
-                        ? policy.serviceNetworkRule.preferredOEMs.join(", ")
+                        ? policy.serviceNetworkRule.preferredOEMs
+                            .map((entry) => translateTyreBrand(t, entry))
+                            .join(", ")
                         : "-"}
                     </p>
                   </div>
