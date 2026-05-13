@@ -606,6 +606,36 @@ const updateOrderInternal = (orderId, updater) => {
 
 export const getServiceOrderState = () => state;
 
+export const setServiceOrdersFromApi = (orders = []) => {
+  const list = Array.isArray(orders) ? orders : [];
+  const normalized = list.map(normalizeOrder);
+  state = {
+    ...state,
+    orders: normalized,
+  };
+  writeStorage(normalized);
+  emit();
+  return normalized;
+};
+
+export const upsertServiceOrderFromApi = (order) => {
+  const normalized = normalizeOrder(order || {});
+  const index = state.orders.findIndex((entry) => entry.id === normalized.id);
+  const nextOrders = [...state.orders];
+  if (index >= 0) {
+    nextOrders[index] = normalized;
+  } else {
+    nextOrders.unshift(normalized);
+  }
+  state = {
+    ...state,
+    orders: nextOrders,
+  };
+  writeStorage(nextOrders);
+  emit();
+  return normalized;
+};
+
 export const decideServiceRequest = (
   orderId,
   { decision, approver, note, reasonCode = "", manualOverride = false }
@@ -992,3 +1022,4 @@ export const subscribeServiceOrders = (listener) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
+

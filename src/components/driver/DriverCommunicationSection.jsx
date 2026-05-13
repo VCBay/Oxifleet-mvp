@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Headset,
@@ -22,6 +22,16 @@ const quickPhrases = [
   "Please check booking status",
 ];
 
+const getContactTabKey = (contactId) => {
+  if (contactId === "support") {
+    return "support";
+  }
+  if (contactId === "workshop_pos") {
+    return "workshop";
+  }
+  return "fleet";
+};
+
 function DriverCommunicationSection({
   activeCommunicationContact,
   setActiveCommunicationContact,
@@ -44,6 +54,9 @@ function DriverCommunicationSection({
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState("");
   const [isMobileThreadOpen, setIsMobileThreadOpen] = useState(false);
+  const [contactTab, setContactTab] = useState(
+    getContactTabKey(activeCommunicationContact),
+  );
   const isMobile = useIsMobile();
 
   const contacts = useMemo(() => {
@@ -88,6 +101,12 @@ function DriverCommunicationSection({
     );
   }, [contacts, searchText]);
 
+  const tabFilteredContacts = useMemo(() => {
+    return filteredContacts.filter(
+      (item) => getContactTabKey(item.id) === contactTab,
+    );
+  }, [contactTab, filteredContacts]);
+
   const getContactIcon = (id) => {
     if (id === "fleet_manager") {
       return UserRound;
@@ -115,10 +134,27 @@ function DriverCommunicationSection({
   const showContactsPane = !isMobile || !isMobileThreadOpen;
   const showConversationPane = !isMobile || isMobileThreadOpen;
 
+  useEffect(() => {
+    setContactTab(getContactTabKey(activeCommunicationContact));
+  }, [activeCommunicationContact]);
+
   const handleContactSelect = (contactId) => {
     setActiveCommunicationContact(contactId);
     if (isMobile) {
       setIsMobileThreadOpen(true);
+    }
+  };
+
+  const handleContactTabChange = (nextTab) => {
+    setContactTab(nextTab);
+    const nextContact = contacts.find(
+      (item) => getContactTabKey(item.id) === nextTab,
+    );
+    if (nextContact && nextContact.id !== activeCommunicationContact) {
+      setActiveCommunicationContact(nextContact.id);
+    }
+    if (isMobile) {
+      setIsMobileThreadOpen(false);
     }
   };
 
@@ -158,10 +194,33 @@ function DriverCommunicationSection({
                   </button>
                 ) : null}
               </div>
+              <div className="grid grid-cols-3 gap-2 rounded-2xl bg-[#ede8fb] p-1">
+                {[
+                  { key: "fleet", label: "Fleet" },
+                  { key: "workshop", label: "Workshop" },
+                  { key: "support", label: "Support" },
+                ].map((item) => {
+                  const isActive = contactTab === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => handleContactTabChange(item.key)}
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:text-xs ${
+                        isActive
+                          ? "bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] text-white shadow-sm"
+                          : "bg-white/80 text-slate-700 hover:bg-white"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="card-list-scrollbar max-h-[260px] space-y-1 overflow-y-auto p-2 pr-1 md:max-h-[600px]">
-              {filteredContacts.map((contact) => {
+              {tabFilteredContacts.map((contact) => {
                 const Icon = getContactIcon(contact.id);
                 const isActive = activeCommunicationContact === contact.id;
                 return (
@@ -192,6 +251,11 @@ function DriverCommunicationSection({
                   </button>
                 );
               })}
+              {tabFilteredContacts.length === 0 ? (
+                <div className="m-1 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3 text-center text-xs text-slate-500">
+                  {t("driver.communication.noContacts", "No contacts found.")}
+                </div>
+              ) : null}
             </div>
           </aside>
           ) : null}

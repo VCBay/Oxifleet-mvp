@@ -410,7 +410,22 @@ export const setVehiclePolicyStatus = (policyId, status) => {
   return updatedPolicy;
 };
 
+export const replaceVehiclePolicies = (policies = []) => {
+  const nextPolicies = Array.isArray(policies)
+    ? policies.map(normalizePolicy)
+    : [];
+
+  state = {
+    ...state,
+    policies: nextPolicies,
+  };
+  writeStorage(nextPolicies);
+  emit();
+  return nextPolicies;
+};
 export const subscribeVehiclePolicies = (listener) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
+
+

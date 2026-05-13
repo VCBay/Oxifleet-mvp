@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -12,13 +12,18 @@ import {
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import {
-  acknowledgeSettlementByFleet,
-  decideServiceRequest,
   getServiceOrderState,
-  setOrderLifecycleStage,
+  setServiceOrdersFromApi,
   subscribeServiceOrders,
+  upsertServiceOrderFromApi,
 } from "../data/serviceOrderStore";
 import { useTranslation } from "../i18n/useTranslation";
+import {
+  acknowledgeFleetServiceOrderSettlementApi,
+  decideFleetServiceOrderApi,
+  listFleetServiceOrdersApi,
+  updateFleetServiceOrderLifecycleApi,
+} from "../services/fleetServiceOrderApi";
 
 const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
 
@@ -68,6 +73,44 @@ const statusClassName = (status) => {
   return "bg-slate-100 text-slate-700";
 };
 
+const parseTechnicalNotes = (notes) => {
+  const raw = String(notes || "").trim();
+  if (!raw) {
+    return [];
+  }
+  return raw
+    .split("|")
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map((segment, index) => {
+      const colonIndex = segment.indexOf(":");
+      if (colonIndex > 0) {
+        return {
+          id: `note-${index}`,
+          key: segment.slice(0, colonIndex).trim(),
+          value: segment.slice(colonIndex + 1).trim() || "N/A",
+        };
+      }
+      return {
+        id: `note-${index}`,
+        key: "Note",
+        value: segment,
+      };
+    });
+};
+
+const highlightTechnicalNoteKeys = new Set([
+  "tenant",
+  "category",
+  "subcategory",
+  "routing",
+  "booking mode",
+  "policy check",
+  "preferred date",
+  "preferred slot",
+  "tyre supply",
+]);
+
 function ServiceOrderControl() {
   const { t } = useTranslation();
   const serviceOrderState = useSyncExternalStore(
@@ -84,6 +127,10 @@ function ServiceOrderControl() {
   const [lifecycleStage, setLifecycleStage] = useState("In progress");
   const [lifecycleNote, setLifecycleNote] = useState("");
   const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [serviceOrderApiLoading, setServiceOrderApiLoading] = useState(false);
+  const [serviceOrderApiSaving, setServiceOrderApiSaving] = useState(false);
+  const [serviceOrderApiError, setServiceOrderApiError] = useState("");
+  const serviceOrdersInitRef = useRef(false);
   const statusTabs = [
     { key: "all", label: t("fleet.serviceOrder.all", "All") },
     { key: "pending", label: t("fleet.serviceOrder.pending", "Pending") },
@@ -92,6 +139,34 @@ function ServiceOrderControl() {
     { key: "in_progress", label: t("fleet.serviceOrder.inProgress", "In progress") },
     { key: "completed", label: t("fleet.serviceOrder.completed", "Completed") },
   ];
+
+  useEffect(() => {
+    if (serviceOrdersInitRef.current) return;
+    serviceOrdersInitRef.current = true;
+
+    let ignore = false;
+
+    const run = async () => {
+      setServiceOrderApiLoading(true);
+      setServiceOrderApiError("");
+      try {
+        const rows = await listFleetServiceOrdersApi();
+        if (ignore) return;
+        setServiceOrdersFromApi(rows);
+      } catch (error) {
+        if (ignore) return;
+        setServiceOrderApiError(error?.message || "Unable to load service orders from backend. Showing local data.");
+      } finally {
+        if (!ignore) setServiceOrderApiLoading(false);
+      }
+    };
+
+    run();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const orders = useMemo(
     () =>
@@ -144,6 +219,25 @@ function ServiceOrderControl() {
   }, [filteredOrders, orders, selectedOrderId]);
 
   const selectedId = selectedOrder?.id || "";
+  const technicalNoteItems = useMemo(
+    () => parseTechnicalNotes(selectedOrder?.orderDetails?.notes),
+    [selectedOrder?.orderDetails?.notes],
+  );
+  const highlightedTechnicalNotes = useMemo(
+    () =>
+      technicalNoteItems.filter((item) =>
+        highlightTechnicalNoteKeys.has(String(item.key || "").toLowerCase()),
+      ),
+    [technicalNoteItems],
+  );
+  const detailedTechnicalNotes = useMemo(
+    () =>
+      technicalNoteItems.filter(
+        (item) =>
+          !highlightTechnicalNoteKeys.has(String(item.key || "").toLowerCase()),
+      ),
+    [technicalNoteItems],
+  );
 
   const emergencyOrders = useMemo(
     () => orders.filter((order) => order.emergency),
@@ -168,6 +262,7 @@ function ServiceOrderControl() {
   );
 
   const decisionDisabled =
+    serviceOrderApiSaving ||
     !selectedOrder ||
     !decisionApprover.trim() ||
     !String(selectedOrder.status || "").toLowerCase().includes("pending");
@@ -182,36 +277,65 @@ function ServiceOrderControl() {
     [orders]
   );
 
-  const handleDecision = (decision, manualOverride = false) => () => {
+  const handleDecision = (decision, manualOverride = false) => async () => {
     if (!selectedOrder) {
       return;
     }
-    decideServiceRequest(selectedId, {
-      decision,
-      approver: decisionApprover,
-      note: decisionNote,
-      manualOverride,
-    });
-    setDecisionNote("");
+
+    setServiceOrderApiSaving(true);
+    setServiceOrderApiError("");
+    try {
+      const updated = await decideFleetServiceOrderApi(selectedId, {
+        decision,
+        approver: decisionApprover,
+        note: decisionNote,
+        manualOverride,
+      });
+      upsertServiceOrderFromApi(updated);
+      setDecisionNote("");
+    } catch (error) {
+      setServiceOrderApiError(error?.message || "Unable to update service order decision.");
+    } finally {
+      setServiceOrderApiSaving(false);
+    }
   };
 
-  const handleLifecycleUpdate = () => {
+  const handleLifecycleUpdate = async () => {
     if (!selectedOrder) {
       return;
     }
-    setOrderLifecycleStage(selectedId, {
-      stage: lifecycleStage,
-      actor: decisionApprover,
-      note: lifecycleNote,
-    });
-    setLifecycleNote("");
+
+    setServiceOrderApiSaving(true);
+    setServiceOrderApiError("");
+    try {
+      const updated = await updateFleetServiceOrderLifecycleApi(selectedId, {
+        stage: lifecycleStage,
+        actor: decisionApprover,
+        note: lifecycleNote,
+      });
+      upsertServiceOrderFromApi(updated);
+      setLifecycleNote("");
+    } catch (error) {
+      setServiceOrderApiError(error?.message || "Unable to update lifecycle stage.");
+    } finally {
+      setServiceOrderApiSaving(false);
+    }
   };
 
-  const handleAcknowledgeSettlement = (orderId) => () => {
-    acknowledgeSettlementByFleet(orderId, {
-      actor: decisionApprover,
-      note: t("fleet.serviceOrder.invoiceReceivedNote", "Invoice received from POS. Fleet confirmed completion."),
-    });
+  const handleAcknowledgeSettlement = (orderId) => async () => {
+    setServiceOrderApiSaving(true);
+    setServiceOrderApiError("");
+    try {
+      const updated = await acknowledgeFleetServiceOrderSettlementApi(orderId, {
+        actor: decisionApprover,
+        note: t("fleet.serviceOrder.invoiceReceivedNote", "Invoice received from POS. Fleet confirmed completion."),
+      });
+      upsertServiceOrderFromApi(updated);
+    } catch (error) {
+      setServiceOrderApiError(error?.message || "Unable to acknowledge settlement.");
+    } finally {
+      setServiceOrderApiSaving(false);
+    }
   };
 
   return (
@@ -227,6 +351,18 @@ function ServiceOrderControl() {
           {t("fleet.serviceOrder.headerDesc", "Manage all service requests, workflow approvals, manual overrides, order details, lifecycle tracking, and emergency monitoring.")}
         </p>
       </div>
+
+      {serviceOrderApiError ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {serviceOrderApiError}
+        </div>
+      ) : null}
+
+      {serviceOrderApiLoading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+          Loading service orders from backend...
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-2">
         <div className="space-y-6">
@@ -401,6 +537,7 @@ function ServiceOrderControl() {
                       </p>
                       <Button
                         onClick={handleAcknowledgeSettlement(order.id)}
+                        disabled={serviceOrderApiSaving}
                         type="button"
                         size="sm"
                         variant="outline"
@@ -431,42 +568,26 @@ function ServiceOrderControl() {
               {t("fleet.serviceOrder.viewOrderDetails", "View order details")}
             </h3>
             {selectedOrder ? (
-              <div className="mt-4 grid gap-4 text-sm">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
+              <div className="mt-4 space-y-4 text-sm">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs text-slate-500">{t("fleet.serviceOrder.orderId", "Order ID")}</p>
-                    <p className="font-semibold text-slate-900">
-                      {selectedOrder.id}
-                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{selectedOrder.id}</p>
                   </div>
-                  <div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs text-slate-500">{t("fleet.serviceOrder.requestedAt", "Requested at")}</p>
-                    <p className="font-semibold text-slate-900">
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
                       {new Date(selectedOrder.requestedAt).toLocaleString()}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-500">{t("fleet.serviceOrder.vehicle", "Vehicle")}</p>
-                    <p className="font-semibold text-slate-900">
-                      {selectedOrder.vehicleId} - {selectedOrder.vehicleModel}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500">{t("fleet.serviceOrder.serviceType", "Service type")}</p>
-                    <p className="font-semibold text-slate-900">
-                      {selectedOrder.serviceType}
-                    </p>
-                  </div>
-                  <div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs text-slate-500">{t("fleet.serviceOrder.priority", "Priority")}</p>
-                    <p className="font-semibold text-slate-900">
-                      {selectedOrder.priority}
-                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{selectedOrder.priority}</p>
                   </div>
-                  <div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs text-slate-500">{t("fleet.serviceOrder.status", "Status")}</p>
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassName(
+                      className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassName(
                         selectedOrder.status,
                       )}`}
                     >
@@ -476,61 +597,369 @@ function ServiceOrderControl() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs text-slate-500">{t("driver.request.description", "Description")}</p>
-                  <p className="mt-1 text-slate-700">
-                    {selectedOrder.orderDetails.description}
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t("fleet.serviceOrder.serviceContext", "Service context")}
                   </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                    <p className="text-xs text-slate-600">
-                      Vendor: {selectedOrder.orderDetails.vendor}
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("fleet.serviceOrder.vehicle", "Vehicle")}: </span>
+                      <span className="font-semibold">{selectedOrder.vehicleId}</span>
                     </p>
-                    <p className="text-xs text-slate-600">
-                      Estimated: {selectedOrder.orderDetails.estimatedCost}
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("fleet.serviceOrder.model", "Model")}: </span>
+                      <span className="font-semibold">{selectedOrder.vehicleModel || "N/A"}</span>
                     </p>
-                    <p className="text-xs text-slate-600">
-                      Location: {selectedOrder.orderDetails.location}
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("fleet.serviceOrder.requestedBy", "Requested by")}: </span>
+                      <span className="font-semibold">{selectedOrder.requestedBy || "N/A"}</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("fleet.serviceOrder.serviceType", "Service type")}: </span>
+                      <span className="font-semibold">{selectedOrder.serviceType || "N/A"}</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("fleet.serviceOrder.route", "Route")}: </span>
+                      <span className="font-semibold">
+                        {selectedOrder.orderDetails?.routeTo === "fleet-only"
+                          ? t("fleet.serviceOrder.directFleet", "Direct fleet")
+                          : t("fleet.serviceOrder.posFlow", "POS flow")}
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("driver.request.emergency", "Emergency")}: </span>
+                      <span className={`font-semibold ${selectedOrder.emergency ? "text-rose-700" : "text-slate-900"}`}>
+                        {selectedOrder.emergency
+                          ? t("common.yes", "Yes")
+                          : t("common.no", "No")}
+                      </span>
                     </p>
                   </div>
-                  {Array.isArray(selectedOrder.orderDetails?.attachments) &&
-                  selectedOrder.orderDetails.attachments.length > 0 ? (
-                    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {t("fleet.serviceOrder.attachedPhotos", "Attached photos")}
-                        </p>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-                          {selectedOrder.orderDetails.attachments.length}
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t("fleet.serviceOrder.requestDetails", "Request details")}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    {selectedOrder.orderDetails?.description || t("common.notAvailable", "N/A")}
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("fleet.serviceOrder.vendor", "Vendor")}: </span>
+                      <span className="font-semibold">{selectedOrder.orderDetails?.vendor || "N/A"}</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("fleet.serviceOrder.estimated", "Estimated")}: </span>
+                      <span className="font-semibold">{selectedOrder.orderDetails?.estimatedCost || "N/A"}</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("fleet.serviceOrder.location", "Location")}: </span>
+                      <span className="font-semibold">{selectedOrder.orderDetails?.location || "N/A"}</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      <span className="text-slate-500">{t("driver.request.odometer", "Odometer")}: </span>
+                      <span className="font-semibold">
+                        {selectedOrder.orderDetails?.odometerReading !== null &&
+                        selectedOrder.orderDetails?.odometerReading !== undefined
+                          ? `${Number(selectedOrder.orderDetails.odometerReading).toLocaleString()} ${selectedOrder.orderDetails?.odometerUnit || "km"}`
+                          : t("common.notAvailable", "N/A")}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {selectedOrder.orderDetails?.recommendation ? (
+                  <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                        {t("fleet.serviceOrder.odometerRecommendation", "Odometer recommendation")}
+                      </p>
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                        {selectedOrder.orderDetails.recommendation.level || "low"}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      {selectedOrder.orderDetails.recommendation.title || "Recommendation"}
+                    </p>
+                    {selectedOrder.orderDetails.recommendation.summary ? (
+                      <p className="mt-1 text-xs text-slate-700">
+                        {selectedOrder.orderDetails.recommendation.summary}
+                      </p>
+                    ) : null}
+                    {selectedOrder.orderDetails.recommendation.suggestion ? (
+                      <p className="mt-1 text-xs text-slate-700">
+                        {selectedOrder.orderDetails.recommendation.suggestion}
+                      </p>
+                    ) : null}
+                    <p className="mt-2 text-xs text-slate-700">
+                      <span className="text-slate-500">{t("fleet.serviceOrder.driverAccepted", "Driver accepted")}: </span>
+                      <span className="font-semibold">
+                        {selectedOrder.orderDetails.recommendationAccepted
+                          ? t("common.yes", "Yes")
+                          : t("common.no", "No")}
+                      </span>
+                    </p>
+                  </div>
+                ) : null}
+
+                {selectedOrder.approval?.decision ||
+                selectedOrder.approval?.approver ||
+                selectedOrder.approval?.note ||
+                selectedOrder.approval?.decidedAt ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t("fleet.serviceOrder.approvalDetails", "Approval details")}
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.decision", "Decision")}: </span>
+                        <span className="font-semibold">{selectedOrder.approval?.decision || "N/A"}</span>
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.approver", "Approver")}: </span>
+                        <span className="font-semibold">{selectedOrder.approval?.approver || "N/A"}</span>
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.manualOverride", "Manual override")}: </span>
+                        <span className="font-semibold">
+                          {selectedOrder.approval?.manualOverride
+                            ? t("common.yes", "Yes")
+                            : t("common.no", "No")}
                         </span>
-                      </div>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        {selectedOrder.orderDetails.attachments.map((attachment) => (
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.decidedAt", "Decided at")}: </span>
+                        <span className="font-semibold">
+                          {selectedOrder.approval?.decidedAt
+                            ? new Date(selectedOrder.approval.decidedAt).toLocaleString()
+                            : "N/A"}
+                        </span>
+                      </p>
+                    </div>
+                    {selectedOrder.approval?.note ? (
+                      <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                        {selectedOrder.approval.note}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {selectedOrder.appointment?.dateTime ||
+                selectedOrder.appointment?.confirmedBy ||
+                selectedOrder.appointment?.note ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t("fleet.serviceOrder.appointment", "Appointment")}
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.dateTime", "Date & time")}: </span>
+                        <span className="font-semibold">
+                          {selectedOrder.appointment?.dateTime
+                            ? new Date(selectedOrder.appointment.dateTime).toLocaleString()
+                            : "N/A"}
+                        </span>
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.confirmedBy", "Confirmed by")}: </span>
+                        <span className="font-semibold">{selectedOrder.appointment?.confirmedBy || "N/A"}</span>
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.calendarChecked", "Calendar checked")}: </span>
+                        <span className="font-semibold">
+                          {selectedOrder.appointment?.calendarChecked
+                            ? t("common.yes", "Yes")
+                            : t("common.no", "No")}
+                        </span>
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.stockChecked", "Stock checked")}: </span>
+                        <span className="font-semibold">
+                          {selectedOrder.appointment?.stockChecked
+                            ? t("common.yes", "Yes")
+                            : t("common.no", "No")}
+                        </span>
+                      </p>
+                    </div>
+                    {selectedOrder.appointment?.note ? (
+                      <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                        {selectedOrder.appointment.note}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {selectedOrder.checkIn?.checkedInAt ||
+                selectedOrder.checkIn?.checkedInBy ||
+                selectedOrder.checkIn?.odometerReading !== null ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t("fleet.serviceOrder.posCheckIn", "POS check-in")}
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.checkedInAt", "Checked in at")}: </span>
+                        <span className="font-semibold">
+                          {selectedOrder.checkIn?.checkedInAt
+                            ? new Date(selectedOrder.checkIn.checkedInAt).toLocaleString()
+                            : "N/A"}
+                        </span>
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.checkedInBy", "Checked in by")}: </span>
+                        <span className="font-semibold">{selectedOrder.checkIn?.checkedInBy || "N/A"}</span>
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        <span className="text-slate-500">{t("fleet.serviceOrder.verifiedOdometer", "Verified odometer")}: </span>
+                        <span className="font-semibold">
+                          {selectedOrder.checkIn?.odometerReading !== null &&
+                          selectedOrder.checkIn?.odometerReading !== undefined
+                            ? `${Number(selectedOrder.checkIn.odometerReading).toLocaleString()} ${selectedOrder.checkIn?.odometerUnit || "km"}`
+                            : "N/A"}
+                        </span>
+                      </p>
+                    </div>
+                    {selectedOrder.checkIn?.note ? (
+                      <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                        {selectedOrder.checkIn.note}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {selectedOrder.settlement?.completionConfirmedAt ||
+                selectedOrder.settlement?.fleetAcknowledgedAt ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      {t("fleet.serviceOrder.settlement", "Settlement")}
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <p className="text-xs text-emerald-800">
+                        <span className="text-emerald-700">{t("fleet.serviceOrder.completionConfirmedBy", "Completion confirmed by")}: </span>
+                        <span className="font-semibold">{selectedOrder.settlement?.completionConfirmedBy || "N/A"}</span>
+                      </p>
+                      <p className="text-xs text-emerald-800">
+                        <span className="text-emerald-700">{t("fleet.serviceOrder.completionConfirmedAt", "Completion confirmed at")}: </span>
+                        <span className="font-semibold">
+                          {selectedOrder.settlement?.completionConfirmedAt
+                            ? new Date(selectedOrder.settlement.completionConfirmedAt).toLocaleString()
+                            : "N/A"}
+                        </span>
+                      </p>
+                      <p className="text-xs text-emerald-800">
+                        <span className="text-emerald-700">{t("fleet.serviceOrder.fleetAcknowledgedBy", "Fleet acknowledged by")}: </span>
+                        <span className="font-semibold">{selectedOrder.settlement?.fleetAcknowledgedBy || "N/A"}</span>
+                      </p>
+                      <p className="text-xs text-emerald-800">
+                        <span className="text-emerald-700">{t("fleet.serviceOrder.fleetAcknowledgedAt", "Fleet acknowledged at")}: </span>
+                        <span className="font-semibold">
+                          {selectedOrder.settlement?.fleetAcknowledgedAt
+                            ? new Date(selectedOrder.settlement.fleetAcknowledgedAt).toLocaleString()
+                            : "N/A"}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {selectedOrder.orderDetails?.notes ? (
+                  <div className="overflow-hidden rounded-2xl border border-violet-200/70 bg-gradient-to-br from-white via-violet-50/45 to-indigo-50/40 p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                        {t("fleet.serviceOrder.technicalNotes", "Technical notes")}
+                      </p>
+                      <span className="rounded-full border border-violet-200 bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-violet-700">
+                        {technicalNoteItems.length} fields
+                      </span>
+                    </div>
+
+                    {highlightedTechnicalNotes.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {highlightedTechnicalNotes.map((item) => (
                           <div
-                            key={`${selectedOrder.id}-${attachment.id || attachment.name}`}
-                            className="rounded-lg border border-slate-200 bg-slate-50 p-2"
+                            key={`highlight-${item.id}`}
+                            className="rounded-full border border-violet-200 bg-violet-100/70 px-2.5 py-1 text-[11px] text-violet-900"
                           >
-                            <p
-                              className="truncate text-xs font-semibold text-slate-800"
-                              title={attachment.name}
-                            >
-                              {attachment.name}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-slate-500">
-                              {Math.max(1, Math.round((attachment.size || 0) / 1024))} KB
-                            </p>
-                            <Button
-                              className="mt-2 h-7 text-xs"
-                              onClick={() => setPreviewAttachment(attachment)}
-                              type="button"
-                              variant="outline"
-                            >
-                              {t("pos.order.view", "View")}
-                            </Button>
+                            <span className="font-semibold">{item.key}</span>:{" "}
+                            <span className="font-medium">{item.value}</span>
                           </div>
                         ))}
                       </div>
+                    ) : null}
+
+                    {detailedTechnicalNotes.length > 0 ? (
+                      <div className="card-list-scrollbar mt-3 grid max-h-[22rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                        {detailedTechnicalNotes.map((item) => {
+                          const isLongValue =
+                            item.value.length > 140 || item.value.includes(";");
+                          return (
+                            <div
+                              key={item.id}
+                              className="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
+                            >
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                {item.key}
+                              </p>
+                              <p
+                                className={`mt-1 break-words text-xs text-slate-700 ${
+                                  isLongValue
+                                    ? "card-list-scrollbar max-h-24 overflow-y-auto pr-1"
+                                    : ""
+                                }`}
+                              >
+                                {item.value}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-white/90 p-3 text-xs text-slate-700">
+                        {selectedOrder.orderDetails.notes}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                {Array.isArray(selectedOrder.orderDetails?.attachments) &&
+                selectedOrder.orderDetails.attachments.length > 0 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {t("fleet.serviceOrder.attachedPhotos", "Attached photos")}
+                      </p>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                        {selectedOrder.orderDetails.attachments.length}
+                      </span>
                     </div>
-                  ) : null}
-                </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {selectedOrder.orderDetails.attachments.map((attachment) => (
+                        <div
+                          key={`${selectedOrder.id}-${attachment.id || attachment.name}`}
+                          className="rounded-lg border border-slate-200 bg-slate-50 p-2"
+                        >
+                          <p
+                            className="truncate text-xs font-semibold text-slate-800"
+                            title={attachment.name}
+                          >
+                            {attachment.name}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-slate-500">
+                            {Math.max(1, Math.round((attachment.size || 0) / 1024))} KB
+                          </p>
+                          <Button
+                            className="mt-2 h-7 text-xs"
+                            onClick={() => setPreviewAttachment(attachment)}
+                            type="button"
+                            variant="outline"
+                          >
+                            {t("pos.order.view", "View")}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-500">
@@ -582,7 +1011,7 @@ function ServiceOrderControl() {
                   {t("fleet.serviceOrder.reject", "Reject")}
                 </Button>
                 <Button
-                  disabled={!selectedOrder || !decisionApprover.trim()}
+                  disabled={serviceOrderApiSaving || !selectedOrder || !decisionApprover.trim()}
                   onClick={handleDecision("Approved", true)}
                   type="button"
                   variant="outline"
@@ -642,6 +1071,7 @@ function ServiceOrderControl() {
                   />
                   <Button
                     onClick={handleLifecycleUpdate}
+                    disabled={serviceOrderApiSaving}
                     type="button"
                     variant="outline"
                   >
@@ -692,3 +1122,15 @@ function ServiceOrderControl() {
 }
 
 export default ServiceOrderControl;
+
+
+
+
+
+
+
+
+
+
+
+

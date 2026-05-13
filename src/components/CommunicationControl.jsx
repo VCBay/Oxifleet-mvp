@@ -65,6 +65,16 @@ const statusClass = (status) => {
   return "bg-amber-100 text-amber-700";
 };
 
+const listRowIconForTab = (tab) => {
+  if (tab === "workshop") {
+    return Wrench;
+  }
+  if (tab === "support") {
+    return LifeBuoy;
+  }
+  return UserRound;
+};
+
 function CommunicationControl() {
   const driverState = useSyncExternalStore(
     subscribeDrivers,
@@ -344,8 +354,8 @@ function CommunicationControl() {
       : filteredTickets;
 
   return (
-    <section className="space-y-4">
-      <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
+    <section className="min-w-0 space-y-4 sm:space-y-6">
+      <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
         <header
           className="hidden overflow-hidden rounded-right-top bg-[radial-gradient(circle_at_top_right,#223447_0%,#0E1729_42%,#05070f_100%)] p-5 text-white shadow-lg sm:p-7 lg:block"
           // className="border-b border-slate-200 px-5 py-4"
@@ -358,16 +368,16 @@ function CommunicationControl() {
           </p>
         </header>
 
-        <div className="grid min-h-[680px] grid-cols-1 md:grid-cols-[330px_1fr]">
-          <aside className="border-r border-slate-200 bg-white">
-            <div className="space-y-3 border-b border-slate-200 bg-white p-4">
+        <div className="grid min-h-[620px] min-w-0 grid-cols-1 md:min-h-[680px] md:grid-cols-[300px_1fr] lg:grid-cols-[330px_1fr]">
+          <aside className="min-w-0 border-b border-slate-200 bg-white md:border-b-0 md:border-r">
+            <div className="space-y-3 border-b border-slate-200 bg-white p-3 sm:p-4">
               <div className="relative">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                   size={14}
                 />
                 <Input
-                  className="h-9 rounded-full border-slate-200 bg-slate-50 pl-9 pr-9"
+                  className="h-8 rounded-full border-slate-200 bg-slate-50 pl-9 pr-9 text-xs sm:h-9 sm:text-sm"
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                   placeholder="Search"
@@ -393,10 +403,10 @@ function CommunicationControl() {
                     key={key}
                     type="button"
                     onClick={() => setActiveTab(key)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition sm:text-xs ${
                       activeTab === key
-                        ? "bg-slate-900 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-300 hover:bg-slate-200"
                     }`}
                   >
                     {label}
@@ -405,7 +415,7 @@ function CommunicationControl() {
               </div>
             </div>
 
-            <div className="card-list-scrollbar max-h-[590px] space-y-1 overflow-y-auto p-2 pr-1">
+            <div className="card-list-scrollbar max-h-[260px] space-y-1 overflow-y-auto p-2 pr-1 md:max-h-[600px]">
               {listRows.length === 0 ? (
                 <div className="m-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-500">
                   No items found.
@@ -413,77 +423,111 @@ function CommunicationControl() {
               ) : null}
 
               {activeTab === "driver"
-                ? listRows.map((row) => (
+                ? listRows.map((row) => {
+                    const RowIcon = listRowIconForTab("driver");
+                    return (
                     <button
                       key={row.id}
                       type="button"
                       onClick={() => setActiveDriverThreadId(row.id)}
-                      className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+                      className={`w-full min-w-0 rounded-2xl border px-2.5 py-2.5 text-left transition sm:px-3 sm:py-3 ${
                         activeDriverThread?.id === row.id
                           ? "border-slate-300 bg-slate-100 shadow-sm"
                           : "border-transparent bg-white hover:border-slate-200"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-800">
-                          {row.title}
-                        </p>
-                        <p className="text-[11px] text-slate-400">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700 sm:size-9">
+                            <RowIcon size={14} />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-slate-800 sm:text-sm">
+                              {row.title}
+                            </p>
+                            <p className="truncate text-[10px] text-slate-500 sm:text-[11px]">
+                              {row.ref}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 sm:text-[11px]">
                           {formatListTime(row.latestAt)}
                         </p>
                       </div>
-                      <p className="text-[11px] text-slate-500">{row.ref}</p>
-                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">
+                      <p className="mt-2 line-clamp-1 text-[11px] text-slate-600 sm:text-xs">
                         {row.latestMessage}
                       </p>
                     </button>
-                  ))
+                  )})
                 : null}
 
               {activeTab === "workshop"
-                ? listRows.map((row) => (
+                ? listRows.map((row) => {
+                    const RowIcon = listRowIconForTab("workshop");
+                    return (
                     <button
                       key={row.id}
                       type="button"
                       onClick={() => setActiveWorkshopThreadId(row.id)}
-                      className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+                      className={`w-full min-w-0 rounded-2xl border px-2.5 py-2.5 text-left transition sm:px-3 sm:py-3 ${
                         activeWorkshopThread?.id === row.id
                           ? "border-slate-300 bg-slate-100 shadow-sm"
                           : "border-transparent bg-white hover:border-slate-200"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-800">
-                          {row.title}
-                        </p>
-                        <p className="text-[11px] text-slate-400">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700 sm:size-9">
+                            <RowIcon size={14} />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-slate-800 sm:text-sm">
+                              {row.title}
+                            </p>
+                            <p className="truncate text-[10px] text-slate-500 sm:text-[11px]">
+                              {row.ref}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 sm:text-[11px]">
                           {formatListTime(row.latestAt)}
                         </p>
                       </div>
-                      <p className="text-[11px] text-slate-500">{row.ref}</p>
-                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">
+                      <p className="mt-2 line-clamp-1 text-[11px] text-slate-600 sm:text-xs">
                         {row.latestMessage}
                       </p>
                     </button>
-                  ))
+                  )})
                 : null}
 
               {activeTab === "support"
-                ? listRows.map((row) => (
+                ? listRows.map((row) => {
+                    const RowIcon = listRowIconForTab("support");
+                    return (
                     <button
                       key={row.id}
                       type="button"
                       onClick={() => setActiveTicketId(row.id)}
-                      className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+                      className={`w-full min-w-0 rounded-2xl border px-2.5 py-2.5 text-left transition sm:px-3 sm:py-3 ${
                         activeTicket?.id === row.id
                           ? "border-slate-300 bg-slate-100 shadow-sm"
                           : "border-transparent bg-white hover:border-slate-200"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-800">
-                          {row.id}
-                        </p>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700 sm:size-9">
+                            <RowIcon size={14} />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-slate-800 sm:text-sm">
+                              {row.id}
+                            </p>
+                            <p className="truncate text-[10px] text-slate-500 sm:text-[11px]">
+                              {row.priority} priority
+                            </p>
+                          </div>
+                        </div>
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusClass(
                             row.status,
@@ -492,11 +536,11 @@ function CommunicationControl() {
                           {row.status}
                         </span>
                       </div>
-                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">
+                      <p className="mt-2 line-clamp-1 text-[11px] text-slate-600 sm:text-xs">
                         {row.subject}
                       </p>
                     </button>
-                  ))
+                  )})
                 : null}
             </div>
           </aside>
@@ -504,12 +548,12 @@ function CommunicationControl() {
           <div className="flex min-h-0 flex-col bg-slate-50">
             {activeTab === "driver" ? (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3">
                   <div className="flex items-center gap-3">
                     <span className="grid size-10 place-items-center rounded-full bg-slate-100 text-slate-700">
                       <UserRound size={16} />
                     </span>
-                    <p className="text-sm font-semibold text-slate-800">
+                    <p className="text-xs font-semibold text-slate-800 sm:text-sm">
                       {activeDriverThread?.title || "Select driver"}
                     </p>
                   </div>
@@ -552,7 +596,7 @@ function CommunicationControl() {
                   </div>
                 </div>
 
-                <div className="card-list-scrollbar max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4 pr-1">
+                <div className="card-list-scrollbar max-h-[460px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3 pr-1 sm:max-h-[500px] sm:p-4">
                   {activeDriverThread?.messages?.map((message) => {
                     const mine =
                       String(message.fromRole || "").toLowerCase() !== "driver";
@@ -562,7 +606,7 @@ function CommunicationControl() {
                         className={`flex ${mine ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                          className={`max-w-[88%] rounded-2xl px-3 py-2 text-xs shadow-sm sm:max-w-[78%] sm:text-sm ${
                             mine
                               ? "rounded-br-md bg-slate-900 text-white"
                               : "rounded-bl-md border border-slate-200 bg-white text-slate-700"
@@ -589,16 +633,16 @@ function CommunicationControl() {
                   })}
                 </div>
 
-                <div className="border-t border-slate-200 bg-white px-4 py-3">
+                <div className="border-t border-slate-200 bg-white px-3 py-3 sm:px-4">
                   <div className="flex gap-2">
                     <Textarea
                       rows={1}
                       value={driverDraft}
                       onChange={(event) => setDriverDraft(event.target.value)}
                       placeholder="Type message"
-                      className="min-h-[44px] resize-none bg-slate-50"
+                      className="min-h-[44px] resize-none bg-slate-50 text-xs sm:text-sm"
                     />
-                    <Button onClick={sendDriver} type="button">
+                    <Button className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]" onClick={sendDriver} type="button">
                       <Send className="mr-2" size={14} />
                       Send
                     </Button>
@@ -609,12 +653,12 @@ function CommunicationControl() {
 
             {activeTab === "workshop" ? (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3">
                   <div className="flex items-center gap-3">
                     <span className="grid size-10 place-items-center rounded-full bg-slate-100 text-slate-700">
                       <Wrench size={16} />
                     </span>
-                    <p className="text-sm font-semibold text-slate-800">
+                    <p className="text-xs font-semibold text-slate-800 sm:text-sm">
                       {activeWorkshopThread?.title || "Select workshop"}
                     </p>
                   </div>
@@ -670,7 +714,7 @@ function CommunicationControl() {
                   </div>
                 </div>
 
-                <div className="card-list-scrollbar max-h-[500px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4 pr-1">
+                <div className="card-list-scrollbar max-h-[460px] flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3 pr-1 sm:max-h-[500px] sm:p-4">
                   {activeWorkshopThread?.messages?.map((message) => {
                     const mine =
                       String(message.fromRole || "").toLowerCase() !==
@@ -681,7 +725,7 @@ function CommunicationControl() {
                         className={`flex ${mine ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                          className={`max-w-[88%] rounded-2xl px-3 py-2 text-xs shadow-sm sm:max-w-[78%] sm:text-sm ${
                             mine
                               ? "rounded-br-md bg-slate-900 text-white"
                               : "rounded-bl-md border border-slate-200 bg-white text-slate-700"
@@ -713,19 +757,19 @@ function CommunicationControl() {
                   })}
                 </div>
 
-                <div className="border-t border-slate-200 bg-white px-4 py-3">
+                <div className="border-t border-slate-200 bg-white px-3 py-3 sm:px-4">
                   <div className="flex gap-2">
                     <Textarea
                       rows={1}
                       value={workshopDraft}
                       onChange={(event) => setWorkshopDraft(event.target.value)}
                       placeholder="Type workshop message"
-                      className="min-h-[44px] resize-none bg-slate-50"
+                      className="min-h-[44px] resize-none bg-slate-50 text-xs sm:text-sm"
                     />
                     <Button
+                      className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]"
                       onClick={sendWorkshop}
                       type="button"
-                      variant="outline"
                     >
                       <Send className="mr-2" size={14} />
                       Send

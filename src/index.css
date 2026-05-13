@@ -248,6 +248,43 @@
     );
   }
 
+  .damage-report-form [data-slot="input"],
+  .damage-report-form [data-slot="textarea"],
+  .damage-report-form select {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .damage-report-form [data-slot="textarea"] {
+    min-height: 6rem;
+  }
+
+  @media (max-width: 639px) {
+    .damage-report-form > .rounded-2xl {
+      padding: 0.625rem;
+      border-radius: 0.875rem;
+    }
+
+    .damage-report-form [data-slot="input"],
+    .damage-report-form [data-slot="textarea"],
+    .damage-report-form select {
+      font-size: 0.75rem;
+      line-height: 1.1rem;
+    }
+
+    .damage-report-form select {
+      height: 2.25rem;
+      padding-left: 0.625rem;
+      padding-right: 0.625rem;
+    }
+
+    .damage-report-form [data-slot="textarea"] {
+      min-height: 5.25rem;
+      padding-left: 0.625rem;
+      padding-right: 0.625rem;
+    }
+  }
+
   :is(.pos-dashboard-theme, .fleet-dashboard-theme, .driver-dashboard-theme) {
     --pos-bg: #f2f0f7;
     --pos-surface: #ffffff;
@@ -385,5 +422,11 @@
     background: var(--oxi-black-button-gradient-hover) !important;
     color: var(--oxi-black-button-text) !important;
   }
+}
+
+
+@keyframes loaderSlide {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(360%); }
 }
 

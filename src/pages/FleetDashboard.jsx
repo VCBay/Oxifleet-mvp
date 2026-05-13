@@ -1,4 +1,5 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Area,
@@ -45,6 +46,7 @@ import TeamAccessControl from "../components/TeamAccessControl";
 import SettingsProfileControl from "../components/SettingsProfileControl";
 import DriverManagement from "../components/DriverManagement";
 import FleetTopbar from "../components/fleet/FleetTopbar";
+import SectionLoadingCardStack from "../components/common/SectionLoadingCardStack";
 import { Button } from "../components/ui/button";
 import { useTranslation } from "../i18n/useTranslation";
 import {
@@ -69,14 +71,18 @@ import { Textarea } from "../components/ui/textarea";
 import {
   addVehicle,
   getVehicleState,
+  setVehiclesFromApi,
   subscribeVehicles,
+  updateVehicle as updateVehicleStore,
+  upsertVehicles,
 } from "../data/vehicleStore";
 import {
   addDriver,
   getDriverState,
   removeDriver,
+  setDriversFromApi,
   subscribeDrivers,
-  updateDriver,
+  updateDriver as updateDriverStore,
 } from "../data/driverStore";
 import {
   getServiceOrderState,
@@ -91,6 +97,18 @@ import {
   subscribeBillingFinance,
 } from "../data/billingFinanceStore";
 import { figmaChartCardStyle, figmaChartTheme } from "../lib/chartTheme";
+import {
+  bulkUpsertFleetVehiclesApi,
+  createFleetVehicleApi,
+  listFleetVehiclesApi,
+  updateFleetVehicleByVinApi,
+} from "../services/fleetVehicleApi";
+import {
+  createFleetDriverApi,
+  deleteFleetDriverByServerIdApi,
+  listFleetDriversApi,
+  updateFleetDriverByServerIdApi,
+} from "../services/fleetDriverApi";
 
 const fleetMenuRouteMap = {
   dashboard: "overview",
@@ -424,6 +442,10 @@ function Dashboard() {
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
   const [vehicleDetailsOpen, setVehicleDetailsOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [vehicleApiLoading, setVehicleApiLoading] = useState(false);
+  const [vehicleApiError, setVehicleApiError] = useState("");
+  const [driverApiLoading, setDriverApiLoading] = useState(false);
+  const [driverApiError, setDriverApiError] = useState("");
   const [vehicleForm, setVehicleForm] = useState({
     id: "",
     model: "",
@@ -433,6 +455,8 @@ function Dashboard() {
     notes: "",
   });
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
+  const fleetVehiclesLoadedRef = useRef(false);
+  const fleetDriversLoadedRef = useRef(false);
   const [clearedFleetNotificationIds, setClearedFleetNotificationIds] =
     useState([]);
   const activeMenu = parseFleetMenuFromPath(location.pathname);
@@ -459,7 +483,9 @@ function Dashboard() {
     notes: "",
   });
   const isVehicleReady =
-    vehicleForm.model.trim().length > 0 && vehicleForm.plate.trim().length > 0;
+    vehicleForm.id.trim().length > 0 &&
+    vehicleForm.model.trim().length > 0 &&
+    vehicleForm.plate.trim().length > 0;
   const isDriverReady =
     driverForm.name.trim().length > 0 && driverForm.email.trim().length > 0;
   const dashboardUpdatedAt = new Date().toLocaleString("en-US", {
@@ -475,6 +501,59 @@ function Dashboard() {
       currency: "EUR",
       maximumFractionDigits: 0,
     }).format(Number(value) || 0);
+  useEffect(() => {
+    if (fleetVehiclesLoadedRef.current) return;
+    fleetVehiclesLoadedRef.current = true;
+
+    const loadFleetVehicles = async () => {
+      setVehicleApiLoading(true);
+      setVehicleApiError("");
+      try {
+        const userFleetId = String(user?.fleet_id || "").trim();
+        const rows = await listFleetVehiclesApi(
+          userFleetId ? { fleetId: userFleetId } : {},
+        );
+
+        const scopedRows = userFleetId
+          ? rows.filter(
+              (vehicle) => String(vehicle?.fleetId || "").trim() === userFleetId,
+            )
+          : rows;
+
+        setVehiclesFromApi(scopedRows);
+      } catch (error) {
+        setVehicleApiError(
+          error?.message || "Unable to load vehicles from backend. Showing local data.",
+        );
+      } finally {
+        setVehicleApiLoading(false);
+      }
+    };
+
+    loadFleetVehicles();
+  }, [user?.fleet_id]);
+
+  useEffect(() => {
+    if (fleetDriversLoadedRef.current) return;
+    fleetDriversLoadedRef.current = true;
+
+    const loadFleetDrivers = async () => {
+      setDriverApiLoading(true);
+      setDriverApiError("");
+      try {
+        const rows = await listFleetDriversApi();
+        setDriversFromApi(rows);
+      } catch (error) {
+        setDriverApiError(
+          error?.message || "Unable to load drivers from backend. Showing local data.",
+        );
+      } finally {
+        setDriverApiLoading(false);
+      }
+    };
+
+    loadFleetDrivers();
+  }, []);
 
   const dashboardPeriodOptions = [
     { value: "30", label: t("fleet.dashboard.last30Days", "Last 30 days") },
@@ -1527,6 +1606,57 @@ function Dashboard() {
     handleMenuNavigate(menuKey);
   };
 
+  const resetVehicleForm = () => {
+    setVehicleForm({
+      id: "",
+      model: "",
+      plate: "",
+      type: "Truck",
+      status: "Active",
+      notes: "",
+    });
+  };
+
+  const handlePersistVehicleUpdate = async (vehicleId, updates = {}) => {
+    const existing = vehicleState.vehicles.find((vehicle) => vehicle.id === vehicleId);
+    if (!existing) {
+      return null;
+    }
+
+    const nextVehicle = {
+      ...existing,
+      ...updates,
+      tyreSpecs: {
+        ...(existing.tyreSpecs || {}),
+        ...(updates.tyreSpecs || {}),
+      },
+    };
+
+    setVehicleApiError("");
+    try {
+      const saved = await updateFleetVehicleByVinApi(vehicleId, nextVehicle);
+      updateVehicleStore(vehicleId, saved);
+      return saved;
+    } catch (error) {
+      setVehicleApiError(error?.message || "Unable to update vehicle right now.");
+      return null;
+    }
+  };
+
+  const handlePersistBulkVehicles = async (payload = []) => {
+    setVehicleApiError("");
+    try {
+      const result = await bulkUpsertFleetVehiclesApi(payload);
+      if (Array.isArray(result?.vehicles) && result.vehicles.length > 0) {
+        upsertVehicles(result.vehicles);
+      }
+      return result;
+    } catch (error) {
+      setVehicleApiError(error?.message || "Bulk vehicle sync failed.");
+      return { inserted: 0, updated: 0, total: 0, vehicles: [] };
+    }
+  };
+
   const handleVehicleChange = (field) => (event) => {
     const { value } = event.target;
     setVehicleForm((prev) => ({ ...prev, [field]: value }));
@@ -1536,18 +1666,20 @@ function Dashboard() {
     setVehicleForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleAddVehicle = (event) => {
+  const handleAddVehicle = async (event) => {
     event.preventDefault();
-    addVehicle(vehicleForm);
-    setVehicleForm({
-      id: "",
-      model: "",
-      plate: "",
-      type: "Truck",
-      status: "Active",
-      notes: "",
-    });
-    setVehicleDialogOpen(false);
+    setVehicleApiError("");
+    setVehicleApiLoading(true);
+    try {
+      const created = await createFleetVehicleApi(vehicleForm);
+      addVehicle(created);
+      resetVehicleForm();
+      setVehicleDialogOpen(false);
+    } catch (error) {
+      setVehicleApiError(error?.message || "Unable to create vehicle.");
+    } finally {
+      setVehicleApiLoading(false);
+    }
   };
 
   const handleDriverChange = (field) => (event) => {
@@ -1559,41 +1691,114 @@ function Dashboard() {
     setDriverForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleAddDriver = (event) => {
-    event.preventDefault();
-    addDriver(driverForm);
-    setDriverForm({
-      id: "",
-      name: "",
-      email: "",
-      phone: "",
-      license: "",
-      status: "Active",
-      notes: "",
-    });
+  const resetDriverForm = () => {
+  setDriverForm({
+    id: "",
+    name: "",
+    email: "",
+    phone: "",
+    license: "",
+    status: "Active",
+    notes: "",
+  });
+};
+
+const handleAddDriver = async (event) => {
+  event.preventDefault();
+  setDriverApiError("");
+  setDriverApiLoading(true);
+  try {
+    const created = await createFleetDriverApi(driverForm);
+    addDriver(created);
+
+    const inviteStatus = String(created?.inviteStatus || "").toLowerCase();
+    const inviteUrl = created?.invitation?.inviteUrl;
+
+    if (inviteStatus === "sent" || inviteStatus === "accepted") {
+      toast.success(`Driver added. Invitation SMS sent to ${created?.phone || "mobile"}.`);
+    } else if (inviteStatus === "pending") {
+      toast.message("Driver added. Invitation queued for delivery.");
+    } else if (inviteStatus === "failed") {
+      toast.warning("Driver added, but invitation SMS failed. Please retry invite.");
+    } else {
+      toast.success("Driver added successfully.");
+    }
+
+    if (inviteUrl && inviteStatus !== "failed") {
+      toast.info("Invite link generated and attached to driver record.");
+    }
+
+    resetDriverForm();
     setDriverDialogOpen(false);
+  } catch (error) {
+    setDriverApiError(error?.message || "Unable to create driver.");
+  } finally {
+    setDriverApiLoading(false);
+  }
+};
+
+const persistDriverPatch = async (driverId, updates = {}) => {
+  const existing = driverState.drivers.find((driver) => driver.id === driverId);
+  if (!existing) {
+    return null;
+  }
+
+  const merged = {
+    ...existing,
+    ...updates,
+    id: existing.id,
+    serverId: existing.serverId,
   };
 
-  const handleDriverAssignmentChange = (driverId) => (vehicleId) => {
-    updateDriver(driverId, {
-      assignedVehicleId: vehicleId === "unassigned" ? "" : vehicleId,
-    });
-  };
+  if (!existing.serverId) {
+    updateDriverStore(driverId, updates);
+    return merged;
+  }
 
-  const handleDriverActivityChange = (driverId) => (activityStatus) => {
-    updateDriver(driverId, {
-      activityStatus,
-      status: activityStatus,
-    });
-  };
+  setDriverApiError("");
+  try {
+    const saved = await updateFleetDriverByServerIdApi(existing.serverId, merged);
+    updateDriverStore(driverId, saved);
+    return saved;
+  } catch (error) {
+    setDriverApiError(error?.message || "Unable to update driver right now.");
+    return null;
+  }
+};
 
-  const handleDriverAccessChange = (driverId) => (accessLevel) => {
-    updateDriver(driverId, { accessLevel });
-  };
+const handleDriverAssignmentChange = (driverId) => async (vehicleId) => {
+  await persistDriverPatch(driverId, {
+    assignedVehicleId: vehicleId === "unassigned" ? "" : vehicleId,
+  });
+};
 
-  const handleRemoveDriver = (driverId) => () => {
+const handleDriverActivityChange = (driverId) => async (activityStatus) => {
+  await persistDriverPatch(driverId, {
+    activityStatus,
+    status: activityStatus,
+  });
+};
+
+const handleDriverAccessChange = (driverId) => async (accessLevel) => {
+  await persistDriverPatch(driverId, { accessLevel });
+};
+
+const handleRemoveDriver = (driverId) => async () => {
+  const existing = driverState.drivers.find((driver) => driver.id === driverId);
+  setDriverApiError("");
+
+  if (!existing?.serverId) {
     removeDriver(driverId);
-  };
+    return;
+  }
+
+  try {
+    await deleteFleetDriverByServerIdApi(existing.serverId);
+    removeDriver(driverId);
+  } catch (error) {
+    setDriverApiError(error?.message || "Unable to remove driver right now.");
+  }
+};
 
   const handleVehicleDetailsOpenChange = (open) => {
     setVehicleDetailsOpen(open);
@@ -2753,11 +2958,25 @@ function Dashboard() {
 
           {activeMenu === "vehicles" ? (
             <section className="space-y-4 sm:space-y-6">
-              <VehicleManagement
-                vehicles={vehicleState.vehicles}
-                onAddVehicleClick={() => setVehicleDialogOpen(true)}
-              />
-            </section>
+              {vehicleApiError ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  {vehicleApiError}
+                </div>
+              ) : null}
+              {vehicleApiLoading ? (
+                <SectionLoadingCardStack
+                  rows={5}
+                  subtitle="Syncing vehicle data with backend..."
+                  title="Loading vehicle management"
+                />
+              ) : (
+                <VehicleManagement
+                  vehicles={vehicleState.vehicles}
+                  onAddVehicleClick={() => setVehicleDialogOpen(true)}
+                  onPersistVehicleUpdate={handlePersistVehicleUpdate}
+                  onPersistBulkVehicles={handlePersistBulkVehicles}
+                />
+              )}</section>
           ) : null}
 
           {activeMenu === "vehicle_policy" ? (
@@ -2783,17 +3002,32 @@ function Dashboard() {
           ) : null}
 
           {activeMenu === "drivers" ? (
-            <DriverManagement
-              assignmentVehicles={assignmentVehicles}
-              drivers={driverState.drivers}
-              onAddDriverClick={() => setDriverDialogOpen(true)}
-              onDriverAccessChange={handleDriverAccessChange}
-              onDriverActivityChange={handleDriverActivityChange}
-              onDriverAssignmentChange={handleDriverAssignmentChange}
-              onRemoveDriver={handleRemoveDriver}
-              onSearchQueryChange={setDriverSearchQuery}
-              searchQuery={driverSearchQuery}
-            />
+            <section className="space-y-4 sm:space-y-6">
+              {driverApiError ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  {driverApiError}
+                </div>
+              ) : null}
+              {driverApiLoading ? (
+                <SectionLoadingCardStack
+                  rows={5}
+                  subtitle="Syncing driver data with backend..."
+                  title="Loading driver management"
+                />
+              ) : (
+                <DriverManagement
+                  assignmentVehicles={assignmentVehicles}
+                  drivers={driverState.drivers}
+                  onAddDriverClick={() => setDriverDialogOpen(true)}
+                  onDriverAccessChange={handleDriverAccessChange}
+                  onDriverActivityChange={handleDriverActivityChange}
+                  onDriverAssignmentChange={handleDriverAssignmentChange}
+                  onRemoveDriver={handleRemoveDriver}
+                  onSearchQueryChange={setDriverSearchQuery}
+                  searchQuery={driverSearchQuery}
+                />
+              )}
+            </section>
           ) : null}
 
           {activeMenu === "dashboard" ? (
@@ -3392,3 +3626,31 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

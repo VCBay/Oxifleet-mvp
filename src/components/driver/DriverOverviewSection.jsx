@@ -54,7 +54,7 @@ function DriverOverviewSection({
     {
       title: t("driver.overview.pendingRequests", "Pending requests"),
       value: pendingRequests.length,
-      helper: t("driver.overview.pendingRequestsHelper", "Approvals, booking, or in progress"),
+      helper: t("driver.overview.pendingRequestsHelper", "Approvals, booking"),
       tone:
         pendingRequests.length > 0
           ? "bg-sky-100 text-sky-700"
@@ -97,7 +97,7 @@ function DriverOverviewSection({
         <div className="pointer-events-none absolute bottom-0 right-0 h-24 w-24 rounded-tl-[120px] bg-white/15" />
         <div className="relative z-10">
           <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
-            {t("driver.overview.driverOperationsOverview", "Driver operations overview")}
+            {t("driver.overview.driverOperationsOverview", "Driver overview")}
           </h2>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-200">
             <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">

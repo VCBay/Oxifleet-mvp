@@ -481,7 +481,21 @@ export const upsertVehicles = (vehicles = []) => {
   };
 };
 
+
+export const setVehiclesFromApi = (vehicles = []) => {
+  const incoming = Array.isArray(vehicles) ? vehicles : [vehicles];
+  const normalized = incoming.map((item) => normalizeVehicle(item));
+  state = {
+    ...state,
+    vehicles: normalized,
+  };
+  writeStorage(normalized);
+  emit();
+  return normalized;
+};
+
 export const subscribeVehicles = (listener) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
+

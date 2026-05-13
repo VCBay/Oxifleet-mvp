@@ -1,10 +1,23 @@
 const users = [
   {
+    id: "adm01",
+    name: "Oxifleet Super Admin",
+    email: "admin@oxifleet.com",
+    password: "admin@123",
+    role: "super_admin",
+    is2fauth: false,
+    two_factor_type: undefined,
+    phone: "+491701111111",
+  },
+  {
     id: "8aad",
     name: "John Doe",
     email: "startup7@work.com",
     password: "09897867665",
     role: "ops_admin",
+    is2fauth: false,
+    two_factor_type: undefined,
+    phone: "+491701222222",
   },
   {
     id: "8aae",
@@ -12,6 +25,9 @@ const users = [
     email: "asfak@vcbay.co",
     password: "1234567890",
     role: "ops_admin",
+    is2fauth: false,
+    two_factor_type: undefined,
+    phone: "+491701333333",
   },
   {
     id: "8aaf",
@@ -19,6 +35,9 @@ const users = [
     email: "karl.weber@oxifleet.com",
     password: "1234567890",
     role: "ops_admin",
+    is2fauth: false,
+    two_factor_type: undefined,
+    phone: "+491701444444",
   },
   {
     id: "8aaa",
@@ -26,6 +45,9 @@ const users = [
     email: "manoj@vcbay.co",
     password: "1234567890",
     role: "ops_admin",
+    is2fauth: false,
+    two_factor_type: undefined,
+    phone: "+491701555555",
   },
   {
     id: "drv01",
@@ -33,6 +55,9 @@ const users = [
     email: "jamie.driver@oxifleet.com",
     password: "1234567890",
     role: "driver",
+    is2fauth: false,
+    two_factor_type: undefined,
+    phone: "+491701666666",
     driverName: "Jamie Stewart",
     tenantId: "TEN-ALPHA",
     driverId: "DR-104",
@@ -44,6 +69,9 @@ const users = [
     email: "avery.driver@oxifleet.com",
     password: "1234567890",
     role: "driver",
+    is2fauth: false,
+    two_factor_type: undefined,
+    phone: "+491701777777",
     driverName: "Avery Chen",
     tenantId: "TEN-BRAVO",
     driverId: "DR-205",
@@ -55,6 +83,9 @@ const users = [
     email: "nina.pos@oxifleet.com",
     password: "1234567890",
     role: "pos",
+    is2fauth: false,
+    two_factor_type: undefined,
+    phone: "+491701888888",
     workstationId: "POS-DAL-01",
   },
   {
@@ -63,6 +94,9 @@ const users = [
     email: "ravi.pos@oxifleet.com",
     password: "1234567890",
     role: "pos",
+    is2fauth: false,
+    two_factor_type: undefined,
+    phone: "+491701999999",
     workstationId: "POS-AUS-02",
   },
 ];
@@ -84,6 +118,8 @@ export const registerUser = ({ name, email, password, role = "ops_admin" }) => {
     email,
     password,
     role,
+    is2fauth: false,
+    two_factor_type: undefined,
   };
   users.push(newUser);
   return newUser;

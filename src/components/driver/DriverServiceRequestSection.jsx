@@ -208,32 +208,40 @@ const buildEmptyDamageReport = () => ({
   visualInspection: {},
 });
 
-function ServiceCategoryCard({ option, isSelected, onSelect, cardKey }) {
+function ServiceCategoryCard({
+  option,
+  isSelected,
+  onSelect,
+  cardKey,
+  className = "",
+}) {
   const pictogram =
     problemPictogramMap[option.iconKey] || problemPictogramMap.default;
   const Icon = pictogram.icon;
 
   return (
     <button
-      className={`min-w-0 rounded-xl border p-1.5 text-left transition sm:rounded-2xl sm:p-4 ${isSelected
-        ? "border-slate-900 bg-[linear-gradient(180deg,#1f2f47_0%,#0f1d33_52%,#0a1322_100%)] text-white shadow-lg"
-        : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400 hover:bg-white"
-        }`}
+      className={`min-w-0 rounded-xl border p-1.5 text-left transition sm:rounded-2xl sm:p-4 ${className} ${
+        isSelected
+          ? "border-slate-900 bg-[linear-gradient(180deg,#1f2f47_0%,#0f1d33_52%,#0a1322_100%)] text-white shadow-lg"
+          : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400 hover:bg-white"
+      }`}
       key={cardKey || option.value}
       onClick={onSelect}
       type="button"
     >
-      <div className="flex min-h-[72px] flex-col items-center justify-center gap-1.5 sm:min-h-[96px] sm:gap-2.5">
+      <div className="flex min-h-[56px] flex-col items-center justify-center gap-1 sm:min-h-[72px] sm:gap-1.5">
         <span
-          className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg border shadow-sm sm:size-11 sm:rounded-xl ${isSelected
-            ? "border-white/35 bg-white/15 text-white"
-            : pictogram.accentClass
-            }`}
+          className={`inline-flex size-7 shrink-0 items-center justify-center rounded-lg border shadow-sm sm:size-8 sm:rounded-xl ${
+            isSelected
+              ? "border-white/35 bg-white/15 text-white"
+              : pictogram.accentClass
+          }`}
         >
-          <Icon size={14} strokeWidth={2.2} className="sm:size-[18px]" />
+          <Icon size={12} strokeWidth={2.2} className="sm:size-[14px]" />
         </span>
         <p
-          className="w-full truncate text-center text-[9px] font-semibold leading-tight sm:text-sm"
+          className="w-full truncate text-center text-[8px] font-semibold leading-tight sm:text-[10px]"
           title={option.label}
         >
           {option.label}
@@ -290,7 +298,7 @@ function DriverServiceRequestSection({
   const dateSlotSectionRef = useRef(null);
   const optionalDetailsSectionRef = useRef(null);
   const photoInputRef = useRef(null);
-  const inlineServiceLimit = 6;
+  const inlineServiceLimit = 5;
   const inlineStationLimit = 6;
   const categoryDetails = useMemo(
     () => getCategoryDetails(requestForm.problemType),
@@ -779,23 +787,26 @@ function DriverServiceRequestSection({
     const isSelected = requestForm.preferredPosId === pos.id;
     return (
       <button
-        className={`relative min-w-0 rounded-xl border p-2.5 text-left transition sm:p-3 ${isSelected
-          ? "border-slate-900 bg-slate-900 text-white"
-          : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
-          } ${isRecommended && !isSelected
+        className={`relative min-w-0 rounded-xl border p-2.5 text-left transition sm:p-3 ${
+          isSelected
+            ? "border-slate-900 bg-slate-900 text-white"
+            : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400"
+        } ${
+          isRecommended && !isSelected
             ? "ring-1 ring-violet-300/70 ring-offset-1 ring-offset-white"
             : ""
-          }`}
+        }`}
         key={pos.id}
         onClick={() => handlePosSelection(pos, { closeOnSelect })}
         type="button"
       >
         {isRecommended ? (
           <span
-            className={`pointer-events-none absolute -top-1.5 left-1/2 z-20 inline-flex -translate-x-1/2 rounded-full border px-2 py-[2px] text-[9px] font-bold uppercase tracking-[0.05em] shadow-lg ${isSelected
-              ? "border-amber-200 bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-300 text-amber-950"
-              : "border-fuchsia-200 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 text-white"
-              }`}
+            className={`pointer-events-none absolute -top-1.5 left-1/2 z-20 inline-flex -translate-x-1/2 rounded-full border px-2 py-[2px] text-[9px] font-bold uppercase tracking-[0.05em] shadow-lg ${
+              isSelected
+                ? "border-amber-200 bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-300 text-amber-950"
+                : "border-fuchsia-200 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 text-white"
+            }`}
           >
             Recommended
           </span>
@@ -805,10 +816,11 @@ function DriverServiceRequestSection({
             <div className="min-w-0 flex-1">
               {pos.type === "PointS" ? (
                 <p
-                  className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${isSelected
-                    ? "bg-white/20 text-slate-100"
-                    : "bg-sky-100 text-sky-700"
-                    }`}
+                  className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                    isSelected
+                      ? "bg-white/20 text-slate-100"
+                      : "bg-sky-100 text-sky-700"
+                  }`}
                 >
                   PoS Partner
                 </p>
@@ -821,10 +833,11 @@ function DriverServiceRequestSection({
               </p>
             </div>
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-[11px] ${isSelected
-                ? "bg-white/20 text-white"
-                : "bg-slate-200 text-slate-700"
-                }`}
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-[11px] ${
+                isSelected
+                  ? "bg-white/20 text-white"
+                  : "bg-slate-200 text-slate-700"
+              }`}
             >
               {pos.distanceKm} km
             </span>
@@ -843,22 +856,24 @@ function DriverServiceRequestSection({
           {needsTyreSupplySelection && tyreAvailabilityForSelectedSubtype ? (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tyreAvailabilityForSelectedSubtype.canFulfill
-                  ? isSelected
-                    ? "bg-emerald-200/30 text-emerald-100"
-                    : "bg-emerald-100 text-emerald-700"
-                  : isSelected
-                    ? "bg-rose-200/30 text-rose-100"
-                    : "bg-rose-100 text-rose-700"
-                  }`}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  tyreAvailabilityForSelectedSubtype.canFulfill
+                    ? isSelected
+                      ? "bg-emerald-200/30 text-emerald-100"
+                      : "bg-emerald-100 text-emerald-700"
+                    : isSelected
+                      ? "bg-rose-200/30 text-rose-100"
+                      : "bg-rose-100 text-rose-700"
+                }`}
               >
                 {tyreAvailabilityForSelectedSubtype.canFulfill
                   ? "Tyres available"
                   : "Tyres unavailable"}
               </span>
               <span
-                className={`text-[10px] ${isSelected ? "text-slate-300" : "text-slate-500"
-                  }`}
+                className={`text-[10px] ${
+                  isSelected ? "text-slate-300" : "text-slate-500"
+                }`}
               >
                 {tyreAvailabilityForSelectedSubtype.totalAvailable}/
                 {requiredTyreQty} available
@@ -869,10 +884,11 @@ function DriverServiceRequestSection({
             <div className="mt-auto flex flex-wrap gap-1 pt-2">
               {pos.capabilities.slice(0, 3).map((tag) => (
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] ${isSelected
-                    ? "bg-white/20 text-slate-100"
-                    : "bg-slate-200 text-slate-700"
-                    }`}
+                  className={`rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] ${
+                    isSelected
+                      ? "bg-white/20 text-slate-100"
+                      : "bg-slate-200 text-slate-700"
+                  }`}
                   key={`${pos.id}-${tag}`}
                 >
                   {tag}
@@ -939,9 +955,9 @@ function DriverServiceRequestSection({
         const etaMin = Number(pos.etaMin || 0);
         const capabilityMatch = requestedCapability
           ? Array.isArray(pos.capabilities) &&
-          pos.capabilities
-            .map((item) => String(item).trim().toLowerCase())
-            .includes(requestedCapability)
+            pos.capabilities
+              .map((item) => String(item).trim().toLowerCase())
+              .includes(requestedCapability)
           : false;
 
         let totalHistoryVisits = 0;
@@ -972,8 +988,8 @@ function DriverServiceRequestSection({
             96,
             Math.round(
               70 +
-              Math.max(0, 10 - distanceKm) +
-              Math.min(12, totalHistoryVisits * 3 + sameIssueVisits * 4),
+                Math.max(0, 10 - distanceKm) +
+                Math.min(12, totalHistoryVisits * 3 + sameIssueVisits * 4),
             ),
           ),
         );
@@ -1119,8 +1135,8 @@ function DriverServiceRequestSection({
         95,
         Math.round(
           70 +
-          Math.min(12, scoreGap * 5) +
-          Math.min(8, winner.historyCount * 2),
+            Math.min(12, scoreGap * 5) +
+            Math.min(8, winner.historyCount * 2),
         ),
       ),
     );
@@ -1228,10 +1244,11 @@ function DriverServiceRequestSection({
               ) : null}
             </div>
             <div className="mt-3">
-              <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+              <div className="grid grid-cols-5 gap-1 sm:gap-2">
                 {inlineServiceOptions.map((option) => (
                   <ServiceCategoryCard
                     cardKey={option.value}
+                    className="w-full"
                     isSelected={requestForm.problemType === option.value}
                     key={option.value}
                     onSelect={() => handleServiceSelect(option.value)}
@@ -1582,7 +1599,7 @@ function DriverServiceRequestSection({
 
             <div className="mt-4 space-y-3">
               {isDamageReportFlow ? (
-                <>
+                <div className="damage-report-form space-y-3">
                   {/* <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-3 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-rose-800">
                       Damage Report Details
@@ -1772,6 +1789,7 @@ function DriverServiceRequestSection({
                       /> */}
 
                       <Input
+                        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800"
                         onChange={(event) =>
                           updateDamageReportField(
                             "incidentDateTime",
@@ -1867,7 +1885,7 @@ function DriverServiceRequestSection({
                         value={damageReport.otherPartyPhone || ""}
                       />
                       <Input
-                        className="sm:col-span-2"
+                        // className="sm:col-span-2"
                         onChange={(event) =>
                           updateDamageReportField(
                             "otherPartyAddress",
@@ -1957,7 +1975,7 @@ function DriverServiceRequestSection({
                         value={damageReport.injuryPersonPhone || ""}
                       />
                       <Input
-                        className="sm:col-span-2"
+                        // className="sm:col-span-2"
                         onChange={(event) =>
                           updateDamageReportField(
                             "injuryPersonAddress",
@@ -1968,7 +1986,7 @@ function DriverServiceRequestSection({
                         value={damageReport.injuryPersonAddress || ""}
                       />
                       <Input
-                        className="sm:col-span-2"
+                        // className="sm:col-span-2"
                         onChange={(event) =>
                           updateDamageReportField(
                             "injuryPersonEmail",
@@ -2025,7 +2043,7 @@ function DriverServiceRequestSection({
                       ))}
                     </div>
                   </div>
-                </>
+                </div>
               ) : null}
 
               {!isDamageReportFlow ? (
@@ -2448,7 +2466,7 @@ function DriverServiceRequestSection({
                     Sending...
                   </span>
                 ) : isDamageReportFlow ? (
-                  "Send damage report to fleet"
+                  "Raise damage report"
                 ) : (
                   "Book service appointment"
                 )}

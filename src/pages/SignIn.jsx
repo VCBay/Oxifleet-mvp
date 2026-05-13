@@ -3,13 +3,18 @@ import Logo from "../icons/Logo";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
-import { findUserByCredentials } from "../data/userStore";
 import { getDefaultRouteForSession, setSession } from "../auth/session";
 import { useState } from "react";
 import { useTranslation } from "../i18n/useTranslation";
+import { loginUser } from "../services/authApi";
 
 const inputClasses =
   "mt-2 w-full rounded-xl border border-slate-200/80 bg-white/95 px-3 py-2.5 text-slate-900 shadow-sm outline-none ring-offset-2 transition focus:border-slate-300 focus:ring-2 focus:ring-[#1f3a5f]/15";
+
+const buildDisplayName = (user) => {
+  const fullName = [user?.firstname, user?.lastname].filter(Boolean).join(" ").trim();
+  return fullName || user?.name || "User";
+};
 
 function SignIn() {
   const { t } = useTranslation();
@@ -24,30 +29,63 @@ function SignIn() {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
-    const email = formData.get("email")?.toString().trim();
+    const phone = formData.get("phone")?.toString().trim();
     const password = formData.get("password")?.toString();
 
-    if (!email || !password) {
-      setError(t("auth.missingCredentials", "Please enter your email and password."));
+    if (!phone || !password) {
+      setError(t("auth.missingCredentials", "Please enter your mobile number and password."));
       setIsSubmitting(false);
       return;
     }
 
     try {
-      const user = findUserByCredentials(email, password);
+      const result = await loginUser({ phone, password });
 
-      if (!user) {
-        setError(t("auth.invalidCredentials", "Invalid email or password."));
-        setIsSubmitting(false);
+      if (result?.otpRequired && result?.challengeId) {
+        const previewUser = result.userPreview || {};
+        const sessionUser = {
+          ...previewUser,
+          id: previewUser._id || previewUser.id,
+          role: previewUser.type || previewUser.role,
+          type: previewUser.type,
+          name: buildDisplayName(previewUser),
+          token: null,
+          is2fauth: true,
+          twoFactorVerified: false,
+          otpChallenge: {
+            challengeId: result.challengeId,
+            channel: result.channel,
+            recipientMasked: result.recipientMasked,
+            expiresInSeconds: result.expiresInSeconds,
+            resendCooldownSeconds: result.resendCooldownSeconds,
+          },
+        };
+
+        setSession(sessionUser);
+        navigate("/two-factor-verify", { replace: true });
         return;
       }
 
-      const { password: _password, ...safeUser } = user;
-      setSession(safeUser);
-      navigate(getDefaultRouteForSession(safeUser), { replace: true });
+      if (!result?.token || !result?.user) {
+        throw new Error("Invalid authentication response.");
+      }
+
+      const user = result.user || {};
+      const sessionUser = {
+        ...user,
+        id: user._id || user.id,
+        role: user.type || user.role,
+        type: user.type,
+        name: buildDisplayName(user),
+        token: result.token,
+        twoFactorVerified: false,
+      };
+
+      setSession(sessionUser);
+      navigate(getDefaultRouteForSession(sessionUser), { replace: true });
     } catch (err) {
       console.error("Sign in failed:", err);
-      setError(t("auth.signInFailed", "Unable to sign in right now. Please try again."));
+      setError(err?.message || t("auth.signInFailed", "Unable to sign in right now. Please try again."));
       setIsSubmitting(false);
     }
   };
@@ -140,14 +178,14 @@ function SignIn() {
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <Label className="text-sm font-medium text-slate-700">
-                {t("auth.email", "Email")}
+                {t("auth.mobile", "Mobile number")}
               </Label>
               <Input
                 className={inputClasses}
-                type="email"
-                name="email"
-                autoComplete="email"
-                placeholder={t("auth.emailPlaceholder", "you@company.com")}
+                type="tel"
+                name="phone"
+                autoComplete="tel"
+                placeholder={t("auth.mobilePlaceholder", "+491701111111")}
               />
             </div>
             <div>
@@ -197,9 +235,14 @@ function SignIn() {
           </div>
 
           <p className="text-center text-sm text-slate-500">
-            {t("auth.newToOxifleet", "New to Oxifleet?")}{" "}
+            {t("auth.newToOxifleet", "New to Oxifleet?")} {" "}
             <Link className="font-semibold text-[#341B64]" to="/signup">
               {t("actions.createAnAccount", "Create an account")}
+            </Link>
+          </p>
+          <p className="text-center text-sm text-slate-500">
+            <Link className="font-semibold text-[#1f3a5f]" to="/admin/login">
+              Sign-in as admin
             </Link>
           </p>
         </div>
@@ -209,3 +252,7 @@ function SignIn() {
 }
 
 export default SignIn;
+
+
+
+

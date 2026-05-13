@@ -3,10 +3,13 @@ import {
   Activity,
   ArrowLeft,
   BadgeCheck,
+  Clock3,
   CarFront,
   Plus,
   Search,
   ShieldCheck,
+  MailCheck,
+  MailWarning,
   UserMinus,
   Users,
   X,
@@ -60,6 +63,36 @@ const getComplianceClassName = (score) => {
   return "bg-rose-100 text-rose-700";
 };
 
+
+const getInviteBadgeMeta = (driver) => {
+  const status = String(driver?.inviteStatus || "").toLowerCase();
+  if (status === "sent" || status === "accepted") {
+    return {
+      label: "Invite sent",
+      className: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+      icon: MailCheck,
+    };
+  }
+  if (status === "pending") {
+    return {
+      label: "Invite pending",
+      className: "bg-amber-100 text-amber-700 border border-amber-200",
+      icon: Clock3,
+    };
+  }
+  if (status === "failed") {
+    return {
+      label: "Invite failed",
+      className: "bg-rose-100 text-rose-700 border border-rose-200",
+      icon: MailWarning,
+    };
+  }
+  return {
+    label: "No invite",
+    className: "bg-slate-100 text-slate-600 border border-slate-200",
+    icon: Clock3,
+  };
+};
 const STATUS_CHIPS = [
   { key: "all", label: "All" },
   { key: "Driving", label: "Driving" },
@@ -160,6 +193,7 @@ function DriverManagement({
       status: t("fleet.driverManagement.cards.onStandby"),
       tone: "info",
       icon: BadgeCheck,
+  Clock3,
     },
     {
       key: "idle",
@@ -178,6 +212,8 @@ function DriverManagement({
       status: summary.avgCompliance >= 90 ? t("fleet.driverManagement.cards.excellent") : t("fleet.driverManagement.cards.watch"),
       tone: summary.avgCompliance >= 90 ? "good" : "warn",
       icon: ShieldCheck,
+  MailCheck,
+  MailWarning,
     },
   ];
 
@@ -462,15 +498,33 @@ function DriverManagement({
                           </p>
                         </div>
                       </div>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          isSelected
-                            ? "bg-white/15 text-white"
-                            : getActivityClassName(activityStatus)
-                        }`}
-                      >
-                        {activityStatus}
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            isSelected
+                              ? "bg-white/15 text-white"
+                              : getActivityClassName(activityStatus)
+                          }`}
+                        >
+                          {activityStatus}
+                        </span>
+                        {(() => {
+                          const inviteBadge = getInviteBadgeMeta(driver);
+                          const InviteIcon = inviteBadge.icon;
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                isSelected
+                                  ? "bg-white/10 text-white border border-white/20"
+                                  : inviteBadge.className
+                              }`}
+                            >
+                              <InviteIcon size={10} />
+                              {inviteBadge.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
                     </div>
                     <div className="mt-3">
                       <div className="mb-1 flex items-center justify-between text-[11px]">
@@ -536,6 +590,16 @@ function DriverManagement({
                     <div>
                       <p className="text-lg font-semibold">{selectedDriver.name}</p>
                       <p className="text-xs text-slate-300">{selectedDriver.id} | {selectedDriver.email}</p>
+                      {(() => {
+                        const inviteBadge = getInviteBadgeMeta(selectedDriver);
+                        const InviteIcon = inviteBadge.icon;
+                        return (
+                          <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${inviteBadge.className}`}>
+                            <InviteIcon size={12} />
+                            {inviteBadge.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                   <Button onClick={onRemoveDriver(selectedDriver.id)} type="button" variant="destructive">
@@ -759,3 +823,11 @@ function DriverManagement({
 }
 
 export default DriverManagement;
+
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -13,11 +13,15 @@ import {
 import { Textarea } from "./ui/textarea";
 import {
   getVehiclePolicyState,
-  saveVehiclePolicyVersion,
-  setVehiclePolicyStatus,
+  replaceVehiclePolicies,
   subscribeVehiclePolicies,
 } from "../data/vehiclePolicyStore";
 import { useTranslation } from "../i18n/useTranslation";
+import {
+  createFleetVehiclePolicyApi,
+  listFleetVehiclePoliciesApi,
+  updateFleetVehiclePolicyApi,
+} from "../services/fleetVehiclePolicyApi";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -158,6 +162,7 @@ const statusClassName = (status) => {
 function VehiclePolicyManagement({ vehicles }) {
   const { t } = useTranslation();
   const formRef = useRef(null);
+  const policyInitRef = useRef(false);
   const policyState = useSyncExternalStore(
     subscribeVehiclePolicies,
     getVehiclePolicyState,
@@ -207,6 +212,43 @@ function VehiclePolicyManagement({ vehicles }) {
     effectiveFrom: todayIso(),
   });
 
+  const [policyApiLoading, setPolicyApiLoading] = useState(false);
+  const [policyApiSaving, setPolicyApiSaving] = useState(false);
+  const [policyApiError, setPolicyApiError] = useState("");
+
+  const syncPoliciesFromBackend = async () => {
+    const rows = await listFleetVehiclePoliciesApi();
+    replaceVehiclePolicies(rows);
+    return rows;
+  };
+
+  useEffect(() => {
+    if (policyInitRef.current) return;
+    policyInitRef.current = true;
+
+    let ignore = false;
+
+    const run = async () => {
+      setPolicyApiLoading(true);
+      setPolicyApiError("");
+      try {
+        const rows = await listFleetVehiclePoliciesApi();
+        if (ignore) return;
+        replaceVehiclePolicies(rows);
+      } catch (error) {
+        if (ignore) return;
+        setPolicyApiError(error?.message || "Unable to load vehicle policies from backend.");
+      } finally {
+        setPolicyApiLoading(false);
+      }
+    };
+
+    run();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
   const allPolicies = useMemo(() => {
     return [...policyState.policies].sort((a, b) => {
       const timeA = new Date(a.createdAt).getTime() || 0;
@@ -409,54 +451,87 @@ function VehiclePolicyManagement({ vehicles }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleCreatePolicyVersion = (event) => {
+  const handleCreatePolicyVersion = async (event) => {
     event.preventDefault();
     if (!form.name.trim()) {
       return;
     }
 
-    const nextPolicy = saveVehiclePolicyVersion({
-      name: form.name,
-      policyCode: form.policyCode,
-      status: form.status,
-      allowedServiceTypes: form.allowedServiceTypes,
-      allowedTyreBrands: form.allowedTyreBrands,
-      allowedTyreCategories: form.allowedTyreCategories,
-      servicePriceLimit: form.servicePriceLimit,
-      tyrePriceLimit: form.tyrePriceLimit,
-      approvalThreshold: form.approvalThreshold,
-      seasonalTyreRules: form.seasonalTyreRules,
-      specialCaseExceptions: form.specialCaseExceptions,
-      emergencyBreakdownRule: {
-        ...form.emergencyBreakdownRule,
-        maxDistanceKm: form.emergencyBreakdownRule.maxDistanceKm,
-        costLimitEur: form.emergencyBreakdownRule.costLimitEur,
-      },
-      serviceNetworkRule: {
-        ...form.serviceNetworkRule,
-        preferredPOSLocations: form.serviceNetworkRule.preferredPOSLocations,
-        excludedProviders: form.serviceNetworkRule.excludedProviders,
-      },
-      changeNote: form.changeNote,
-      effectiveFrom: form.effectiveFrom,
-      appliesTo: {
-        fleet: form.fleet,
-        vehicleGroup: form.vehicleGroup,
-        vehicleClass: form.vehicleClass,
-        vehicleId: form.vehicleId === "all" ? "" : form.vehicleId,
-      },
-    });
+    setPolicyApiSaving(true);
+    setPolicyApiError("");
 
-    setHistoryCode(nextPolicy.policyCode);
-    setForm((prev) => ({
-      ...prev,
-      policyCode: nextPolicy.policyCode,
-      changeNote: "",
-      effectiveFrom: todayIso(),
-    }));
+    try {
+      const payload = {
+        name: form.name,
+        policyCode: form.policyCode,
+        version: form.policyCode
+          ? (allPolicies
+              .filter((entry) => entry.policyCode === form.policyCode)
+              .reduce((max, entry) => Math.max(max, Number(entry.version) || 0), 0) + 1)
+          : 1,
+        status: form.status,
+        allowedServiceTypes: form.allowedServiceTypes,
+        allowedTyreBrands: form.allowedTyreBrands,
+        allowedTyreCategories: form.allowedTyreCategories,
+        servicePriceLimit: form.servicePriceLimit,
+        tyrePriceLimit: form.tyrePriceLimit,
+        approvalThreshold: form.approvalThreshold,
+        seasonalTyreRules: form.seasonalTyreRules,
+        specialCaseExceptions: form.specialCaseExceptions,
+        emergencyBreakdownRule: {
+          ...form.emergencyBreakdownRule,
+          maxDistanceKm: form.emergencyBreakdownRule.maxDistanceKm,
+          costLimitEur: form.emergencyBreakdownRule.costLimitEur,
+        },
+        serviceNetworkRule: {
+          ...form.serviceNetworkRule,
+          preferredPOSLocations: form.serviceNetworkRule.preferredPOSLocations,
+          excludedProviders: form.serviceNetworkRule.excludedProviders,
+        },
+        changeNote: form.changeNote,
+        effectiveFrom: form.effectiveFrom,
+        appliesTo: {
+          fleet: form.fleet,
+          vehicleGroup: form.vehicleGroup,
+          vehicleClass: form.vehicleClass,
+          vehicleId: form.vehicleId === "all" ? "" : form.vehicleId,
+        },
+      };
+
+      const created = await createFleetVehiclePolicyApi(payload);
+      await syncPoliciesFromBackend();
+
+      setHistoryCode(created.policyCode);
+      setForm((prev) => ({
+        ...prev,
+        policyCode: created.policyCode,
+        changeNote: "",
+        effectiveFrom: todayIso(),
+      }));
+    } catch (error) {
+      setPolicyApiError(error?.message || "Unable to save policy version right now.");
+    } finally {
+      setPolicyApiSaving(false);
+    }
   };
 
-  const handleLoadFromPolicy = (policy) => () => {
+    const handlePolicyStatusChange = (policy) => async (value) => {
+    if (!policy?.id) return;
+    setPolicyApiSaving(true);
+    setPolicyApiError("");
+    try {
+      await updateFleetVehiclePolicyApi(policy.id, {
+        ...policy,
+        status: value,
+      });
+      await syncPoliciesFromBackend();
+    } catch (error) {
+      setPolicyApiError(error?.message || "Unable to update policy status.");
+    } finally {
+      setPolicyApiSaving(false);
+    }
+  };
+const handleLoadFromPolicy = (policy) => () => {
     setForm({
       name: policy.name,
       policyCode: policy.policyCode,
@@ -524,6 +599,14 @@ function VehiclePolicyManagement({ vehicles }) {
 
   return (
     <section className="space-y-6">
+      {policyApiError ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {policyApiError}
+        </div>
+      ) : null}
+      {policyApiLoading ? (
+        <div className="rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-sm text-slate-600">Loading vehicle policy data...</div>
+      ) : null}
        <header className="hidden overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,#1d3148_0%,#0f1b33_45%,#070b14_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -1140,7 +1223,7 @@ function VehiclePolicyManagement({ vehicles }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">{t("fleet.policyManagement.saveAsPolicyVersion")}</Button>
+            <Button type="submit" disabled={policyApiSaving} className="text-white rounded-lg bg-[linear-gradient(180deg,#6848e1_0%,#45278f_56%,#24114d_100%)] px-3 py-2 hover:bg-[linear-gradient(180deg,#7456e9_0%,#4f2ea0_56%,#2a1459_100%)]">{t("fleet.policyManagement.saveAsPolicyVersion")}</Button>
             <p className="text-xs text-slate-500">
               {t("fleet.policyManagement.saveHint")}
             </p>
@@ -1318,7 +1401,7 @@ function VehiclePolicyManagement({ vehicles }) {
                       {t("fleet.policyManagement.loadInForm")}
                     </Button>
                     <Select
-                      onValueChange={(value) => setVehiclePolicyStatus(policy.id, value)}
+                      onValueChange={handlePolicyStatusChange(policy)}
                       value={policy.status}
                     >
                       <SelectTrigger className="h-8 w-[140px] bg-white">
@@ -1516,3 +1599,14 @@ function VehiclePolicyManagement({ vehicles }) {
 }
 
 export default VehiclePolicyManagement;
+
+
+
+
+
+
+
+
+
+
+

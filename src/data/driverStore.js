@@ -69,6 +69,7 @@ const normalizeDriver = (driver = {}) => {
 
   return {
     id,
+    serverId: driver.serverId?.trim() || "",
     name: driver.name?.trim() || "Unnamed driver",
     email: driver.email?.trim() || "unknown@oxifleet.com",
     phone: driver.phone?.trim() || "N/A",
@@ -81,6 +82,9 @@ const normalizeDriver = (driver = {}) => {
     notes: driver.notes?.trim() || "",
     serviceHistory: history.slice(0, 5),
     createdAt: driver.createdAt || new Date().toISOString(),
+    driverAuthentication: String(driver.driverAuthentication || "").trim(),
+    inviteStatus: String(driver.inviteStatus || "").trim(),
+    invitation: driver.invitation || null,
   };
 };
 
@@ -231,6 +235,20 @@ const emit = () => {
 
 export const getDriverState = () => state;
 
+
+export const setDriversFromApi = (drivers = []) => {
+  const nextDrivers = (Array.isArray(drivers) ? drivers : [])
+    .map(normalizeDriver)
+    .filter((driver) => Boolean(driver.id));
+
+  state = {
+    ...state,
+    drivers: nextDrivers,
+  };
+  writeStorage(nextDrivers);
+  emit();
+  return nextDrivers;
+};
 export const addDriver = (driver) => {
   const nextDriver = normalizeDriver(driver);
 
@@ -301,3 +319,9 @@ export const subscribeDrivers = (listener) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
+
+
+
+
+
+

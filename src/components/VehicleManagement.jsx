@@ -177,7 +177,12 @@ const buildReplacementDraft = (vehicle) => ({
   replacementNotes: vehicle?.replacementNotes || "",
 });
 
-function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
+function VehicleManagement({
+  vehicles,
+  onAddVehicleClick = () => {},
+  onPersistVehicleUpdate = updateVehicle,
+  onPersistBulkVehicles = upsertVehicles,
+}) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -515,7 +520,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
     if (!selectedVehicle || !profileDraft) {
       return;
     }
-    updateVehicle(selectedId, {
+    onPersistVehicleUpdate(selectedId, {
       model: profileDraft.model,
       plate: profileDraft.plate,
       type: profileDraft.type,
@@ -536,7 +541,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
     if (!selectedVehicle || !tyreDraft) {
       return;
     }
-    updateVehicle(selectedId, {
+    onPersistVehicleUpdate(selectedId, {
       tyreSpecs: {
         brand: tyreDraft.brand,
         size: tyreDraft.size,
@@ -550,7 +555,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
     if (!selectedVehicle || !warrantyDraft) {
       return;
     }
-    updateVehicle(selectedId, {
+    onPersistVehicleUpdate(selectedId, {
       warrantyProvider: warrantyDraft.provider,
       warrantyExpiryDate: warrantyDraft.expiryDate,
     });
@@ -569,7 +574,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
       ...(selectedVehicle.serviceHistory || []),
     ].slice(0, 10);
 
-    updateVehicle(selectedId, {
+    onPersistVehicleUpdate(selectedId, {
       serviceHistory: nextHistory,
     });
 
@@ -584,7 +589,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
     if (!selectedVehicle) {
       return;
     }
-    updateVehicle(selectedId, {
+    onPersistVehicleUpdate(selectedId, {
       status: selectedVehicle.status === "Inactive" ? "Active" : "Inactive",
     });
   };
@@ -593,7 +598,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
     if (!selectedVehicle || !replacementDraft) {
       return;
     }
-    updateVehicle(selectedId, {
+    onPersistVehicleUpdate(selectedId, {
       replacementVehicleId:
         replacementDraft.replacementVehicleId === "none"
           ? ""
@@ -602,7 +607,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
     });
   };
 
-  const handleBulkUpsert = () => {
+  const handleBulkUpsert = async () => {
     try {
       const parsed = JSON.parse(bulkPayload);
       const payload = Array.isArray(parsed) ? parsed : [parsed];
@@ -610,7 +615,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
         setBulkFeedback("No vehicle records found in payload.");
         return;
       }
-      const result = upsertVehicles(payload);
+      const result = await Promise.resolve(onPersistBulkVehicles(payload));
       setBulkFeedback(
         `Bulk update complete: ${result.inserted} inserted, ${result.updated} updated, ${result.total} total.`
       );
@@ -928,7 +933,7 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
                       <Button
                         className="h-8 rounded-lg px-3 text-xs"
                         onClick={() =>
-                          updateVehicle(vehicle.id, {
+                          onPersistVehicleUpdate(vehicle.id, {
                             status: vehicle.status === "Inactive" ? "Active" : "Inactive",
                           })
                         }
@@ -1532,3 +1537,6 @@ function VehicleManagement({ vehicles, onAddVehicleClick = () => {} }) {
 }
 
 export default VehicleManagement;
+
+
+
