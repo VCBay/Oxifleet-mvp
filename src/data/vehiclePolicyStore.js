@@ -1,4 +1,6 @@
 const STORAGE_KEY = "oxifleet:vehicle-policies";
+const ALLOWED_TYRE_BRANDS = ["Hankook", "Nokian", "Falken", "Dunlop", "Bridgestone"];
+const ALLOWED_TYRE_BRAND_SET = new Set(ALLOWED_TYRE_BRANDS);
 
 const readStorage = () => {
   if (typeof window === "undefined" || !window.localStorage) {
@@ -38,6 +40,9 @@ const parseList = (value) => {
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
 };
+
+const parseAllowedBrandList = (value) =>
+  parseList(value).filter((entry) => ALLOWED_TYRE_BRAND_SET.has(entry));
 
 const normalizeCode = (value, nameFallback) => {
   const raw = String(value || "").trim();
@@ -97,7 +102,7 @@ const normalizePolicy = (policy = {}) => {
     version: Number(policy.version) || 1,
     status: String(policy.status || "Active").trim() || "Active",
     allowedServiceTypes: parseList(policy.allowedServiceTypes),
-    allowedTyreBrands: parseList(policy.allowedTyreBrands),
+    allowedTyreBrands: parseAllowedBrandList(policy.allowedTyreBrands),
     allowedTyreCategories: parseList(policy.allowedTyreCategories),
     servicePriceLimit: toNullableNumber(policy.servicePriceLimit),
     tyrePriceLimit: toNullableNumber(policy.tyrePriceLimit),
@@ -131,7 +136,7 @@ const normalizePolicy = (policy = {}) => {
       networkMode:
         String(policy.serviceNetworkRule?.networkMode || "point-s-only").trim() ||
         "point-s-only",
-      preferredOEMs: parseList(policy.serviceNetworkRule?.preferredOEMs),
+      preferredOEMs: parseAllowedBrandList(policy.serviceNetworkRule?.preferredOEMs),
       preferredPOSLocations: parseList(policy.serviceNetworkRule?.preferredPOSLocations),
       excludedProviders: parseList(policy.serviceNetworkRule?.excludedProviders),
       crossBorderAllowed: toBoolean(
@@ -185,7 +190,7 @@ const getDefaultPolicies = () => {
         "Accident damage",
         "General service",
       ],
-      allowedTyreBrands: ["Michelin", "Continental", "Bridgestone", "Goodyear", "Pirelli"],
+      allowedTyreBrands: ["Hankook", "Nokian", "Falken", "Dunlop", "Bridgestone"],
       allowedTyreCategories: ["Summer", "Winter", "All-season", "Highway", "Performance"],
       servicePriceLimit: null,
       tyrePriceLimit: null,
@@ -204,7 +209,7 @@ const getDefaultPolicies = () => {
       },
       serviceNetworkRule: {
         networkMode: "approved-network-only",
-        preferredOEMs: ["Continental", "Michelin", "Bridgestone"],
+        preferredOEMs: ["Hankook", "Nokian", "Bridgestone"],
         preferredPOSLocations: ["Frankfurt Nord", "Darmstadt", "Wiesbaden"],
         excludedProviders: [],
         crossBorderAllowed: false,
@@ -234,7 +239,7 @@ const getDefaultPolicies = () => {
         "Tyre rotation",
         "Engine diagnostics",
       ],
-      allowedTyreBrands: ["Michelin", "Bridgestone", "Goodyear"],
+      allowedTyreBrands: ["Falken", "Dunlop", "Bridgestone"],
       allowedTyreCategories: ["All-season", "Highway", "Winter"],
       servicePriceLimit: 1800,
       tyrePriceLimit: 2600,
@@ -255,7 +260,7 @@ const getDefaultPolicies = () => {
       },
       serviceNetworkRule: {
         networkMode: "preferred-oem-and-point-s",
-        preferredOEMs: ["Goodyear", "Bridgestone", "Michelin"],
+        preferredOEMs: ["Hankook", "Bridgestone", "Nokian"],
         preferredPOSLocations: ["North Fleet Hub", "Kassel Point S"],
         excludedProviders: ["Open roadside vendors"],
         crossBorderAllowed: false,

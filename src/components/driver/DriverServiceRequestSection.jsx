@@ -29,6 +29,7 @@ import {
   getCategorySubOptions,
 } from "../../data/driverBookingCatalog";
 import { evaluateTyreStock } from "../../data/tyreInventoryStore";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const problemPictogramMap = {
   tyre: {
@@ -109,69 +110,291 @@ const getSlotKeyFromDateTime = (value) => {
 };
 
 const DAMAGE_CAUSER_OPTIONS = [
-  { value: "driver_self", label: "Driver (self)" },
-  { value: "other_party", label: "Other party" },
-  { value: "unknown", label: "Unknown / not sure" },
+  { value: "driver_self", label: "Fahrer (selbst)" },
+  { value: "other_party", label: "Andere Partei" },
+  { value: "unknown", label: "Unbekannt / nicht sicher" },
 ];
 
 const DAMAGE_DRIVEABILITY_OPTIONS = [
-  { value: "driveable", label: "Driveable and road-safe" },
-  { value: "limited", label: "Limited driveability" },
-  { value: "not_driveable", label: "Not driveable" },
+  { value: "driveable", label: "Fahrbereit und verkehrssicher" },
+  { value: "limited", label: "Eingeschränkt fahrbereit" },
+  { value: "not_driveable", label: "Nicht fahrbereit" },
 ];
 
 const DAMAGE_VISUAL_STATUS_OPTIONS = [
-  { value: "", label: "Not checked" },
-  { value: "no_damage", label: "No damage" },
-  { value: "scratch", label: "Scratch" },
-  { value: "dent", label: "Dent" },
-  { value: "crack", label: "Crack" },
-  { value: "broken", label: "Broken" },
-  { value: "other", label: "Other" },
+  { value: "", label: "Nicht geprüft" },
+  { value: "no_damage", label: "Kein Schaden" },
+  { value: "scratch", label: "Kratzer" },
+  { value: "dent", label: "Delle" },
+  { value: "crack", label: "Riss" },
+  { value: "broken", label: "Gebrochen" },
+  { value: "other", label: "Sonstiges" },
 ];
 
 const DAMAGE_VISUAL_PARTS = [
-  { key: "frontRightHeadlight", label: "Front right headlight" },
-  { key: "hood", label: "Hood" },
-  { key: "frontLeftHeadlight", label: "Front left headlight" },
-  { key: "windshield", label: "Windshield" },
-  { key: "roofFront", label: "Roof (front)" },
-  { key: "leftMirror", label: "Left side mirror" },
-  { key: "frontLeftWindow", label: "Front left side window" },
-  { key: "rearLeftWindow", label: "Rear left side window" },
-  { key: "rearUpperLeftPanel", label: "Rear upper left panel" },
-  { key: "rearLeftFender", label: "Rear left fender" },
-  { key: "lowerFrontBumper", label: "Lower front bumper" },
-  { key: "frontBumper", label: "Front bumper" },
-  { key: "frontLeftFender", label: "Front left fender" },
-  { key: "frontLeftTyre", label: "Front left tyre" },
-  { key: "frontLeftRim", label: "Front left rim" },
-  { key: "leftSill", label: "Left side skirt" },
-  { key: "driverDoor", label: "Driver door" },
-  { key: "rearLeftDoor", label: "Rear left door" },
-  { key: "rearLeftTyre", label: "Rear left tyre" },
-  { key: "rearLeftRim", label: "Rear left rim" },
-  { key: "upperTrunkLid", label: "Upper trunk lid" },
-  { key: "rearRightFender", label: "Rear right fender" },
-  { key: "rearRightRim", label: "Rear right rim" },
-  { key: "rightTailLight", label: "Right tail light" },
-  { key: "rearRightTyre", label: "Rear right tyre" },
-  { key: "rearWindow", label: "Rear window" },
-  { key: "rearRightDoor", label: "Rear right door" },
-  { key: "rearUpperRightPanel", label: "Rear upper right panel" },
-  { key: "roofRear", label: "Roof (rear)" },
-  { key: "frontRightRim", label: "Front right rim" },
-  { key: "leftTailLight", label: "Left tail light" },
-  { key: "rearBumper", label: "Rear bumper" },
-  { key: "rightSill", label: "Right side skirt" },
-  { key: "rightMirror", label: "Right side mirror" },
-  { key: "frontRightWindow", label: "Front right side window" },
-  { key: "frontRightTyre", label: "Front right tyre" },
-  { key: "frontRightFender", label: "Front right fender" },
-  { key: "frontRightDoor", label: "Front right door" },
-  { key: "lowerTrunkLid", label: "Lower trunk lid" },
-  { key: "rearRightWindow", label: "Rear right side window" },
+  { key: "frontRightHeadlight", label: "Scheinwerfer vorne rechts" },
+  { key: "hood", label: "Motorhaube" },
+  { key: "frontLeftHeadlight", label: "Scheinwerfer vorne links" },
+  { key: "windshield", label: "Windschutzscheibe" },
+  { key: "roofFront", label: "Dach vorne" },
+  { key: "leftMirror", label: "Außenspiegel links" },
+  { key: "frontLeftWindow", label: "Seitenscheibe vorne links" },
+  { key: "rearLeftWindow", label: "Seitenscheibe hinten links" },
+  { key: "rearUpperLeftPanel", label: "Seitenwand hinten links oben" },
+  { key: "rearLeftFender", label: "Kotflügel hinten links" },
+  { key: "lowerFrontBumper", label: "Stoßfänger vorne unten" },
+  { key: "frontBumper", label: "Stoßfänger vorne" },
+  { key: "frontLeftFender", label: "Kotflügel vorne links" },
+  { key: "frontLeftTyre", label: "Reifen vorne links" },
+  { key: "frontLeftRim", label: "Felge vorne links" },
+  { key: "leftSill", label: "Seitenschweller links" },
+  { key: "driverDoor", label: "Fahrertür" },
+  { key: "rearLeftDoor", label: "Tür hinten links" },
+  { key: "rearLeftTyre", label: "Reifen hinten links" },
+  { key: "rearLeftRim", label: "Felge hinten links" },
+  { key: "upperTrunkLid", label: "Heckklappe oben" },
+  { key: "rearRightFender", label: "Kotflügel hinten rechts" },
+  { key: "rearRightRim", label: "Felge hinten rechts" },
+  { key: "rightTailLight", label: "Rückleuchte rechts" },
+  { key: "rearRightTyre", label: "Reifen hinten rechts" },
+  { key: "rearWindow", label: "Heckscheibe" },
+  { key: "rearRightDoor", label: "Tür hinten rechts" },
+  { key: "rearUpperRightPanel", label: "Seitenwand hinten rechts oben" },
+  { key: "roofRear", label: "Dach hinten" },
+  { key: "frontRightRim", label: "Felge vorne rechts" },
+  { key: "leftTailLight", label: "Rückleuchte links" },
+  { key: "rearBumper", label: "Stoßfänger hinten" },
+  { key: "rightSill", label: "Seitenschweller rechts" },
+  { key: "rightMirror", label: "Außenspiegel rechts" },
+  { key: "frontRightWindow", label: "Seitenscheibe vorne rechts" },
+  { key: "frontRightTyre", label: "Reifen vorne rechts" },
+  { key: "frontRightFender", label: "Kotflügel vorne rechts" },
+  { key: "frontRightDoor", label: "Tür vorne rechts" },
+  { key: "lowerTrunkLid", label: "Heckklappe unten" },
+  { key: "rearRightWindow", label: "Seitenscheibe hinten rechts" },
 ];
+
+const getLocalizedCopy = (language, english, german) =>
+  language === "de" ? german : english;
+
+const PROBLEM_TYPE_LABELS = {
+  Reifen: { en: "Tyres", de: "Reifen" },
+  Service: { en: "Service", de: "Service" },
+  "Technisches Problem": { en: "Technical problem", de: "Technisches Problem" },
+  Schadensmeldung: { en: "Damage report", de: "Schadensmeldung" },
+  "Emergency breakdown": { en: "Emergency breakdown", de: "Pannenfall" },
+  Pannenfall: { en: "Emergency breakdown", de: "Pannenfall" },
+};
+
+const PROBLEM_TYPE_HINTS = {
+  Reifen: {
+    en: "Tyre change, puncture, or pressure loss",
+    de: "Reifenwechsel, Reifenpanne oder Druckverlust",
+  },
+  Service: {
+    en: "Routine service and general maintenance",
+    de: "Regelservice und allgemeine Wartung",
+  },
+  "Technisches Problem": {
+    en: "Warning light, electrical, engine, or brake issue",
+    de: "Warnmeldung, Elektrik, Motor oder Bremse",
+  },
+  Schadensmeldung: {
+    en: "Report body or accident damage",
+    de: "Karosserie- oder Unfallschaden melden",
+  },
+  "Emergency breakdown": {
+    en: "Vehicle breakdown or urgent roadside assistance needed",
+    de: "Fahrzeugausfall oder dringende Pannenhilfe erforderlich",
+  },
+  Pannenfall: {
+    en: "Vehicle breakdown or urgent roadside assistance needed",
+    de: "Fahrzeugausfall oder dringende Pannenhilfe erforderlich",
+  },
+};
+
+const CATEGORY_DETAIL_COPY = {
+  Reifen: {
+    selectionLabel: { en: "Tyre service type", de: "Reifenservice-Typ" },
+    selectionHint: {
+      en: "Choose the tyre-related service needed for your vehicle.",
+      de: "Wählen Sie den reifenbezogenen Service für Ihr Fahrzeug.",
+    },
+    detailFieldLabel: { en: "Explain the tyre issue", de: "Reifenproblem beschreiben" },
+    detailPlaceholder: {
+      en: "Add details about the tyre condition, warning, axle position, or urgency.",
+      de: "Geben Sie Details zum Reifenzustand, zur Warnung, zur Achsposition oder zur Dringlichkeit an.",
+    },
+  },
+  Service: {
+    selectionLabel: { en: "Service type", de: "Servicetyp" },
+    selectionHint: {
+      en: "Choose the service needed before selecting a Point S station.",
+      de: "Wählen Sie den benötigten Service, bevor Sie eine Point-S-Station auswählen.",
+    },
+    detailFieldLabel: { en: "Additional notes", de: "Zusätzliche Hinweise" },
+    detailPlaceholder: {
+      en: "Add any relevant service notes, mileage, or symptoms if needed.",
+      de: "Fügen Sie bei Bedarf relevante Servicehinweise, Kilometerstand oder Symptome hinzu.",
+    },
+  },
+  "Technisches Problem": {
+    selectionLabel: { en: "Technical problem details", de: "Details zum technischen Problem" },
+    selectionHint: {
+      en: "Describe the issue in the field below or upload a picture of the error message.",
+      de: "Beschreiben Sie das Problem im Feld unten oder laden Sie ein Bild der Fehlermeldung hoch.",
+    },
+    detailFieldLabel: {
+      en: "What technical problem does your vehicle have?",
+      de: "Welches technische Problem hat Ihr Fahrzeug?",
+    },
+    detailPlaceholder: {
+      en: "Describe the warning light, error message, symptoms, or when the issue started.",
+      de: "Beschreiben Sie Warnleuchte, Fehlermeldung, Symptome oder wann das Problem begonnen hat.",
+    },
+  },
+  Schadensmeldung: {
+    selectionLabel: { en: "Damage report details", de: "Details zur Schadensmeldung" },
+    selectionHint: {
+      en: "Fill out the damage details below and upload clear pictures of the damage.",
+      de: "Füllen Sie die Schadensdetails unten aus und laden Sie klare Bilder des Schadens hoch.",
+    },
+    detailFieldLabel: { en: "Damage details", de: "Schadensdetails" },
+    detailPlaceholder: {
+      en: "Describe what happened, where the damage is located, and whether the vehicle is still drivable.",
+      de: "Beschreiben Sie, was passiert ist, wo sich der Schaden befindet und ob das Fahrzeug noch fahrbereit ist.",
+    },
+  },
+  "Emergency breakdown": {
+    selectionLabel: { en: "Emergency breakdown details", de: "Details zum Pannenfall" },
+    selectionHint: {
+      en: "Describe the breakdown and share where the vehicle stopped so urgent help can be arranged.",
+      de: "Beschreiben Sie die Panne und teilen Sie mit, wo das Fahrzeug stehen geblieben ist, damit dringend Hilfe organisiert werden kann.",
+    },
+    detailFieldLabel: { en: "What happened?", de: "Was ist passiert?" },
+    detailPlaceholder: {
+      en: "Describe the breakdown, warning message, whether the vehicle is drivable, and your current location.",
+      de: "Beschreiben Sie die Panne, die Warnmeldung, ob das Fahrzeug fahrbereit ist und Ihren aktuellen Standort.",
+    },
+  },
+  Pannenfall: {
+    selectionLabel: { en: "Emergency breakdown details", de: "Details zum Pannenfall" },
+    selectionHint: {
+      en: "Describe the breakdown and share where the vehicle stopped so urgent help can be arranged.",
+      de: "Beschreiben Sie die Panne und teilen Sie mit, wo das Fahrzeug stehen geblieben ist, damit dringend Hilfe organisiert werden kann.",
+    },
+    detailFieldLabel: { en: "What happened?", de: "Was ist passiert?" },
+    detailPlaceholder: {
+      en: "Describe the breakdown, warning message, whether the vehicle is drivable, and your current location.",
+      de: "Beschreiben Sie die Panne, die Warnmeldung, ob das Fahrzeug fahrbereit ist und Ihren aktuellen Standort.",
+    },
+  },
+};
+
+const SERVICE_VALUE_LABELS = {
+  "Tyre change (seasonal change)": {
+    en: "Tyre change (seasonal change)",
+    de: "Reifenwechsel (saisonaler Wechsel)",
+  },
+  "New tyre installation": { en: "New tyre installation", de: "Neue Reifenmontage" },
+  "Tyre damage": { en: "Tyre damage", de: "Reifenschaden" },
+  "Tyre remounting": { en: "Tyre remounting", de: "Reifenumbereifung" },
+  "TPMS problem": { en: "TPMS problem", de: "TPMS-Problem" },
+  "Air pressure loss": { en: "Air pressure loss", de: "Luftdruckverlust" },
+  Inspection: { en: "Inspection", de: "Inspektion" },
+  "Oil change": { en: "Oil change", de: "Ölwechsel" },
+  "Vehicle inspection (HU/AU)": {
+    en: "Vehicle inspection (HU/AU)",
+    de: "Fahrzeugprüfung (HU/AU)",
+  },
+  "UVV inspection": { en: "UVV inspection", de: "UVV-Prüfung" },
+  "Wheel alignment": { en: "Wheel alignment", de: "Spurvermessung" },
+  "Windshield wiper service": {
+    en: "Windshield wiper service",
+    de: "Scheibenwischer-Service",
+  },
+  Brakes: { en: "Brakes", de: "Bremsen" },
+};
+
+const DAMAGE_CAUSER_LABELS = {
+  driver_self: { en: "Driver (self)", de: "Fahrer (selbst)" },
+  other_party: { en: "Other party", de: "Andere Partei" },
+  unknown: { en: "Unknown / not sure", de: "Unbekannt / nicht sicher" },
+};
+
+const DAMAGE_DRIVEABILITY_LABELS = {
+  driveable: { en: "Driveable and roadworthy", de: "Fahrbereit und verkehrssicher" },
+  limited: { en: "Driveable with limitations", de: "Eingeschränkt fahrbereit" },
+  not_driveable: { en: "Not driveable", de: "Nicht fahrbereit" },
+};
+
+const DAMAGE_VISUAL_STATUS_LABELS = {
+  "": { en: "Not checked", de: "Nicht geprüft" },
+  no_damage: { en: "No damage", de: "Kein Schaden" },
+  scratch: { en: "Scratch", de: "Kratzer" },
+  dent: { en: "Dent", de: "Delle" },
+  crack: { en: "Crack", de: "Riss" },
+  broken: { en: "Broken", de: "Gebrochen" },
+  other: { en: "Other", de: "Sonstiges" },
+};
+
+const DAMAGE_VISUAL_PART_LABELS = {
+  frontRightHeadlight: { en: "Front right headlight", de: "Scheinwerfer vorne rechts" },
+  hood: { en: "Hood", de: "Motorhaube" },
+  frontLeftHeadlight: { en: "Front left headlight", de: "Scheinwerfer vorne links" },
+  windshield: { en: "Windshield", de: "Windschutzscheibe" },
+  roofFront: { en: "Roof (front)", de: "Dach vorne" },
+  leftMirror: { en: "Left side mirror", de: "Außenspiegel links" },
+  frontLeftWindow: { en: "Front left side window", de: "Seitenscheibe vorne links" },
+  rearLeftWindow: { en: "Rear left side window", de: "Seitenscheibe hinten links" },
+  rearUpperLeftPanel: { en: "Rear upper left panel", de: "Seitenwand hinten links oben" },
+  rearLeftFender: { en: "Rear left fender", de: "Kotflügel hinten links" },
+  lowerFrontBumper: { en: "Lower front bumper", de: "Stoßfänger vorne unten" },
+  frontBumper: { en: "Front bumper", de: "Stoßfänger vorne" },
+  frontLeftFender: { en: "Front left fender", de: "Kotflügel vorne links" },
+  frontLeftTyre: { en: "Front left tyre", de: "Reifen vorne links" },
+  frontLeftRim: { en: "Front left rim", de: "Felge vorne links" },
+  leftSill: { en: "Left side skirt", de: "Seitenschweller links" },
+  driverDoor: { en: "Driver door", de: "Fahrertür" },
+  rearLeftDoor: { en: "Rear left door", de: "Tür hinten links" },
+  rearLeftTyre: { en: "Rear left tyre", de: "Reifen hinten links" },
+  rearLeftRim: { en: "Rear left rim", de: "Felge hinten links" },
+  upperTrunkLid: { en: "Upper trunk lid", de: "Heckklappe oben" },
+  rearRightFender: { en: "Rear right fender", de: "Kotflügel hinten rechts" },
+  rearRightRim: { en: "Rear right rim", de: "Felge hinten rechts" },
+  rightTailLight: { en: "Right tail light", de: "Rückleuchte rechts" },
+  rearRightTyre: { en: "Rear right tyre", de: "Reifen hinten rechts" },
+  rearWindow: { en: "Rear window", de: "Heckscheibe" },
+  rearRightDoor: { en: "Rear right door", de: "Tür hinten rechts" },
+  rearUpperRightPanel: { en: "Rear upper right panel", de: "Seitenwand hinten rechts oben" },
+  roofRear: { en: "Roof (rear)", de: "Dach hinten" },
+  frontRightRim: { en: "Front right rim", de: "Felge vorne rechts" },
+  leftTailLight: { en: "Left tail light", de: "Rückleuchte links" },
+  rearBumper: { en: "Rear bumper", de: "Stoßfänger hinten" },
+  rightSill: { en: "Right side skirt", de: "Seitenschweller rechts" },
+  rightMirror: { en: "Right side mirror", de: "Außenspiegel rechts" },
+  frontRightWindow: { en: "Front right side window", de: "Seitenscheibe vorne rechts" },
+  frontRightTyre: { en: "Front right tyre", de: "Reifen vorne rechts" },
+  frontRightFender: { en: "Front right fender", de: "Kotflügel vorne rechts" },
+  frontRightDoor: { en: "Front right door", de: "Tür vorne rechts" },
+  lowerTrunkLid: { en: "Lower trunk lid", de: "Heckklappe unten" },
+  rearRightWindow: { en: "Rear right side window", de: "Seitenscheibe hinten rechts" },
+};
+
+const localizeProblemType = (value, language) =>
+  PROBLEM_TYPE_LABELS[value]
+    ? getLocalizedCopy(language, PROBLEM_TYPE_LABELS[value].en, PROBLEM_TYPE_LABELS[value].de)
+    : value;
+
+const localizeProblemHint = (value, language, fallback = "") =>
+  PROBLEM_TYPE_HINTS[value]
+    ? getLocalizedCopy(language, PROBLEM_TYPE_HINTS[value].en, PROBLEM_TYPE_HINTS[value].de)
+    : fallback;
+
+const localizeServiceValue = (value, language) => {
+  const localized = SERVICE_VALUE_LABELS[value] || PROBLEM_TYPE_LABELS[value];
+  return localized ? getLocalizedCopy(language, localized.en, localized.de) : value;
+};
 
 const buildEmptyDamageReport = () => ({
   processNumber: "",
@@ -279,6 +502,7 @@ function DriverServiceRequestSection({
   formatDateTime,
   currentDriverProfile = null,
 }) {
+  const { t, language } = useTranslation();
   const [showAllServices, setShowAllServices] = useState(false);
   const [serviceOrder, setServiceOrder] = useState(() =>
     simpleIssueOptions.map((option) => option.value),
@@ -325,17 +549,22 @@ function DriverServiceRequestSection({
     [requestForm.problemType],
   );
   const orderedServiceOptions = useMemo(() => {
+    const localizedOptions = simpleIssueOptions.map((option) => ({
+      ...option,
+      label: localizeProblemType(option.value, language),
+      hint: localizeProblemHint(option.value, language, option.hint),
+    }));
     const byValue = new Map(
-      simpleIssueOptions.map((option) => [option.value, option]),
+      localizedOptions.map((option) => [option.value, option]),
     );
     const ordered = serviceOrder
       .map((value) => byValue.get(value))
       .filter(Boolean);
-    const missing = simpleIssueOptions.filter(
+    const missing = localizedOptions.filter(
       (option) => !serviceOrder.includes(option.value),
     );
     return [...ordered, ...missing];
-  }, [serviceOrder, simpleIssueOptions]);
+  }, [language, serviceOrder, simpleIssueOptions]);
   const inlineServiceOptions = useMemo(
     () => orderedServiceOptions.slice(0, inlineServiceLimit),
     [orderedServiceOptions],
@@ -363,6 +592,91 @@ function DriverServiceRequestSection({
         (item) => String(item.value || "").trim() === requestForm.problemType,
       ) || null,
     [requestForm.problemType, simpleIssueOptions],
+  );
+  const localizedCategoryDetails = useMemo(() => {
+    const detailCopy = CATEGORY_DETAIL_COPY[requestForm.problemType];
+    if (!detailCopy) {
+      return categoryDetails;
+    }
+    return {
+      ...categoryDetails,
+      selectionLabel: getLocalizedCopy(
+        language,
+        detailCopy.selectionLabel.en,
+        detailCopy.selectionLabel.de,
+      ),
+      selectionHint: getLocalizedCopy(
+        language,
+        detailCopy.selectionHint.en,
+        detailCopy.selectionHint.de,
+      ),
+      detailFieldLabel: getLocalizedCopy(
+        language,
+        detailCopy.detailFieldLabel.en,
+        detailCopy.detailFieldLabel.de,
+      ),
+      detailPlaceholder: getLocalizedCopy(
+        language,
+        detailCopy.detailPlaceholder.en,
+        detailCopy.detailPlaceholder.de,
+      ),
+    };
+  }, [categoryDetails, language, requestForm.problemType]);
+  const localizedCategorySubOptions = useMemo(
+    () =>
+      categorySubOptions.map((option) => ({
+        ...option,
+        label: localizeServiceValue(option.value, language),
+      })),
+    [categorySubOptions, language],
+  );
+  const localizedDamageCauserOptions = useMemo(
+    () =>
+      DAMAGE_CAUSER_OPTIONS.map((option) => ({
+        ...option,
+        label: getLocalizedCopy(
+          language,
+          DAMAGE_CAUSER_LABELS[option.value]?.en || option.label,
+          DAMAGE_CAUSER_LABELS[option.value]?.de || option.label,
+        ),
+      })),
+    [language],
+  );
+  const localizedDamageDriveabilityOptions = useMemo(
+    () =>
+      DAMAGE_DRIVEABILITY_OPTIONS.map((option) => ({
+        ...option,
+        label: getLocalizedCopy(
+          language,
+          DAMAGE_DRIVEABILITY_LABELS[option.value]?.en || option.label,
+          DAMAGE_DRIVEABILITY_LABELS[option.value]?.de || option.label,
+        ),
+      })),
+    [language],
+  );
+  const localizedDamageVisualStatusOptions = useMemo(
+    () =>
+      DAMAGE_VISUAL_STATUS_OPTIONS.map((option) => ({
+        ...option,
+        label: getLocalizedCopy(
+          language,
+          DAMAGE_VISUAL_STATUS_LABELS[option.value]?.en || option.label,
+          DAMAGE_VISUAL_STATUS_LABELS[option.value]?.de || option.label,
+        ),
+      })),
+    [language],
+  );
+  const localizedDamageVisualParts = useMemo(
+    () =>
+      DAMAGE_VISUAL_PARTS.map((part) => ({
+        ...part,
+        label: getLocalizedCopy(
+          language,
+          DAMAGE_VISUAL_PART_LABELS[part.key]?.en || part.label,
+          DAMAGE_VISUAL_PART_LABELS[part.key]?.de || part.label,
+        ),
+      })),
+    [language],
   );
   const needsTyreSupplySelection = useMemo(
     () =>
@@ -636,7 +950,7 @@ function DriverServiceRequestSection({
     }));
     scrollToSection(nearestPosSectionRef);
   };
-  const policyStatusLabel = "Covered";
+  const policyStatusLabel = t("driver.request.covered", "Abgedeckt");
   const policyStatusClass = eligibilityClass("Allowed");
   const recommendationTone = useMemo(() => {
     if (!odometerRecommendation) {
@@ -851,7 +1165,10 @@ function DriverServiceRequestSection({
           <p
             className={`mt-1 text-[11px] sm:text-xs ${isSelected ? "text-slate-300" : "text-slate-500"}`}
           >
-            ETA {pos.etaMin} mins
+            {t("driver.request.etaMinutes", {
+              defaultValue: "ETA {{count}} Min.",
+              count: pos.etaMin,
+            })}
           </p>
           {needsTyreSupplySelection && tyreAvailabilityForSelectedSubtype ? (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -867,8 +1184,8 @@ function DriverServiceRequestSection({
                 }`}
               >
                 {tyreAvailabilityForSelectedSubtype.canFulfill
-                  ? "Tyres available"
-                  : "Tyres unavailable"}
+                  ? t("driver.request.tyresAvailableShort", "Reifen verfügbar")
+                  : t("driver.request.tyresUnavailableShort", "Reifen nicht verfügbar")}
               </span>
               <span
                 className={`text-[10px] ${
@@ -876,7 +1193,7 @@ function DriverServiceRequestSection({
                 }`}
               >
                 {tyreAvailabilityForSelectedSubtype.totalAvailable}/
-                {requiredTyreQty} available
+                {requiredTyreQty} {t("driver.request.availableCountSuffix", "verfügbar")}
               </span>
             </div>
           ) : null}
@@ -996,18 +1313,28 @@ function DriverServiceRequestSection({
 
         const reasons = [];
         if (distanceKm <= 8) {
-          reasons.push("nearby location");
+          reasons.push(t("driver.request.reasonNearbyLocation", "Nahe gelegener Standort"));
         }
         if (etaMin <= 20) {
-          reasons.push("fast ETA");
+          reasons.push(t("driver.request.reasonFastEta", "Schnelle ETA"));
         }
         if (sameIssueVisits > 0) {
-          reasons.push(`${sameIssueVisits} similar past service`);
+          reasons.push(
+            t("driver.request.reasonSimilarPastService", {
+              defaultValue: "{{count}} vergleichbare frühere Servicefälle",
+              count: sameIssueVisits,
+            }),
+          );
         } else if (totalHistoryVisits > 0) {
-          reasons.push(`${totalHistoryVisits} past visit`);
+          reasons.push(
+            t("driver.request.reasonPastVisit", {
+              defaultValue: "{{count}} früherer Besuch",
+              count: totalHistoryVisits,
+            }),
+          );
         }
         if (capabilityMatch) {
-          reasons.push("service match");
+          reasons.push(t("driver.request.reasonServiceMatch", "Passende Servicekompetenz"));
         }
 
         return {
@@ -1102,13 +1429,18 @@ function DriverServiceRequestSection({
 
         const reasons = [];
         if (Number(slot.queue || 0) <= 1) {
-          reasons.push("lowest live queue");
+          reasons.push(t("driver.request.reasonLowestLiveQueue", "Kürzeste aktuelle Warteschlange"));
         }
         if (avgDelayHours !== null && avgDelayHours <= 12) {
-          reasons.push("historically low delay");
+          reasons.push(t("driver.request.reasonLowDelay", "Historisch geringe Verzögerung"));
         }
         if (history && history.count > 0) {
-          reasons.push(`${history.count} similar past bookings`);
+          reasons.push(
+            t("driver.request.reasonSimilarPastBookings", {
+              defaultValue: "{{count}} vergleichbare frühere Buchungen",
+              count: history.count,
+            }),
+          );
         }
 
         return {
@@ -1176,11 +1508,13 @@ function DriverServiceRequestSection({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-base font-semibold text-slate-900 sm:text-lg">
-                  Tyre availability update
+                  {t("driver.request.tyreAvailabilityUpdate", "Aktualisierung zur Reifenverfügbarkeit")}
                 </p>
                 <p className="mt-1 text-xs text-slate-600 sm:text-sm">
-                  Your request is submitted. We will notify you once tyres are
-                  available, then you can pick date and slot.
+                  {t(
+                    "driver.request.tyreAvailabilityUpdateDesc",
+                    "Ihre Anfrage wurde gesendet. Wir informieren Sie, sobald Reifen verfügbar sind. Danach können Sie Datum und Zeitfenster wählen.",
+                  )}
                 </p>
               </div>
               <Button
@@ -1188,26 +1522,26 @@ function DriverServiceRequestSection({
                 type="button"
                 variant="outline"
               >
-                Close
+                {t("driver.request.close", "Schließen")}
               </Button>
             </div>
             <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900 sm:text-sm">
               <p>
-                Request ID:{" "}
+                {t("driver.request.requestId", "Anfrage-ID")}:{" "}
                 <span className="font-semibold">
-                  {tyreWaitlistNotice.orderId || "Pending"}
+                  {tyreWaitlistNotice.orderId || t("driver.request.pending", "Ausstehend")}
                 </span>
               </p>
               <p className="mt-1">
-                Station:{" "}
+                {t("driver.request.station", "Station")}:{" "}
                 <span className="font-semibold">
-                  {tyreWaitlistNotice.stationName || "Selected Point S"}
+                  {tyreWaitlistNotice.stationName || t("driver.request.selectedPointS", "Ausgewählter Point S")}
                 </span>
               </p>
               <p className="mt-1">
-                Tyre spec:{" "}
+                {t("driver.request.tyreSpec", "Reifenspezifikation")}:{" "}
                 <span className="font-semibold">
-                  {tyreWaitlistNotice.tyreSize || "N/A"}
+                  {tyreWaitlistNotice.tyreSize || t("driver.request.notAvailable", "k. A.")}
                 </span>
               </p>
             </div>
@@ -1217,7 +1551,7 @@ function DriverServiceRequestSection({
                 onClick={onCloseTyreWaitlistNotice}
                 type="button"
               >
-                Okay, got it
+                {t("driver.request.okGotIt", "Verstanden")}
               </Button>
             </div>
           </div>
@@ -1227,10 +1561,10 @@ function DriverServiceRequestSection({
         <div className="min-w-0 space-y-4 sm:space-y-6">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-              Service category
+              {t("driver.request.serviceCategory", "Servicekategorie")}
             </h2>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-              First-level service options with quick visual selection.
+              {t("driver.request.serviceCategoryHint", "Serviceoptionen der ersten Ebene mit schneller visueller Auswahl.")}
             </p>
             <div className="mt-4 flex justify-end">
               {hasMoreServices ? (
@@ -1239,7 +1573,7 @@ function DriverServiceRequestSection({
                   type="button"
                   variant="outline"
                 >
-                  See all services
+                  {t("driver.request.seeAllServices", "Alle Services anzeigen")}
                 </Button>
               ) : null}
             </div>
@@ -1265,15 +1599,15 @@ function DriverServiceRequestSection({
               ref={serviceDetailsSectionRef}
             >
               <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-                {categoryDetails?.selectionLabel || "Service details"}
+                {localizedCategoryDetails?.selectionLabel || t("driver.request.serviceDetails", "Servicedetails")}
               </h2>
               <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-                {categoryDetails?.selectionHint ||
-                  "Choose the correct service detail before booking."}
+                {localizedCategoryDetails?.selectionHint ||
+                  t("driver.request.serviceDetailsHint", "Wählen Sie das passende Servicedetail, bevor Sie buchen.")}
               </p>
-              {categorySubOptions.length > 0 ? (
+              {localizedCategorySubOptions.length > 0 ? (
                 <div className="mt-4 grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  {categorySubOptions.map((option) => {
+                  {localizedCategorySubOptions.map((option) => {
                     const isSelected =
                       requestForm.problemSubtype === option.value;
                     return (
@@ -1294,7 +1628,7 @@ function DriverServiceRequestSection({
                               isSelected ? "text-slate-200" : "text-amber-700"
                             }`}
                           >
-                            Explanation required
+                            {t("driver.request.explanationRequired", "Erläuterung erforderlich")}
                           </p>
                         ) : null}
                       </button>
@@ -1305,22 +1639,20 @@ function DriverServiceRequestSection({
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                   {requestForm.problemType === "Technisches Problem" ? (
                     <p>
-                      Please describe the issue in the field below or upload a
-                      picture of the error message.
+                      {t("driver.request.technicalProblemHelp", "Bitte beschreiben Sie das Problem im Feld unten oder laden Sie ein Bild der Fehlermeldung hoch.")}
                     </p>
                   ) : requestForm.problemType === "Schadensmeldung" ? (
                     <p>
-                      Please fill out the damage details below and upload clear
-                      pictures of the damage.
+                      {t("driver.request.damageReportHelp", "Bitte füllen Sie die Schadensdetails unten aus und laden Sie klare Bilder des Schadens hoch.")}
                     </p>
                   ) : (
-                    <p>Select the details below to continue.</p>
+                    <p>{t("driver.request.selectDetails", "Wählen Sie unten die Details aus, um fortzufahren.")}</p>
                   )}
                 </div>
               )}
               {requiresSubtype && !requestForm.problemSubtype ? (
                 <p className="mt-3 text-xs text-amber-700">
-                  Select one service option to continue.
+                  {t("driver.request.selectOneService", "Wählen Sie einen Service aus, um fortzufahren")}
                 </p>
               ) : null}
             </div>
@@ -1335,7 +1667,7 @@ function DriverServiceRequestSection({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-                      Nearest Point of Sale
+                      {t("driver.request.nearestPos", "Nächstgelegener Point of Sale")}
                     </h2>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -1355,7 +1687,7 @@ function DriverServiceRequestSection({
                           <span className="inline-flex size-5 items-center justify-center rounded-full bg-sky-100 text-sky-700">
                             <MapPin size={12} />
                           </span>
-                          <span>See all</span>
+                          <span>{t("driver.request.seeAll", "Alle anzeigen")}</span>
                           <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white">
                             {totalStationsCount}
                           </span>
@@ -1369,10 +1701,13 @@ function DriverServiceRequestSection({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-800 sm:text-sm">
                         <Sparkles size={14} />
-                        Best Point S recommendation
+                        {t("driver.request.bestPosRecommendation", "Beste Point-S-Empfehlung")}
                       </p>
                       <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white sm:text-[11px]">
-                        {bestRecommendedStation.confidence}% match
+                        {t("driver.request.percentMatch", {
+                          defaultValue: "{{count}}% Treffer",
+                          count: bestRecommendedStation.confidence,
+                        })}
                       </span>
                     </div>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
@@ -1381,7 +1716,7 @@ function DriverServiceRequestSection({
                     <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
                       {bestRecommendedStation.reasons.length > 0
                         ? bestRecommendedStation.reasons.join(" • ")
-                        : "Balanced score from distance, ETA, and service fit"}
+                        : t("driver.request.balancedScore", "Ausgewogener Score aus Entfernung, ETA und Service-Eignung")}
                     </p>
                     {/* <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-600 sm:text-xs">
                       <span>
@@ -1408,8 +1743,7 @@ function DriverServiceRequestSection({
                 <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 min-[520px]:grid-cols-2 lg:grid-cols-3">
                   {inlineStations.length === 0 ? (
                     <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                      No nearby Point S stations found for selected service
-                      category.
+                      {t("driver.request.noNearbyPos", "Keine nahegelegenen Point-S-Stationen für die gewählte Servicekategorie gefunden.")}
                     </p>
                   ) : (
                     inlineStations.map((pos) =>
@@ -1427,14 +1761,12 @@ function DriverServiceRequestSection({
                 ref={dateSlotSectionRef}
               >
                 <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-                  Select date and slot
+                  {t("driver.request.selectDateSlot", "Datum und Zeitfenster wählen")}
                 </h2>
 
                 {isTyreStockBlocked ? (
                   <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:text-sm">
-                    Tyres are currently unavailable at selected POS for this
-                    service. We will notify you when tyres are available, then
-                    you can still submit this request.
+                    {t("driver.request.tyresUnavailable", "Reifen sind aktuell beim gewählten POS für diesen Service nicht verfügbar. Wir informieren Sie, sobald Reifen verfügbar sind, dann können Sie Datum und Zeitfenster buchen.")}
                   </div>
                 ) : null}
                 <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
@@ -1470,7 +1802,7 @@ function DriverServiceRequestSection({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-800 sm:text-sm">
                         <Sparkles size={14} />
-                        Best slot recommendation
+                        {t("driver.request.bestSlotRecommendation", "Beste Slot-Empfehlung")}
                       </p>
                       {/* <span className="rounded-full bg-cyan-600 px-2 py-0.5 text-[10px] font-semibold text-white sm:text-[11px]">
                         {bestSlotRecommendation.confidence}% match
@@ -1483,7 +1815,7 @@ function DriverServiceRequestSection({
                       <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
                         {bestSlotRecommendation.reasons.length > 0
                           ? bestSlotRecommendation.reasons.join(" • ")
-                          : "Chosen using current queue and historical delay trends"}
+                          : t("driver.request.slotChosenHint", "Gewählt anhand aktueller Auslastung und historischer Verzögerungstrends")}
                       </p>
                       {/* <Button
                         className="h-7 px-2.5 text-[11px] sm:text-xs"
@@ -1507,12 +1839,11 @@ function DriverServiceRequestSection({
                 <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 xl:grid-cols-4">
                   {isTyreStockBlocked ? (
                     <p className="col-span-full rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                      Slot selection is blocked until requested tyre stock is
-                      available at this POS.
+                      {t("driver.request.slotBlocked", "Die Slot-Auswahl ist blockiert, bis der angeforderte Reifenbestand bei diesem POS verfügbar ist.")}
                     </p>
                   ) : slotAvailability.length === 0 ? (
                     <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                      Select a Point S station to see slot availability.
+                      {t("driver.request.selectPosToSeeSlots", "Wählen Sie eine Point-S-Station, um die Slot-Verfügbarkeit zu sehen.")}
                     </p>
                   ) : (
                     slotAvailability.map((slot) => {
@@ -1545,7 +1876,7 @@ function DriverServiceRequestSection({
                         >
                           {isRecommended && !isBusy ? (
                             <span className="pointer-events-none absolute -top-1.5 left-1/2 z-20 inline-flex -translate-x-1/2 rounded-full border border-fuchsia-200 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 px-2 py-[2px] text-[8px] font-bold uppercase tracking-[0.05em] text-white shadow-lg">
-                              Recommended
+                              {t("driver.request.recommended", "Empfohlen")}
                             </span>
                           ) : null}
                           <p className="text-xs font-semibold sm:text-sm">
@@ -1553,8 +1884,8 @@ function DriverServiceRequestSection({
                           </p>
                           <p className="mt-1 text-[10px] sm:text-[11px]">
                             {isBusy
-                              ? `Busy (${slot.queue} in queue)`
-                              : "Free to book"}
+                              ? t("driver.request.busyQueue", { defaultValue: "Belegt ({{count}} in der Warteschlange)", count: slot.queue })
+                              : t("driver.request.freeToBook", "Frei buchbar")}
                           </p>
                         </button>
                       );
@@ -1563,7 +1894,7 @@ function DriverServiceRequestSection({
                 </div>
                 {selectedSlot ? (
                   <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700 sm:text-xs">
-                    Selected slot:{" "}
+                    {t("driver.request.selectedSlot", "Gewählter Slot")}:{" "}
                     <span className="font-semibold">{selectedSlot.label}</span>{" "}
                     on{" "}
                     <span className="font-semibold">
@@ -1582,18 +1913,18 @@ function DriverServiceRequestSection({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-                  Required details
+                  {t("driver.request.requiredDetails", "Erforderliche Details")}
                 </h2>
                 <p className="mt-2 text-xs text-slate-500 sm:text-sm">
                   {requiresPhotos
-                    ? "Damage report requires a clear description and at least one photo."
+                    ? t("driver.request.damageRequiresPhoto", "Eine Schadensmeldung erfordert eine klare Beschreibung und mindestens ein Foto.")
                     : requiresDescription
-                      ? "Add the required issue details before sending the request."
-                      : "Add short note or photos if available."}
+                      ? t("driver.request.addRequiredDetails", "Fügen Sie die erforderlichen Problemdetails hinzu, bevor Sie die Anfrage senden.")
+                      : t("driver.request.addShortNote", "Fügen Sie bei Bedarf eine kurze Notiz oder Fotos hinzu.")}
                 </p>
               </div>
               <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700 sm:text-xs">
-                Quick checklist
+                {t("driver.request.quickChecklist", "Schnellcheckliste")}
               </span>
             </div>
 
@@ -1612,7 +1943,7 @@ function DriverServiceRequestSection({
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
-                      Vehicle & case details
+                      {t("driver.request.vehicleCaseDetails", "Fahrzeug- & Falldetails")}
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <Input
@@ -1622,7 +1953,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Transaction number"
+                        placeholder={t("driver.request.transactionNumber", "Vorgangsnummer")}
                         value={damageReport.processNumber || ""}
                       />
                       <Input
@@ -1632,7 +1963,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Official plate number *"
+                        placeholder={t("driver.request.officialPlateNumber", "Amtliches Kennzeichen *")}
                         value={damageReport.plateNumber || ""}
                       />
                       <Input
@@ -1643,7 +1974,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Damaged vehicle details (manufacturer / model) *"
+                        placeholder={t("driver.request.damagedVehicleDetails", "Beschädigte Fahrzeugdetails (Hersteller / Modell) *")}
                         value={damageReport.vehicleDetails || ""}
                       />
                     </div>
@@ -1651,7 +1982,7 @@ function DriverServiceRequestSection({
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
-                      Driver details
+                      {t("driver.request.driverDetails", "Fahrerdetails")}
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <Input
@@ -1661,7 +1992,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Driver full name *"
+                        placeholder={t("driver.request.driverFullName", "Vollständiger Name des Fahrers *")}
                         value={damageReport.driverFullName || ""}
                       />
                       <Input
@@ -1671,7 +2002,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Date of birth *"
+                        placeholder={t("driver.request.dateOfBirth", "Geburtsdatum *")}
                         type={damageReport.driverBirthDate ? "date" : "text"}
                         onFocus={(e) => (e.target.type = "date")}
                         onBlur={(e) => {
@@ -1687,7 +2018,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Address *"
+                        placeholder={t("driver.request.address", "Adresse *")}
                         value={damageReport.driverAddress || ""}
                       />
                       <Input
@@ -1697,7 +2028,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Phone number *"
+                        placeholder={t("driver.request.phoneNumber", "Telefonnummer *")}
                         value={damageReport.driverPhone || ""}
                       />
                       <Input
@@ -1707,7 +2038,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Email address *"
+                        placeholder={t("driver.request.emailAddress", "E-Mail-Adresse *")}
                         type="email"
                         value={damageReport.driverEmail || ""}
                       />
@@ -1719,7 +2050,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Driver license details *"
+                        placeholder={t("driver.request.driverLicenseDetails", "Führerscheindaten *")}
                         value={damageReport.driverLicense || ""}
                       />
                     </div>
@@ -1727,7 +2058,7 @@ function DriverServiceRequestSection({
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
-                      Accident report
+                      {t("driver.request.accidentReport", "Unfallbericht")}
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <select
@@ -1740,8 +2071,8 @@ function DriverServiceRequestSection({
                         }
                         value={damageReport.damageCauser || ""}
                       >
-                        <option value="">Who caused the damage? *</option>
-                        {DAMAGE_CAUSER_OPTIONS.map((option) => (
+                        <option value="">{t("driver.request.damageCauser", "Wer hat den Schaden verursacht? *")}</option>
+                        {localizedDamageCauserOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
@@ -1757,9 +2088,9 @@ function DriverServiceRequestSection({
                         }
                         value={damageReport.policeRecorded || ""}
                       >
-                        <option value="">Was police involved? *</option>
-                        <option value="yes">Yes</option>
-                        <option value="no">No</option>
+                        <option value="">{t("driver.request.policeInvolved", "War die Polizei beteiligt? *")}</option>
+                        <option value="yes">{t("driver.request.yes", "Ja")}</option>
+                        <option value="no">{t("driver.request.no", "Nein")}</option>
                       </select>
                       {String(
                         damageReport.policeRecorded || "",
@@ -1772,7 +2103,7 @@ function DriverServiceRequestSection({
                               event.target.value,
                             )
                           }
-                          placeholder="Police authority / file number *"
+                          placeholder={t("driver.request.policeAuthority", "Polizeibehörde / Aktenzeichen *")}
                           value={damageReport.policeAuthority || ""}
                         />
                       ) : null}
@@ -1783,7 +2114,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Date and time of incident *"
+                        placeholder={t("driver.request.incidentDateTime", "Datum und Uhrzeit des Vorfalls *")}
                         type="datetime-local"
                         value={damageReport.incidentDateTime || ""}
                       /> */}
@@ -1815,8 +2146,8 @@ function DriverServiceRequestSection({
                         }
                         value={damageReport.vehicleDriveable || ""}
                       >
-                        <option value="">Vehicle driveability *</option>
-                        {DAMAGE_DRIVEABILITY_OPTIONS.map((option) => (
+                        <option value="">{t("driver.request.vehicleDriveability", "Fahrbereitschaft des Fahrzeugs *")}</option>
+                        {localizedDamageDriveabilityOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
@@ -1830,7 +2161,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Incident location *"
+                        placeholder={t("driver.request.incidentLocation", "Unfallort *")}
                         value={damageReport.incidentLocation || ""}
                       />
                       <Input
@@ -1841,7 +2172,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Current vehicle location / pickup address"
+                        placeholder={t("driver.request.currentVehicleLocation", "Aktueller Fahrzeugstandort / Abholadresse")}
                         value={damageReport.vehicleLocation || ""}
                       />
                     </div>
@@ -1853,7 +2184,7 @@ function DriverServiceRequestSection({
                           event.target.value,
                         )
                       }
-                      placeholder="Damage description and what happened *"
+                      placeholder={t("driver.request.damageDescription", "Schadensbeschreibung und was passiert ist *")}
                       rows={4}
                       value={damageReport.damageNarrative || ""}
                     />
@@ -1861,7 +2192,7 @@ function DriverServiceRequestSection({
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
-                      Other party details (if available)
+                      {t("driver.request.otherPartyDetails", "Daten der anderen Partei (falls vorhanden)")}
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <Input
@@ -1871,7 +2202,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Name"
+                        placeholder={t("driver.request.name", "Name")}
                         value={damageReport.otherPartyName || ""}
                       />
                       <Input
@@ -1881,7 +2212,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Phone"
+                        placeholder={t("driver.request.phone", "Telefon")}
                         value={damageReport.otherPartyPhone || ""}
                       />
                       <Input
@@ -1892,7 +2223,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Address"
+                        placeholder={t("driver.request.addressShort", "Adresse")}
                         value={damageReport.otherPartyAddress || ""}
                       />
                       <Input
@@ -1902,7 +2233,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Email"
+                        placeholder={t("driver.request.email", "E-Mail")}
                         type="email"
                         value={damageReport.otherPartyEmail || ""}
                       />
@@ -1913,7 +2244,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Insurance company"
+                        placeholder={t("driver.request.insuranceCompany", "Versicherungsgesellschaft")}
                         value={damageReport.otherPartyInsurance || ""}
                       />
                       <Input
@@ -1923,7 +2254,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Claim number"
+                        placeholder={t("driver.request.claimNumber", "Schadennummer")}
                         value={damageReport.otherPartyClaimNumber || ""}
                       />
                       <Input
@@ -1933,7 +2264,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Vehicle model"
+                        placeholder={t("driver.request.vehicleModel", "Fahrzeugmodell")}
                         value={damageReport.otherPartyVehicleModel || ""}
                       />
                       <Input
@@ -1943,7 +2274,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Vehicle plate number"
+                        placeholder={t("driver.request.vehiclePlateNumber", "Fahrzeugkennzeichen")}
                         value={damageReport.otherPartyVehiclePlate || ""}
                       />
                     </div>
@@ -1951,7 +2282,7 @@ function DriverServiceRequestSection({
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
-                      Injured person details (if any)
+                      {t("driver.request.injuredPersonDetails", "Daten verletzter Personen (falls vorhanden)")}
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <Input
@@ -1961,7 +2292,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Name"
+                        placeholder={t("driver.request.name", "Name")}
                         value={damageReport.injuryPersonName || ""}
                       />
                       <Input
@@ -1971,7 +2302,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Phone"
+                        placeholder={t("driver.request.phone", "Telefon")}
                         value={damageReport.injuryPersonPhone || ""}
                       />
                       <Input
@@ -1982,7 +2313,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Address"
+                        placeholder={t("driver.request.addressShort", "Adresse")}
                         value={damageReport.injuryPersonAddress || ""}
                       />
                       <Input
@@ -1993,7 +2324,7 @@ function DriverServiceRequestSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Email"
+                        placeholder={t("driver.request.email", "E-Mail")}
                         type="email"
                         value={damageReport.injuryPersonEmail || ""}
                       />
@@ -2002,13 +2333,13 @@ function DriverServiceRequestSection({
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
-                      Visual inspection by vehicle part
+                      {t("driver.request.visualInspectionByPart", "Sichtprüfung nach Fahrzeugteil")}
                     </p>
                     <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
-                      Mark each visible part condition where possible.
+                      {t("driver.request.visualInspectionHint", "Markieren Sie nach Möglichkeit den Zustand jedes sichtbaren Teils.")}
                     </p>
                     <div className="card-list-scrollbar mt-2 grid max-h-[18rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-                      {DAMAGE_VISUAL_PARTS.map((part) => (
+                      {localizedDamageVisualParts.map((part) => (
                         <div
                           className="rounded-xl border border-slate-200 bg-slate-50 p-2"
                           key={part.key}
@@ -2030,7 +2361,7 @@ function DriverServiceRequestSection({
                               ""
                             }
                           >
-                            {DAMAGE_VISUAL_STATUS_OPTIONS.map((option) => (
+                            {localizedDamageVisualStatusOptions.map((option) => (
                               <option
                                 key={option.value || "empty"}
                                 value={option.value}
@@ -2050,10 +2381,10 @@ function DriverServiceRequestSection({
                 <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
                     <span className="font-medium text-slate-700">
-                      Current odometer reading
+                      {t("driver.request.currentOdometer", "Aktueller Kilometerstand")}
                     </span>
                     <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
-                      Required
+                      {t("driver.request.required", "Erforderlich")}
                     </span>
                   </div>
                   <div className="mt-2 flex h-10 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-violet-200/70">
@@ -2066,7 +2397,7 @@ function DriverServiceRequestSection({
                           odometerReading: event.target.value,
                         }))
                       }
-                      placeholder="Enter current odometer"
+                      placeholder={t("driver.request.enterOdometer", "Aktuellen Kilometerstand eingeben")}
                       value={requestForm.odometerReading}
                     />
                     <Select
@@ -2079,7 +2410,7 @@ function DriverServiceRequestSection({
                       value={requestForm.odometerUnit || "km"}
                     >
                       <SelectTrigger className="h-full w-[96px] rounded-none border-0 border-l border-slate-200 bg-slate-50 px-3 text-sm shadow-none focus:ring-0 focus:ring-offset-0">
-                        <SelectValue placeholder="Unit" />
+                        <SelectValue placeholder={t("driver.request.unit", "Einheit")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="km">km</SelectItem>
@@ -2088,14 +2419,14 @@ function DriverServiceRequestSection({
                     </Select>
                   </div>
                   <p className="mt-2 text-[11px] text-slate-500 sm:text-xs">
-                    Last recorded:{" "}
+                    {t("driver.request.lastRecorded", "Zuletzt erfasst")}:{" "}
                     <span className="font-semibold text-slate-700">
                       {lastRecordedOdometer?.reading !== null &&
                       lastRecordedOdometer?.reading !== undefined
                         ? `${lastRecordedOdometer.reading.toLocaleString()} ${lastRecordedOdometer.unit}`
-                        : "No previous reading"}
+                        : t("driver.request.noPreviousReading", "Kein vorheriger Wert")}
                     </span>
-                    {lastRecordedOdometer?.isFallback ? " (sample)" : ""}
+                    {lastRecordedOdometer?.isFallback ? ` ${t("driver.request.sample", "(Beispiel)")}` : ""}
                   </p>
                   {odometerError ? (
                     <p className="mt-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-medium text-rose-700 sm:text-xs">
@@ -2109,15 +2440,15 @@ function DriverServiceRequestSection({
                 <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
                     <span className="font-medium text-slate-700">
-                      {categoryDetails?.detailFieldLabel || "Issue details"}
+                      {localizedCategoryDetails?.detailFieldLabel || t("driver.request.issueDetails", "Problemdetails")}
                     </span>
                     {requiresDescription ? (
                       <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
-                        Required
+                        {t("driver.request.required", "Erforderlich")}
                       </span>
                     ) : (
                       <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
-                        Optional
+                        {t("driver.request.optional", "Optional")}
                       </span>
                     )}
                   </div>
@@ -2130,8 +2461,8 @@ function DriverServiceRequestSection({
                       }))
                     }
                     placeholder={
-                      categoryDetails?.detailPlaceholder ||
-                      "What happened? (optional)"
+                      localizedCategoryDetails?.detailPlaceholder ||
+                      t("driver.request.whatHappenedOptional", "Was ist passiert? (optional)")
                     }
                     rows={4}
                     value={requestForm.description}
@@ -2142,15 +2473,15 @@ function DriverServiceRequestSection({
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
                   <span className="font-medium text-slate-700">
-                    Upload photos
+                    {t("driver.request.uploadPhotos", "Fotos hochladen")}
                   </span>
                   {requiresPhotos ? (
                     <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
-                      Required
+                      {t("driver.request.required", "Erforderlich")}
                     </span>
                   ) : (
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
-                      Optional
+                      {t("driver.request.optional", "Optional")}
                     </span>
                   )}
                 </div>
@@ -2164,7 +2495,7 @@ function DriverServiceRequestSection({
                 />
                 {requiresPhotos ? (
                   <p className="mt-1 text-[11px] text-amber-700 sm:text-xs">
-                    At least one damage photo is required.
+                    {t("driver.request.damagePhotoRequired", "Mindestens ein Schadensfoto ist erforderlich.")}
                   </p>
                 ) : null}
 
@@ -2172,7 +2503,7 @@ function DriverServiceRequestSection({
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-slate-800">
-                        Uploaded images
+                        {t("driver.request.uploadedImages", "Hochgeladene Bilder")}
                       </p>
                       <button
                         className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
@@ -2180,7 +2511,7 @@ function DriverServiceRequestSection({
                         type="button"
                       >
                         <Trash2 size={12} />
-                        Clear all
+                        {t("common.clearAll", "Alle löschen")}
                       </button>
                     </div>
                     <div className="card-list-scrollbar mt-3 grid max-h-[18rem] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3">
@@ -2227,7 +2558,7 @@ function DriverServiceRequestSection({
 
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
-                  {isDamageReportFlow ? "Declarations" : "Additional options "}
+                  {isDamageReportFlow ? t("driver.request.declarations", "Erklärungen") : t("driver.request.additionalOptions", "Zusätzliche Optionen")}
                 </p>
                 {isDamageReportFlow ? (
                   <>
@@ -2243,7 +2574,7 @@ function DriverServiceRequestSection({
                         }
                         type="checkbox"
                       />
-                      I confirm the above details are accurate. *
+                      {t("driver.request.confirmAccuracy", "Ich bestätige, dass die obigen Angaben korrekt sind. *")}
                     </label>
                     <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
                       <input
@@ -2257,7 +2588,7 @@ function DriverServiceRequestSection({
                         }
                         type="checkbox"
                       />
-                      I accept privacy processing for this report. *
+                      {t("driver.request.acceptPrivacy", "Ich stimme der Datenverarbeitung für diese Meldung zu. *")}
                     </label>
                   </>
                 ) : null}
@@ -2277,7 +2608,7 @@ function DriverServiceRequestSection({
                           }
                           type="checkbox"
                         />
-                        Emergency breakdown
+                        {t("driver.request.emergencyBreakdown", "Pannenfall")}
                       </label>
                       {needsTyreSupplySelection ? (
                         <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
@@ -2290,7 +2621,7 @@ function DriverServiceRequestSection({
                             type="checkbox"
                           />
                           <span className="text-slate-900">
-                            I am bringing tyres myself
+                            {t("driver.request.iAmBringingTyresMyself", "Ich bringe die Reifen selbst mit")}
                           </span>
                         </label>
                       ) : null}
@@ -2305,24 +2636,30 @@ function DriverServiceRequestSection({
         <aside className="min-w-0 space-y-4 sm:space-y-6 xl:sticky xl:top-8 xl:self-start">
           <div className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
             <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
-              Request summary
+              {t("driver.request.requestSummary", "Anfrageübersicht")}
             </h3>
             <div className="mt-4 space-y-3 text-xs text-slate-700 sm:text-sm">
               <p>
-                Problem:{" "}
+                {t("driver.request.problem", "Problem")}:{" "}
                 <span className="font-semibold text-slate-900">
-                  {requestForm.problemType || "Not selected"}
+                  {requestForm.problemType
+                    ? localizeProblemType(requestForm.problemType, language)
+                    : t("driver.request.notSelected", "Nicht ausgewählt")}
                 </span>
               </p>
               <p>
-                Service option:{" "}
+                {t("driver.request.serviceOption", "Serviceoption")}:{" "}
                 <span className="font-semibold text-slate-900">
-                  {requestForm.problemSubtype ||
-                    (requiresSubtype ? "Not selected" : "Not required")}
+                  {requestForm.problemSubtype
+                    ? localizeServiceValue(requestForm.problemSubtype, language)
+                    :
+                    (requiresSubtype
+                      ? t("driver.request.notSelected", "Nicht ausgewählt")
+                      : t("driver.request.notRequired", "Nicht erforderlich"))}
                 </span>
               </p>
               <p>
-                Odometer:{" "}
+                {t("driver.request.odometer", "Kilometerstand")}:{" "}
                 <span className="font-semibold text-slate-900">
                   {requestForm.odometerReading
                     ? `${Number(
@@ -2331,41 +2668,41 @@ function DriverServiceRequestSection({
                           "",
                         ),
                       ).toLocaleString()} ${requestForm.odometerUnit || "km"}`
-                    : "Not entered"}
+                    : t("driver.request.notEntered", "Nicht eingegeben")}
                 </span>
               </p>
               <p>
-                Nearest Point S:{" "}
+                {t("driver.request.nearestPointS", "Nächstgelegener Point S")}:{" "}
                 <span className="font-semibold text-slate-900">
                   {isDamageReportFlow
-                    ? "Not required (direct fleet handling)"
-                    : selectedPos?.name || "Not selected"}
+                    ? t("driver.request.notRequiredDirectFleet", "Nicht erforderlich (direkte Flottenbearbeitung)")
+                    : selectedPos?.name || t("driver.request.notSelected", "Nicht ausgewählt")}
                 </span>
               </p>
               {needsTyreSupplySelection ? (
                 <p>
-                  Tyre supply:{" "}
+                  {t("driver.request.tyreSupply", "Reifenbereitstellung")}:{" "}
                   <span className="font-semibold text-slate-900">
                     {requestForm.tyreSupplySource === "driver"
-                      ? "Driver bringing tyres"
+                      ? t("driver.request.driverBringingTyres", "Fahrer bringt Reifen mit")
                       : requestForm.tyreSupplySource === "pos"
                         ? requestForm.posTyreAvailability === false
-                          ? "Auto from POS (currently unavailable)"
-                          : "Auto from POS (available)"
-                        : "Auto check pending"}
+                          ? t("driver.request.fromPosUnavailable", "Vom POS (derzeit nicht verfügbar)")
+                          : t("driver.request.fromPosAvailable", "Vom POS (verfügbar)")
+                        : t("driver.request.autoCheckPending", "Automatische Prüfung ausstehend")}
                   </span>
                 </p>
               ) : null}
               <p>
-                Date & slot:{" "}
+                {t("driver.request.dateSlot", "Datum & Zeitfenster")}:{" "}
                 <span className="font-semibold text-slate-900">
                   {isDamageReportFlow
-                    ? "Not required for damage report"
+                    ? t("driver.request.notRequiredDamage", "Für Schadensmeldung nicht erforderlich")
                     : isTyreStockBlocked
-                      ? "Will be shared after tyre availability update"
+                      ? t("driver.request.sharedAfterTyreAvailabilityUpdate", "Wird nach Aktualisierung der Reifenverfügbarkeit mitgeteilt")
                       : selectedSlot
                         ? `${requestForm.preferredDate}, ${selectedSlot.label}`
-                        : "Not selected"}
+                        : t("driver.request.notSelected", "Nicht ausgewählt")}
                 </span>
               </p>
               {odometerRecommendation &&
@@ -2381,16 +2718,16 @@ function DriverServiceRequestSection({
                       >
                         <Sparkles size={13} />
                       </span>
-                      Odometer recommendation
+                      {t("driver.request.odometerRecommendation", "Kilometerstand-Empfehlung")}
                     </p>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${recommendationTone.badge}`}
                     >
                       {odometerRecommendation.level === "high"
-                        ? "Priority"
+                        ? t("driver.request.priority", "Priorität")
                         : odometerRecommendation.level === "medium"
-                          ? "Plan soon"
-                          : "Advisory"}
+                          ? t("driver.request.planSoon", "Bald planen")
+                          : t("driver.request.advisory", "Hinweis")}
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -2401,13 +2738,13 @@ function DriverServiceRequestSection({
                   </p>
                   <div className="mt-2 rounded-xl border border-white/70 bg-white/60 p-2.5">
                     <p className="text-xs font-medium text-slate-700">
-                      Suggested action:{" "}
+                      {t("driver.request.suggestedAction", "Empfohlene Maßnahme")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {odometerRecommendation.suggestion}
                       </span>
                     </p>
                     <p className="mt-1 text-xs text-slate-600">
-                      Suggested category:{" "}
+                      {t("driver.request.suggestedCategory", "Empfohlene Kategorie")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {odometerRecommendation.suggestedCategory}
                       </span>
@@ -2426,19 +2763,19 @@ function DriverServiceRequestSection({
                       type="checkbox"
                     />
                     <span className="text-xs font-medium text-slate-800">
-                      Book service appointment with this recommendation
+                      {t("driver.request.bookWithRecommendation", "Service mit dieser Empfehlung buchen")}
                     </span>
                   </label>
                   {requestForm.recommendationAccepted ? (
                     <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-                      Recommendation will be included in this request
+                      {t("driver.request.recommendationIncluded", "Empfehlung wird in diese Anfrage aufgenommen")}
                     </span>
                   ) : null}
                 </div>
               ) : null}
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-500">
-                  Policy validation
+                  {t("driver.request.policyValidation", "Richtlinienprüfung")}
                 </p>
                 <span
                   className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${policyStatusClass}`}
@@ -2463,21 +2800,21 @@ function DriverServiceRequestSection({
                 {isSubmittingRequest ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 className="size-4 animate-spin" />
-                    Sending...
+                    {t("driver.request.sending", "Wird gesendet...")}
                   </span>
                 ) : isDamageReportFlow ? (
-                  "Raise damage report"
+                  t("driver.request.sendDamageReport", "Schadensmeldung an Flotte senden")
                 ) : (
-                  "Book service appointment"
+                  t("driver.request.bookServiceAppointment", "Servicetermin buchen")
                 )}
               </Button>
               {!isSubmittingRequest && !isServiceRequestFormReady ? (
                 <p className="text-[11px] text-slate-500 sm:text-xs">
                   {isTyreStockBlocked
-                    ? "Selected POS is out of stock for requested tyres. You can still submit request without date/slot and we will notify you once tyres are available."
+                    ? t("driver.request.posOutOfStock", "Der ausgewählte POS hat keinen Lagerbestand für die angeforderten Reifen. Wir benachrichtigen Sie, sobald Reifen verfügbar sind, dann können Sie ein Zeitfenster buchen.")
                     : isDamageReportFlow
-                      ? "Complete required details and at least one photo to send this report directly to fleet."
-                      : "Complete the required service details, then choose station, date, and a free slot to enable the request."}
+                      ? t("driver.request.completeDamageDetails", "Vervollständigen Sie die erforderlichen Details und mindestens ein Foto, um diese Meldung direkt an die Flotte zu senden.")
+                      : t("driver.request.completeServiceDetails", "Vervollständigen Sie die erforderlichen Servicedetails und wählen Sie dann Station, Datum und ein freies Zeitfenster, um die Anfrage zu aktivieren.")}
                 </p>
               ) : null}
             </div>
@@ -2487,10 +2824,10 @@ function DriverServiceRequestSection({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
-                  Recent requests
+                  {t("driver.request.recentRequests", "Letzte Anfragen")}
                 </h3>
                 <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
-                  Your latest submitted service requests.
+                  {t("driver.request.recentRequestsHint", "Ihre zuletzt eingereichten Serviceanfragen.")}
                 </p>
               </div>
               <Button
@@ -2506,12 +2843,12 @@ function DriverServiceRequestSection({
                 type="button"
                 variant="outline"
               >
-                View full history
+                {t("driver.request.viewFullHistory", "Gesamte Historie anzeigen")}
               </Button>
             </div>
 
             {recentDriverRequests.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-500">No requests yet.</p>
+              <p className="mt-4 text-sm text-slate-500">{t("driver.request.noRequestsYet", "Noch keine Anfragen.")}</p>
             ) : (
               <div className="card-list-scrollbar mt-4 max-h-[18rem] space-y-2.5 overflow-y-auto pr-1">
                 {recentDriverRequests.map((order) => {
@@ -2555,7 +2892,7 @@ function DriverServiceRequestSection({
                           isActive ? "text-slate-200" : "text-slate-600"
                         }`}
                       >
-                        {order.serviceType}
+                        {localizeServiceValue(order.serviceType, language)}
                       </p>
                       <p
                         className={`mt-1 text-[10px] sm:text-xs ${
@@ -2593,16 +2930,16 @@ function DriverServiceRequestSection({
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
-            Full request history
+            {t("driver.request.fullHistory", "Vollständige Anfragenhistorie")}
           </h3>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-            {driverServiceRequests.length} requests
+            {t("driver.request.requestsCount", { defaultValue: "{{count}} Anfragen", count: driverServiceRequests.length })}
           </span>
         </div>
 
         {driverServiceRequests.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">
-            No requests yet. Submit one using the quick form above.
+            {t("driver.request.noRequestsHistory", "Noch keine Anfragen. Senden Sie oben über das Schnellformular eine Anfrage.")}
           </p>
         ) : (
           <div className="mt-4 grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[340px_1fr]">
@@ -2637,7 +2974,7 @@ function DriverServiceRequestSection({
                     <p
                       className={`mt-1 text-[11px] sm:text-xs ${isActive ? "text-slate-200" : "text-slate-600"}`}
                     >
-                      {order.serviceType}
+                      {localizeServiceValue(order.serviceType, language)}
                     </p>
                     <p
                       className={`mt-1 text-[10px] sm:text-xs ${
@@ -2669,37 +3006,37 @@ function DriverServiceRequestSection({
 
                   <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2 sm:text-sm">
                     <p>
-                      Service type:{" "}
+                      {t("driver.request.serviceType", "Servicetyp")}:{" "}
                       <span className="font-semibold text-slate-900">
-                        {selectedRequest.serviceType}
+                        {localizeServiceValue(selectedRequest.serviceType, language)}
                       </span>
                     </p>
                     <p>
-                      Requested at:{" "}
+                      {t("driver.request.requestedAt", "Angefragt am")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {formatDateTime(selectedRequest.requestedAt)}
                       </span>
                     </p>
                     <p>
-                      Priority:{" "}
+                      {t("driver.request.priorityLabel", "Priorität")}:{" "}
                       <span className="font-semibold text-slate-900">
-                        {selectedRequest.priority || "Normal"}
+                        {selectedRequest.priority || t("driver.request.normal", "Normal")}
                       </span>
                     </p>
                     <p>
-                      Emergency:{" "}
+                      {t("driver.request.emergency", "Notfall")}:{" "}
                       <span className="font-semibold text-slate-900">
-                        {selectedRequest.emergency ? "Yes" : "No"}
+                        {selectedRequest.emergency ? t("driver.request.yes", "Ja") : t("driver.request.no", "Nein")}
                       </span>
                     </p>
                     <p>
-                      Location:{" "}
+                      {t("driver.request.location", "Ort")}:{" "}
                       <span className="font-semibold text-slate-900">
-                        {selectedRequest.orderDetails?.location || "N/A"}
+                        {selectedRequest.orderDetails?.location || t("driver.request.notAvailable", "k. A.")}
                       </span>
                     </p>
                     <p>
-                      Odometer:{" "}
+                      {t("driver.request.odometer", "Kilometerstand")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {selectedRequest.orderDetails?.odometerReading !==
                           null &&
@@ -2710,37 +3047,37 @@ function DriverServiceRequestSection({
                             ).toLocaleString()} ${
                               selectedRequest.orderDetails?.odometerUnit || "km"
                             }`
-                          : "N/A"}
+                          : t("driver.request.notAvailable", "k. A.")}
                       </span>
                     </p>
                     <p>
-                      Appointment:{" "}
+                      {t("driver.request.appointment", "Termin")}:{" "}
                       <span className="font-semibold text-slate-900">
                         {selectedRequest.appointment?.dateTime
                           ? formatDateTime(selectedRequest.appointment.dateTime)
-                          : "Not scheduled"}
+                          : t("driver.request.notScheduled", "Nicht geplant")}
                       </span>
                     </p>
                   </div>
 
                   <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Description
+                      {t("driver.request.description", "Beschreibung")}
                     </p>
                     <p className="mt-1 text-xs text-slate-700 sm:text-sm">
-                      {selectedRequest.orderDetails?.description || "N/A"}
+                      {selectedRequest.orderDetails?.description || t("driver.request.notAvailable", "k. A.")}
                     </p>
                     <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Notes
+                      {t("driver.request.notes", "Notizen")}
                     </p>
                     <p className="mt-1 text-xs text-slate-700 sm:text-sm">
-                      {selectedRequest.orderDetails?.notes || "N/A"}
+                      {selectedRequest.orderDetails?.notes || t("driver.request.notAvailable", "k. A.")}
                     </p>
                   </div>
 
                   <div className="mt-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Lifecycle
+                      {t("driver.request.lifecycle", "Verlauf")}
                     </p>
                     <div className="card-list-scrollbar mt-2 max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                       {(selectedRequest.lifecycle || [])
@@ -2756,8 +3093,8 @@ function DriverServiceRequestSection({
                               {entry.stage}
                             </p>
                             <p className="text-[11px] text-slate-500 sm:text-xs">
-                              {formatDateTime(entry.time)} by{" "}
-                              {entry.actor || "System"}
+                              {formatDateTime(entry.time)} {t("driver.request.by", "durch")}{" "}
+                              {entry.actor || t("driver.request.system", "System")}
                             </p>
                             {entry.note ? (
                               <p className="mt-1 text-[11px] text-slate-600 sm:text-xs">
@@ -2781,10 +3118,10 @@ function DriverServiceRequestSection({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-900">
-                  All services
+                  {t("driver.request.allServices", "Alle Services")}
                 </p>
                 <p className="text-sm text-slate-500">
-                  Select one service to continue
+                  {t("driver.request.selectOneService", "Wählen Sie einen Service aus, um fortzufahren")}
                 </p>
               </div>
               <Button
@@ -2792,7 +3129,7 @@ function DriverServiceRequestSection({
                 type="button"
                 variant="outline"
               >
-                Close
+                {t("driver.request.close", "Schließen")}
               </Button>
             </div>
             <div className="mt-4">
@@ -2823,7 +3160,7 @@ function DriverServiceRequestSection({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-900">
-                  All nearby Point S stations
+                  {t("driver.request.allNearbyStations", "Alle nahegelegenen Point-S-Stationen")}
                 </p>
                 {/* <p className="text-sm text-slate-500">
                   Select one Point S station to continue ({filteredStations.length} shown of{" "}
@@ -2835,7 +3172,7 @@ function DriverServiceRequestSection({
                 type="button"
                 variant="outline"
               >
-                Close
+                {t("driver.request.close", "Schließen")}
               </Button>
             </div>
             <div className="max-w-sm">
@@ -2843,12 +3180,12 @@ function DriverServiceRequestSection({
                 <Input
                   className="pr-10"
                   onChange={(event) => setStationSearch(event.target.value)}
-                  placeholder="Search station, location or capability..."
+                  placeholder={t("driver.request.searchStations", "Station, Ort oder Fähigkeit suchen...")}
                   value={stationSearch}
                 />
                 {stationSearch ? (
                   <button
-                    aria-label="Clear search"
+                    aria-label={t("driver.request.clearSearch", "Suche löschen")}
                     className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                     onClick={() => setStationSearch("")}
                     type="button"
@@ -2861,10 +3198,10 @@ function DriverServiceRequestSection({
                 {isSearchDebouncing ? (
                   <>
                     <Loader2 className="size-3 animate-spin text-sky-600" />
-                    <span>Searching stations...</span>
+                    <span>{t("driver.request.searchingStations", "Stationen werden gesucht...")}</span>
                   </>
                 ) : (
-                  <span>{filteredStations.length} matching stations</span>
+                  <span>{t("driver.request.matchingStations", { defaultValue: "{{count}} passende Stationen", count: filteredStations.length })}</span>
                 )}
               </div>
             </div>
@@ -2875,11 +3212,11 @@ function DriverServiceRequestSection({
               {isSearchDebouncing ? (
                 <div className="col-span-full flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                   <Loader2 className="mr-2 size-4 animate-spin text-sky-600" />
-                  Loading matching stations...
+                  {t("driver.request.loadingMatchingStations", "Passende Stationen werden geladen...")}
                 </div>
               ) : filteredStations.length === 0 ? (
                 <p className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-                  No stations found for this search.
+                  {t("driver.request.noStationsFound", "Für diese Suche wurden keine Stationen gefunden.")}
                 </p>
               ) : (
                 visibleFilteredStations.map((pos) =>
@@ -2893,13 +3230,13 @@ function DriverServiceRequestSection({
                 <div className="col-span-full flex justify-center pt-1">
                   <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
                     <Loader2 className="size-3.5 animate-spin text-sky-600" />
-                    Loading more stations...
+                    {t("driver.request.loadingMoreStations", "Weitere Stationen werden geladen...")}
                   </span>
                 </div>
               ) : hasMoreFilteredStations ? (
                 <div className="col-span-full flex justify-center pt-1">
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-                    Scroll to load more stations
+                    {t("driver.request.scrollMoreStations", "Scrollen, um weitere Stationen zu laden")}
                   </span>
                 </div>
               ) : null}
